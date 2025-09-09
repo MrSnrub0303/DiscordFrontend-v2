@@ -61,6 +61,13 @@ class DiscordProxySocket {
         
         if (response.ok) {
           console.log(`📡 Sent ${event} to server via Discord proxy`);
+          
+          // Handle response data for actions like start_question
+          const responseData = await response.json();
+          if (responseData.action && this.eventCallbacks.has(responseData.action)) {
+            const callback = this.eventCallbacks.get(responseData.action);
+            callback(responseData.data);
+          }
         } else {
           throw new Error(`Server error: ${response.status}`);
         }
