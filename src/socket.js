@@ -1,5 +1,5 @@
 // Discord Activities with URL mapping configured
-// /api -> impressed-henry-probability-buf.trycloudflare.com (backend tunnel)
+// /api -> discordbackend-xggi.onrender.com (production backend)
 
 class DiscordProxySocket {
   constructor() {

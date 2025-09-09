@@ -175,7 +175,7 @@ export function ActivityProvider({ children }) {
         } else if (error.message.includes('DISCORD_CLIENT_ID')) {
           errorDetails.suggestion = 'Check your config file and ensure DISCORD_CLIENT_ID is properly set';
         } else if (error.message.includes('Token exchange failed')) {
-          errorDetails.suggestion = 'Check that your backend server is running on port 3001 and accessible';
+          errorDetails.suggestion = 'Check that your backend server is running and accessible at https://discordbackend-xggi.onrender.com';
         } else if (error.message.includes('fetch')) {
           errorDetails.suggestion = 'Network error - check your proxy settings and backend server';
         } else if (error.message.includes('authenticate')) {

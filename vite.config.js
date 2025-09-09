@@ -6,13 +6,13 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-      host: true,
-  allowedHosts: ['gonna-captured-cheers-models.trycloudflare.com'],
+    host: true,
+    allowedHosts: ['discord-frontend-virid.vercel.app'],
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://discordbackend-xggi.onrender.com',
         changeOrigin: true,
-        secure: false
+        secure: true
       }
     }
   },
