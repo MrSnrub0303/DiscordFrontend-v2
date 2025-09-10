@@ -196,7 +196,7 @@ export default function App() {
           setShowResult(false);
           setSelections({});
           setMySelection(null); // Reset my selection for new question
-          setTimeLeft(data.timeLeft || 30);
+          setTimeLeft(data.timeLeft || MAX_TIME);
           // Reset per-question tracking
           answerTimesRef.current = {};
           awardedDoneRef.current = false;
@@ -1002,7 +1002,7 @@ useEffect(() => {
           setShowResult(false);
           setSelections({});
           setMySelection(null); // Reset my selection for new question
-          setTimeLeft(result.data.timeLeft || 30);
+          setTimeLeft(result.data.timeLeft || MAX_TIME);
           // Reset per-question tracking
           answerTimesRef.current = {};
           awardedDoneRef.current = false;
@@ -1013,7 +1013,7 @@ useEffect(() => {
           setShowResult(false);
           setSelections({});
           setMySelection(null); // Reset my selection for new question
-          setTimeLeft(result.timeLeft || 30);
+          setTimeLeft(result.timeLeft || MAX_TIME);
           answerTimesRef.current = {};
           awardedDoneRef.current = false;
           console.log('✅ Next question loaded from server (alt format)');
