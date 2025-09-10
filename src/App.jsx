@@ -762,22 +762,21 @@ useEffect(() => {
 
   // Updated: Emit answer through socket with competitive flow
   const onSelectOption = (playerId, optionIndex) => {
-    if (showResult) return;
-    if (mySelection !== null) return; // Prevent multiple selections
+    if (showResult) return; // Can't select after results are shown
+    // Remove the restriction that prevents changing selection
     
-    // Allow selection even if not in voice channel - Discord Activities don't require voice
     console.log(`🎯 Attempting to select option ${optionIndex}`, {
       showResult,
-      mySelection,
+      currentSelection: mySelection,
       isInVoiceChannel,
       voiceChannel: !!voiceChannel,
       playerId,
       socket: !!socket
     });
 
-    // Immediate visual feedback for my selection only
+    // Allow changing selection - update to new choice
     setMySelection(optionIndex);
-    console.log(`🎯 You selected option ${optionIndex}`);
+    console.log(`🎯 You selected option ${optionIndex} (${mySelection !== null ? 'changed from ' + mySelection : 'new selection'})`);
 
     // Emit selection to server with retry logic
     const submitSelection = async () => {
@@ -1493,7 +1492,7 @@ useEffect(() => {
                 return (
                   <button
                     key={i}
-                    disabled={reveal || mySelection !== null}
+                    disabled={reveal} // Only disable after results are revealed
                     className="option-button"
                     style={{ backgroundImage, boxShadow }}
                     onMouseEnter={playHoverSound}
@@ -1501,7 +1500,7 @@ useEffect(() => {
                       console.log(`🔥 Button ${i} clicked!`, {
                         reveal,
                         mySelection,
-                        disabled: reveal || mySelection !== null,
+                        disabled: reveal,
                         myPlayerId,
                         showResult
                       });
@@ -1509,6 +1508,15 @@ useEffect(() => {
                     }}
                   >
                     <span className="option-text">{opt}</span>
+                    
+                    {/* Show my name on my selected option (even before reveal) */}
+                    {!reveal && i === mySelection && (
+                      <span className="option-badge my-selection">
+                        {currentUser?.username || currentUser?.global_name || "You"}
+                      </span>
+                    )}
+                    
+                    {/* Show all player names after reveal */}
                     {reveal && (
                       <span className="option-badge">
                         {players
