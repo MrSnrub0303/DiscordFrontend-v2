@@ -837,7 +837,7 @@ useEffect(() => {
               roomId: roomId,
               playerId: playerId,
               optionIndex: optionIndex,
-              timeTaken: 30 - timeLeft
+              timeTaken: MAX_TIME - timeLeft
             });
             console.log('📤 Option selection submitted successfully');
           } catch (error) {
