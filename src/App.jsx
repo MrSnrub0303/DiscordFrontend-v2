@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef, useMemo, useLayoutEffect } from "react";
 import "./App.css";
 import questions from "./questions.json";
-import hcCards from "./hc_cards.json";
 import { useDiscordActivity } from './discord/useDiscordActivity';
 import { socket } from './socket';
 
@@ -60,6 +59,48 @@ const formatNumber = (n) => {
   const num = Number(n);
   if (Number.isNaN(num)) return String(n);
   return num.toLocaleString();
+};
+
+// Age of Empires III Home City Cards
+const cardNames = [
+  "Conquistador", "Team Fencing Instructor", "Unction", "Team Spanish Road", "Team Hidalgos",
+  "Native Lore", "Advanced Trading Post", "Town Militia", "Pioneers", "Advanced Mill",
+  "Advanced Market", "Advanced Estate", "Advanced Dock", "Llama Ranching", "Ranching",
+  "Fish Market", "Schooners", "Sawmills", "Exotic Hardwoods", "Team Ironmonger",
+  "Stockyards", "Furrier", "Rum Distillery", "Capitalism", "Stonemasons",
+  "Land Grab", "Team Coastal Defenses", "Tercio Tactics", "Reconquista", "Advanced Arsenal",
+  "Extensive Fortifications", "Rendering Plant", "Silversmith", "Sustainable Agriculture", "Spice Trade",
+  "Medicine", "Cigar Roller", "Spanish Galleons", "Theaters", "Caballeros",
+  "Liberation March", "Spanish Gold", "Armada", "Mercenary Loyalty", "Grenade Launchers",
+  "Improved Buildings", "Blood Brothers", "Peninsular Guerrillas", "Advanced Balloon", "Florence Nightingale",
+  "Virginia Company", "South Sea Bubble", "Fulling Mills", "Yeomen", "Siege Archery",
+  "Master Surgeons", "Northwest Passage", "Distributivism", "Wilderness Warfare", "French Royal Army",
+  "Naval Gunners", "Thoroughbreds", "Gribeauval System", "Navigator", "Agents",
+  "Portuguese White Fleet", "Carracks", "Stadhouder", "Admiral Tromp", "Tulip Speculation",
+  "Willem", "Polar Explorer", "Engineering School", "Suvorov Reforms", "Ransack",
+  "Polk", "Offshore Support", "Germantown Farmers", "Guild Artisans", "Spanish Riding School",
+  "Mosque Construction", "Flight Archery", "New Ways", "Beaver Wars", "Medicine Wheels",
+  "Black Arrow", "Silent Strike", "Smoking Mirror", "Boxer Rebellion", "Western Reforms",
+  "Advanced Wonders", "Seven Lucky Gods", "Desert Terror", "Foreign Logging", "Salt Ponds",
+  "Imperial Unity", "Duelist", "Trample Tactics", "Virginia Oak", "Coffee Mill Guns",
+  "Bushburning", "Beekeepers", "Koose", "Kingslayer", "Barbacoa",
+  "Man of Destiny", "Freemasons", "Admirality", "Advanced Commanderies", "Bailiff",
+  "Fire Towers", "Native Treaties", "Advanced Scouts", "Grain Market", "Chinampa",
+  "Knight Hitpoints", "Knight Attack", "Aztec Mining", "Ritual Gladiators", "Artificial Islands",
+  "Knight Combat", "Scorched Earth", "Aztec Fortification", "Chichimeca Rebellion", "Wall of Skulls",
+  "Old Ways", "Improved Warships", "Terraced Houses", "Rangers", "Textile Mill",
+  "Refrigeration", "Royal Mint", "Greenwich Time", "Dowager Empress", "Year of the Goat",
+  "Year of the Tiger", "Year of the Ox", "Year of the Dragon", "Acupuncture",
+  "Repelling Volley", "Native Crafts", "Colbertism", "Cartridge Currency", "European Cannons",
+  "Voyageur", "Solingen Steel", "Town Destroyer", "Battlefield Construction", "Conservative Tactics",
+  "Dane Guns"
+];
+
+// Helper: Convert card name to image path
+const getCardImagePath = (cardName) => {
+  // Convert spaces to underscores and remove special characters for filename
+  const fileName = cardName.replace(/\s+/g, '_').replace(/[:/]/g, '');
+  return new URL(`./assets/cards/${fileName}.png`, import.meta.url).href;
 };
 
 export default function App() {
@@ -656,14 +697,13 @@ useEffect(() => {
 
   const pickAndSetRandomQuestion = () => {
     // TEMPORARY: 100% chance to pick a HC card "guess the card" style question
-    const pickCard = Math.random() < 1.0 && Object.keys(hcCards).length > 0;
+    const pickCard = Math.random() < 1.0 && cardNames.length > 0;
 
     if (pickCard) {
-      const keys = Object.keys(hcCards);
-      const idx = Math.floor(Math.random() * keys.length);
-      const name = keys[idx];
-      // TEMP: Use local placeholder due to CSP restrictions
-      const url = "/src/assets/award_01.png"; // Fallback to local image
+      const idx = Math.floor(Math.random() * cardNames.length);
+      const name = cardNames[idx];
+      // Get the card image path using our helper function
+      const url = getCardImagePath(name);
 
       setCurrentQuestion({ isCard: true, cardName: name, cardUrl: url });
       setSelections({});
