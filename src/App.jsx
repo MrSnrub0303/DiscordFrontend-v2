@@ -715,16 +715,19 @@ useEffect(() => {
           clearInterval(timerRef.current);
           
           // In multiplayer mode, request round completion from server
-          if (socket && !socket.localMode && isInVoiceChannel) {
+          if (socket && !socket.localMode) {
             console.log('⏰ Time up! Requesting round completion from server...');
             socket.emit('end_round', {
               roomId: roomId
             }).then((result) => {
               console.log('📡 Round completion response:', result);
               if (result && result.data) {
+                console.log('📊 Server scores:', result.data.scores);
+                console.log('📊 Server selections:', result.data.selections);
                 setSelections(result.data.selections || {});
                 if (result.data.scores) {
                   setScores(result.data.scores);
+                  console.log('✅ Scores updated from server:', result.data.scores);
                 }
                 setShowResult(true);
               } else {
@@ -738,6 +741,7 @@ useEffect(() => {
             });
           } else {
             // Local mode - just show result
+            console.log('🏠 Local mode - no server scoring');
             setShowResult(true);
           }
           
