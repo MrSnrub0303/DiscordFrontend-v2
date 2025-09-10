@@ -697,7 +697,7 @@ useEffect(() => {
 
   const pickAndSetRandomQuestion = () => {
     // 30% chance to pick a HC card "guess the card" style question
-    const pickCard = Math.random() < 0.3 && Object.keys(hcCards).length > 0;
+    const pickCard = Math.random() < 0.3 && cardNames.length > 0;
 
     if (pickCard) {
       const idx = Math.floor(Math.random() * cardNames.length);
