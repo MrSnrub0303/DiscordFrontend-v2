@@ -86,6 +86,7 @@ export default function App() {
   const [timeLeft, setTimeLeft] = useState(MAX_TIME);
   const [showResult, setShowResult] = useState(false);
   const [scores, setScores] = useState({});
+  const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
 
   // For card-mode: input state and last attempt feedback
   const [cardInput, setCardInput] = useState("");
@@ -707,6 +708,7 @@ useEffect(() => {
     if (showResult) return;
 
     setTimeLeft(MAX_TIME);
+    setServerScoredThisRound(false); // Reset server scoring flag for new question
     clearInterval(timerRef.current);
 
     timerRef.current = setInterval(() => {
@@ -727,6 +729,7 @@ useEffect(() => {
                 setSelections(result.data.selections || {});
                 if (result.data.scores) {
                   setScores(result.data.scores);
+                  setServerScoredThisRound(true); // Flag that server provided scores
                   console.log('✅ Scores updated from server:', result.data.scores);
                 }
                 setShowResult(true);
@@ -885,7 +888,13 @@ useEffect(() => {
   useEffect(() => {
     if (!showResult) return;
     if (awardedDoneRef.current) return; // guard — only award once per question
+    if (serverScoredThisRound) {
+      console.log('🔒 Skipping client scoring - server already provided scores');
+      awardedDoneRef.current = true;
+      return;
+    }
 
+    console.log('🎯 Running client-side scoring calculation');
     // calculate and award points
     setScores((prevScores) => {
       const newScores = { ...prevScores };
