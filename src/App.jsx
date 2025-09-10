@@ -145,25 +145,21 @@ export default function App() {
       });
 
       socket.on('playerJoined', (player) => {
-        setPlayers(prev => [...prev, player]);
+        console.log('📡 Player joined via socket:', player);
+        setPlayers(prev => {
+          // Avoid duplicates
+          if (prev.find(p => p.id === player.id)) {
+            return prev;
+          }
+          return [...prev, player];
+        });
       });
 
-      // Initialize local mode if needed
-      setTimeout(() => {
-        if (socket.localMode && currentUser) {
-          // In local mode, add the current user as the only player
-          const localPlayer = {
-            id: currentUser.id || "player1",
-            name: currentUser.username || "You",
-            avatar: currentUser.avatar
-          };
-          setPlayers([localPlayer]);
-          setScores({[localPlayer.id]: 0});
-          console.log('🏠 Initialized local single-player mode');
-        }
-      }, 1000);
+      // Remove local mode initialization - we now sync with Discord participants
+      // The participants useEffect will handle both multiplayer and single player setup
 
       socket.on('playerLeft', (playerId) => {
+        console.log('📡 Player left via socket:', playerId);
         setPlayers(prev => prev.filter(p => p.id !== playerId));
       });
 
@@ -309,6 +305,52 @@ export default function App() {
       initSocket();
     }
   }, [currentUser, roomId]);
+
+  // Sync Discord participants with players state
+  useEffect(() => {
+    if (participants && participants.length > 0 && isInVoiceChannel) {
+      console.log('🎮 Syncing Discord participants to players:', participants);
+      
+      // Convert Discord participants to player objects
+      const discordPlayers = participants.map(participant => ({
+        id: participant.id || participant.userId || `discord-${Date.now()}-${Math.random()}`,
+        name: participant.username || participant.displayName || participant.nickname || 'Discord User',
+        avatar: participant.avatar
+      }));
+      
+      // Make sure current user is included
+      if (currentUser && !discordPlayers.find(p => p.id === currentUser.id)) {
+        discordPlayers.unshift({
+          id: currentUser.id,
+          name: currentUser.username || 'You',
+          avatar: currentUser.avatar
+        });
+      }
+      
+      setPlayers(discordPlayers);
+      
+      // Initialize scores for all players
+      const initialScores = {};
+      discordPlayers.forEach(player => {
+        initialScores[player.id] = 0;
+      });
+      setScores(initialScores);
+      
+      console.log('✅ Players synced:', discordPlayers);
+    } else if (!isInVoiceChannel || !participants || participants.length === 0) {
+      // Fallback to single player mode with current user
+      if (currentUser) {
+        const singlePlayer = {
+          id: currentUser.id || "single-player",
+          name: currentUser.username || "You",
+          avatar: currentUser.avatar
+        };
+        setPlayers([singlePlayer]);
+        setScores({[singlePlayer.id]: 0});
+        console.log('🏠 Fallback to single player mode:', singlePlayer);
+      }
+    }
+  }, [participants, currentUser, isInVoiceChannel]);
 
 // Initialize playlist audios on mount AND create AudioContext + decode reveal sound
 useEffect(() => {
