@@ -75,6 +75,9 @@ export default function App() {
     isInVoiceChannel
   } = useDiscordActivity();
 
+  // Force everyone into the same shared room for multiplayer
+  const roomId = "shared-quiz-room";
+
   const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [selections, setSelections] = useState({});
@@ -631,7 +634,7 @@ useEffect(() => {
         const trySubmit = async () => {
           try {
             await socket.emit('select_option', {
-              roomId: "shared-quiz-room", // Force everyone into same room
+              roomId: roomId, // Force everyone into same room
               optionIndex
             });
             console.log('📤 Option selection submitted successfully');
@@ -787,7 +790,7 @@ useEffect(() => {
     } else if (isHost && isInVoiceChannel && voiceChannel) {
       // In multiplayer mode, emit to server
       socket.emit('start_question', {
-        roomId: "shared-quiz-room" // Force everyone into same room
+        roomId: roomId // Force everyone into same room
       });
     } else {
       // Fallback to local mode
