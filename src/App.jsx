@@ -661,8 +661,8 @@ useEffect(() => {
       const keys = Object.keys(hcCards);
       const idx = Math.floor(Math.random() * keys.length);
       const name = keys[idx];
-      // Use a default local image instead of external URL to avoid CSP violations
-      const url = "/src/assets/award_01.png"; // Default placeholder image
+      // Use the actual card image from hc_cards.json
+      const url = hcCards[name]; // Get the real card image URL
 
       setCurrentQuestion({ isCard: true, cardName: name, cardUrl: url });
       setSelections({});
