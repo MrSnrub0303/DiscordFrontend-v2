@@ -662,8 +662,8 @@ useEffect(() => {
       const keys = Object.keys(hcCards);
       const idx = Math.floor(Math.random() * keys.length);
       const name = keys[idx];
-      // Use the actual card image from hc_cards.json
-      const url = hcCards[name]; // Get the real card image URL
+      // TEMP: Use local placeholder due to CSP restrictions
+      const url = "/src/assets/award_01.png"; // Fallback to local image
 
       setCurrentQuestion({ isCard: true, cardName: name, cardUrl: url });
       setSelections({});
