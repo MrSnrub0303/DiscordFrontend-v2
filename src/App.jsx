@@ -81,7 +81,8 @@ export default function App() {
 
   const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [selections, setSelections] = useState({});
+  const [selections, setSelections] = useState({}); // Final revealed selections
+  const [mySelection, setMySelection] = useState(null); // Only my selection (for immediate feedback)
   const [timeLeft, setTimeLeft] = useState(MAX_TIME);
   const [showResult, setShowResult] = useState(false);
   const [scores, setScores] = useState({});
@@ -152,6 +153,7 @@ export default function App() {
           setCurrentQuestion(data.question);
           setShowResult(false);
           setSelections({});
+          setMySelection(null); // Reset my selection for new question
           setTimeLeft(data.timeLeft || 30);
           // Reset per-question tracking
           answerTimesRef.current = {};
@@ -159,14 +161,23 @@ export default function App() {
         }
       });
 
-      socket.on('player_selected', (data) => {
-        console.log('📡 Received player_selected from server:', data);
-        if (data.playerId && data.optionIndex !== undefined) {
-          setSelections(prev => ({
-            ...prev,
-            [data.playerId]: data.optionIndex
-          }));
+      // Listen for round completion and reveal phase
+      socket.on('round_complete', (data) => {
+        console.log('📡 Round complete - revealing all selections:', data);
+        if (data.selections) {
+          setSelections(data.selections);
+          setShowResult(true);
+          // Update scores if provided
+          if (data.scores) {
+            setScores(data.scores);
+          }
         }
+      });
+
+      socket.on('player_selected', (data) => {
+        console.log('📡 Player made selection (hidden until reveal):', data.playerId);
+        // Don't show the actual selection - just acknowledge someone selected
+        // This could be used for "Player X has answered" indicators
       });
 
       socket.on('playerJoined', (player) => {
@@ -655,6 +666,7 @@ useEffect(() => {
 
       setCurrentQuestion({ isCard: true, cardName: name, cardUrl: url });
       setSelections({});
+      setMySelection(null); // Reset my selection
       setShowResult(false);
       setTimeLeft(MAX_TIME);
       setCardInput("");
@@ -676,6 +688,7 @@ useEffect(() => {
     setAvailableQuestions((prev) => prev.filter((_, i) => i !== index));
     setCurrentQuestion(q);
     setSelections({});
+    setMySelection(null); // Reset my selection
     setShowResult(false);
     setTimeLeft(MAX_TIME);
 
@@ -700,7 +713,34 @@ useEffect(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current);
-          setShowResult(true);
+          
+          // In multiplayer mode, request round completion from server
+          if (socket && !socket.localMode && isInVoiceChannel) {
+            console.log('⏰ Time up! Requesting round completion from server...');
+            socket.emit('end_round', {
+              roomId: roomId
+            }).then((result) => {
+              console.log('📡 Round completion response:', result);
+              if (result && result.data) {
+                setSelections(result.data.selections || {});
+                if (result.data.scores) {
+                  setScores(result.data.scores);
+                }
+                setShowResult(true);
+              } else {
+                // Fallback to local reveal
+                console.log('⚠️ No server response, falling back to local reveal');
+                setShowResult(true);
+              }
+            }).catch((error) => {
+              console.log('⚠️ Server round completion failed, falling back to local:', error);
+              setShowResult(true);
+            });
+          } else {
+            // Local mode - just show result
+            setShowResult(true);
+          }
+          
           return 0;
         }
         return t - 1;
@@ -708,7 +748,7 @@ useEffect(() => {
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [currentQuestion, showResult]);
+  }, [currentQuestion, showResult, socket, roomId, isInVoiceChannel]);
 
   // Use current user ID if available, fallback to "player1"
   const myPlayerId = currentUser?.id || "player1";
@@ -720,11 +760,15 @@ useEffect(() => {
     ? currentQuestion.options.findIndex((opt) => opt.startsWith(correctLetter))
     : -1;
 
-  // Updated: Emit answer through socket
+  // Updated: Emit answer through socket with competitive flow
   const onSelectOption = (playerId, optionIndex) => {
     if (showResult) return;
-    if (selections[playerId] !== undefined) return;
+    if (mySelection !== null) return; // Prevent multiple selections
     if (!isInVoiceChannel || !voiceChannel) return;
+
+    // Immediate visual feedback for my selection only
+    setMySelection(optionIndex);
+    console.log(`🎯 You selected option ${optionIndex}`);
 
     // Emit selection to server with retry logic
     const submitSelection = async () => {
@@ -735,8 +779,10 @@ useEffect(() => {
         const trySubmit = async () => {
           try {
             await socket.emit('select_option', {
-              roomId: roomId, // Force everyone into same room
-              optionIndex
+              roomId: roomId,
+              playerId: playerId,
+              optionIndex: optionIndex,
+              timeTaken: 30 - timeLeft
             });
             console.log('📤 Option selection submitted successfully');
           } catch (error) {
@@ -755,31 +801,21 @@ useEffect(() => {
         await trySubmit();
       } else {
         console.log('🏠 Local mode - selection recorded locally');
+        // In local mode, immediately show result
+        setTimeout(() => {
+          setSelections({ [playerId]: optionIndex });
+          setShowResult(true);
+        }, 1000);
       }
     };
     
     submitSelection();
 
-    // update selection state for UI
-    setSelections((prev) => {
-      const newSelections = { ...prev, [playerId]: optionIndex };
-      const clickedTimeLeft = timeLeft;
-
-      // record the timeLeft at click for this player
-      // (we use a ref so we don't cause extra re-renders)
-      answerTimesRef.current = {
-        ...answerTimesRef.current,
-        [playerId]: clickedTimeLeft,
-      };
-
-      // If everybody has now answered, stop the timer and reveal results (scoring happens in effect)
-      if (Object.keys(newSelections).length === players.length) {
-        clearInterval(timerRef.current);
-        setShowResult(true);
-      }
-
-      return newSelections;
-    });
+    // Record timing for scoring
+    answerTimesRef.current = {
+      ...answerTimesRef.current,
+      [playerId]: timeLeft,
+    };
 
     // unlock audio context & maybe start music because this was a user gesture
     if (musicEnabled) startBackgroundMusic();
@@ -904,6 +940,7 @@ useEffect(() => {
           setCurrentQuestion(result.data.question);
           setShowResult(false);
           setSelections({});
+          setMySelection(null); // Reset my selection for new question
           setTimeLeft(result.data.timeLeft || 30);
           // Reset per-question tracking
           answerTimesRef.current = {};
@@ -914,6 +951,7 @@ useEffect(() => {
           setCurrentQuestion(result.question);
           setShowResult(false);
           setSelections({});
+          setMySelection(null); // Reset my selection for new question
           setTimeLeft(result.timeLeft || 30);
           answerTimesRef.current = {};
           awardedDoneRef.current = false;
@@ -922,28 +960,16 @@ useEffect(() => {
           console.log('⚠️ No question in server response, falling back to local');
           // Fallback to local if server doesn't respond properly
           pickAndSetRandomQuestion();
-          setShowResult(false);
-          setSelections({});
-          answerTimesRef.current = {};
-          awardedDoneRef.current = false;
         }
       } catch (error) {
         console.log('⚠️ Failed to get question from server, falling back to local:', error);
         // Fallback to local mode
         pickAndSetRandomQuestion();
-        setShowResult(false);
-        setSelections({});
-        answerTimesRef.current = {};
-        awardedDoneRef.current = false;
       }
     } else {
       console.log('🏠 Fallback to local mode');
       // Fallback to local mode
       pickAndSetRandomQuestion();
-      setShowResult(false);
-      setSelections({});
-      answerTimesRef.current = {};
-      awardedDoneRef.current = false;
     }
   };
 
@@ -1459,7 +1485,7 @@ useEffect(() => {
                 return (
                   <button
                     key={i}
-                    disabled={reveal || selections[myPlayerId] !== undefined}
+                    disabled={reveal || mySelection !== null}
                     className="option-button"
                     style={{ backgroundImage, boxShadow }}
                     onMouseEnter={playHoverSound}
