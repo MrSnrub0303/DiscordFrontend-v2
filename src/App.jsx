@@ -145,6 +145,30 @@ export default function App() {
         setScores(gameState.scores);
       });
 
+      // Listen for server responses to multiplayer events
+      socket.on('question_started', (data) => {
+        console.log('📡 Received question_started from server:', data);
+        if (data.question) {
+          setCurrentQuestion(data.question);
+          setShowResult(false);
+          setSelections({});
+          setTimeLeft(data.timeLeft || 30);
+          // Reset per-question tracking
+          answerTimesRef.current = {};
+          awardedDoneRef.current = false;
+        }
+      });
+
+      socket.on('player_selected', (data) => {
+        console.log('📡 Received player_selected from server:', data);
+        if (data.playerId && data.optionIndex !== undefined) {
+          setSelections(prev => ({
+            ...prev,
+            [data.playerId]: data.optionIndex
+          }));
+        }
+      });
+
       socket.on('playerJoined', (player) => {
         console.log('📡 Player joined via socket:', player);
         setPlayers(prev => {
@@ -854,9 +878,10 @@ useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showResult]);
 
-  const onNextQuestion = () => {
+  const onNextQuestion = async () => {
     // In local mode or when not connected, directly start next question
     if (socket.localMode || !socket.connected) {
+      console.log('🏠 Starting next question in local mode');
       // Start next question locally
       pickAndSetRandomQuestion();
       setShowResult(false);
@@ -865,11 +890,54 @@ useEffect(() => {
       answerTimesRef.current = {};
       awardedDoneRef.current = false;
     } else if (isHost && isInVoiceChannel && voiceChannel) {
-      // In multiplayer mode, emit to server
-      socket.emit('start_question', {
-        roomId: roomId // Force everyone into same room
-      });
+      console.log('🌐 Starting next question in multiplayer mode');
+      // In multiplayer mode, emit to server and handle response
+      try {
+        const result = await socket.emit('start_question', {
+          roomId: roomId // Use Discord instance ID
+        });
+        
+        console.log('📡 Start question response:', result);
+        
+        // Handle direct HTTP response (for our HTTP-based socket system)
+        if (result && result.data && result.data.question) {
+          setCurrentQuestion(result.data.question);
+          setShowResult(false);
+          setSelections({});
+          setTimeLeft(result.data.timeLeft || 30);
+          // Reset per-question tracking
+          answerTimesRef.current = {};
+          awardedDoneRef.current = false;
+          console.log('✅ Next question loaded from server');
+        } else if (result && result.question) {
+          // Handle different response format
+          setCurrentQuestion(result.question);
+          setShowResult(false);
+          setSelections({});
+          setTimeLeft(result.timeLeft || 30);
+          answerTimesRef.current = {};
+          awardedDoneRef.current = false;
+          console.log('✅ Next question loaded from server (alt format)');
+        } else {
+          console.log('⚠️ No question in server response, falling back to local');
+          // Fallback to local if server doesn't respond properly
+          pickAndSetRandomQuestion();
+          setShowResult(false);
+          setSelections({});
+          answerTimesRef.current = {};
+          awardedDoneRef.current = false;
+        }
+      } catch (error) {
+        console.log('⚠️ Failed to get question from server, falling back to local:', error);
+        // Fallback to local mode
+        pickAndSetRandomQuestion();
+        setShowResult(false);
+        setSelections({});
+        answerTimesRef.current = {};
+        awardedDoneRef.current = false;
+      }
     } else {
+      console.log('🏠 Fallback to local mode');
       // Fallback to local mode
       pickAndSetRandomQuestion();
       setShowResult(false);
