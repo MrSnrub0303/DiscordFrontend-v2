@@ -71,12 +71,13 @@ export default function App() {
     voiceChannel, 
     participants, 
     currentUser,
+    instanceId,
     isHost,
     isInVoiceChannel
   } = useDiscordActivity();
 
-  // Force everyone into the same shared room for multiplayer
-  const roomId = "shared-quiz-room";
+  // Use Discord's instanceId for proper multiplayer session management
+  const roomId = instanceId || "fallback-quiz-room";
 
   const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -311,19 +312,44 @@ export default function App() {
     if (participants && participants.length > 0 && isInVoiceChannel) {
       console.log('🎮 Syncing Discord participants to players:', participants);
       
-      // Convert Discord participants to player objects
-      const discordPlayers = participants.map(participant => ({
-        id: participant.id || participant.userId || `discord-${Date.now()}-${Math.random()}`,
-        name: participant.username || participant.displayName || participant.nickname || 'Discord User',
-        avatar: participant.avatar
-      }));
+      // Convert Discord participants to player objects using Discord's proper format
+      const discordPlayers = participants.map(participant => {
+        const user = participant.user || participant;
+        
+        // Use Discord's recommended username format
+        const displayName = user.global_name || user.username || 'Discord User';
+        
+        // Generate Discord avatar URL using proper CDN format
+        let avatarUrl = '';
+        if (user.avatar) {
+          avatarUrl = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`;
+        } else {
+          const defaultAvatarIndex = (BigInt(user.id) >> 22n) % 6n;
+          avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
+        }
+        
+        return {
+          id: user.id,
+          name: displayName,
+          avatar: avatarUrl
+        };
+      });
       
-      // Make sure current user is included
+      // Make sure current user is included (should already be from participants API)
       if (currentUser && !discordPlayers.find(p => p.id === currentUser.id)) {
+        const currentUserDisplayName = currentUser.global_name || currentUser.username || 'You';
+        let currentUserAvatar = '';
+        if (currentUser.avatar) {
+          currentUserAvatar = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png?size=256`;
+        } else {
+          const defaultAvatarIndex = (BigInt(currentUser.id) >> 22n) % 6n;
+          currentUserAvatar = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
+        }
+        
         discordPlayers.unshift({
           id: currentUser.id,
-          name: currentUser.username || 'You',
-          avatar: currentUser.avatar
+          name: currentUserDisplayName,
+          avatar: currentUserAvatar
         });
       }
       
@@ -336,14 +362,23 @@ export default function App() {
       });
       setScores(initialScores);
       
-      console.log('✅ Players synced:', discordPlayers);
+      console.log('✅ Players synced with Discord instance:', discordPlayers);
     } else if (!isInVoiceChannel || !participants || participants.length === 0) {
       // Fallback to single player mode with current user
       if (currentUser) {
+        const currentUserDisplayName = currentUser.global_name || currentUser.username || 'You';
+        let currentUserAvatar = '';
+        if (currentUser.avatar) {
+          currentUserAvatar = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png?size=256`;
+        } else {
+          const defaultAvatarIndex = (BigInt(currentUser.id) >> 22n) % 6n;
+          currentUserAvatar = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
+        }
+        
         const singlePlayer = {
-          id: currentUser.id || "single-player",
-          name: currentUser.username || "You",
-          avatar: currentUser.avatar
+          id: currentUser.id,
+          name: currentUserDisplayName,
+          avatar: currentUserAvatar
         };
         setPlayers([singlePlayer]);
         setScores({[singlePlayer.id]: 0});

@@ -6,34 +6,66 @@ export function useDiscordActivity() {
   const [voiceChannel, setVoiceChannel] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [instanceId, setInstanceId] = useState(null);
 
   useEffect(() => {
     if (!context?.sdk || !context?.ready) return;
 
     const fetchDiscordData = async () => {
       try {
-        // Get current user from authenticated context (already available from auth response)
+        // Get the Discord instance ID for proper multiplayer session management
+        const discordInstanceId = context.sdk.instanceId;
+        setInstanceId(discordInstanceId);
+        console.log('🎮 Discord Instance ID:', discordInstanceId);
+
+        // Get current user from authenticated context
         if (context.sdk.authenticated) {
           const user = {
             id: context.sdk.authenticated.user.id,
             username: context.sdk.authenticated.user.username,
             discriminator: context.sdk.authenticated.user.discriminator,
             avatar: context.sdk.authenticated.user.avatar,
+            global_name: context.sdk.authenticated.user.global_name,
             accessToken: context.token
           };
           setCurrentUser(user);
-
-          // Create a basic participant list with just the current user
-          setParticipants([{ 
-            user: {
-              id: user.id,
-              username: user.username,
-              avatar: user.avatar
-            }
-          }]);
+          console.log('👤 Current user:', user);
         }
 
-        // Get current channel info (where the activity is running)
+        // Get instance participants using Discord's built-in API
+        try {
+          const instanceParticipants = await context.sdk.commands.getInstanceConnectedParticipants();
+          console.log('🎭 Instance participants:', instanceParticipants);
+          
+          if (instanceParticipants && instanceParticipants.participants) {
+            setParticipants(instanceParticipants.participants);
+          } else {
+            // Fallback to current user only
+            setParticipants([{ 
+              user: {
+                id: context.sdk.authenticated.user.id,
+                username: context.sdk.authenticated.user.username,
+                avatar: context.sdk.authenticated.user.avatar,
+                global_name: context.sdk.authenticated.user.global_name
+              }
+            }]);
+          }
+        } catch (err) {
+          console.log('Could not get instance participants, using current user only:', err);
+          // Fallback to current user
+          if (context.sdk.authenticated) {
+            setParticipants([{ 
+              user: {
+                id: context.sdk.authenticated.user.id,
+                username: context.sdk.authenticated.user.username,
+                avatar: context.sdk.authenticated.user.avatar,
+                global_name: context.sdk.authenticated.user.global_name
+              }
+            }]);
+          }
+        }
+
+        // Get current channel info
         if (context.sdk.channelId) {
           try {
             const channel = await context.sdk.commands.getChannel({
@@ -42,7 +74,6 @@ export function useDiscordActivity() {
             setVoiceChannel(channel);
           } catch (err) {
             console.log('Could not get channel info, using fallback:', err);
-            // Set basic channel info from SDK
             setVoiceChannel({
               id: context.sdk.channelId,
               name: 'Voice Channel'
@@ -50,9 +81,17 @@ export function useDiscordActivity() {
           }
         }
 
-        // Skip guild members API call to avoid 401 errors
-        // Instead, use a simplified approach for now
-        console.log('Skipping guild members API call to avoid authorization issues');
+        // Subscribe to participant updates
+        try {
+          context.sdk.subscribe('ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE', (data) => {
+            console.log('🔄 Participants updated:', data);
+            if (data && data.participants) {
+              setParticipants(data.participants);
+            }
+          });
+        } catch (err) {
+          console.log('Could not subscribe to participant updates:', err);
+        }
 
       } catch (err) {
         console.error('Failed to fetch Discord data:', err);
@@ -62,6 +101,7 @@ export function useDiscordActivity() {
             id: context.sdk.authenticated.user.id,
             username: context.sdk.authenticated.user.username,
             avatar: context.sdk.authenticated.user.avatar,
+            global_name: context.sdk.authenticated.user.global_name,
             accessToken: context.token
           });
         }
@@ -80,7 +120,8 @@ export function useDiscordActivity() {
     voiceChannel,
     participants,
     currentUser,
+    instanceId,
     isHost: true, // For now, assume current user is host
-    isInVoiceChannel: !!voiceChannel
+    isInVoiceChannel: !!voiceChannel && participants.length > 0
   };
 }
