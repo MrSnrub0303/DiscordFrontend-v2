@@ -655,8 +655,8 @@ useEffect(() => {
   };
 
   const pickAndSetRandomQuestion = () => {
-    // 30% chance to pick a HC card "guess the card" style question
-    const pickCard = Math.random() < 0.3 && Object.keys(hcCards).length > 0;
+    // TEMPORARY: 100% chance to pick a HC card "guess the card" style question
+    const pickCard = Math.random() < 1.0 && Object.keys(hcCards).length > 0;
 
     if (pickCard) {
       const keys = Object.keys(hcCards);
