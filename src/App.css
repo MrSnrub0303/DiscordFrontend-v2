@@ -166,13 +166,11 @@ button:focus-visible {
 
 /* content inside the button (text) will wrap nicely and be centered */
 .option-button .option-text {
-  display: block;
-  width: 100%;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis; /* fallback */
   word-break: break-word;
-  line-height: 1.05;
+  line-height: 1.2;
   font-size: clamp(0.8rem, 1.6vw, 1.05rem); /* try different min/viewport/max */
 }
 
