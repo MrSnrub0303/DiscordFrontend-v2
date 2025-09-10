@@ -89,10 +89,15 @@ class DiscordProxySocket {
           
           // Handle response data for actions like start_question
           const responseData = await response.json();
+          
+          // For callbacks like start_question, trigger the event callback
           if (responseData.action && this.eventCallbacks.has(responseData.action)) {
             const callback = this.eventCallbacks.get(responseData.action);
             callback(responseData.data);
           }
+          
+          // Return the full response data so .then() can access it
+          return responseData;
         } else {
           throw new Error(`Server error: ${response.status}`);
         }
@@ -101,9 +106,11 @@ class DiscordProxySocket {
         console.log('🏠 Switching to local mode');
         this.localMode = true;
         this.handleLocalEvent(event, data);
+        return null;
       }
     } else {
       this.handleLocalEvent(event, data);
+      return null;
     }
   }
   
