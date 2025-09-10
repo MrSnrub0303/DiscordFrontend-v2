@@ -764,7 +764,16 @@ useEffect(() => {
   const onSelectOption = (playerId, optionIndex) => {
     if (showResult) return;
     if (mySelection !== null) return; // Prevent multiple selections
-    if (!isInVoiceChannel || !voiceChannel) return;
+    
+    // Allow selection even if not in voice channel - Discord Activities don't require voice
+    console.log(`🎯 Attempting to select option ${optionIndex}`, {
+      showResult,
+      mySelection,
+      isInVoiceChannel,
+      voiceChannel: !!voiceChannel,
+      playerId,
+      socket: !!socket
+    });
 
     // Immediate visual feedback for my selection only
     setMySelection(optionIndex);
@@ -1464,9 +1473,8 @@ useEffect(() => {
 
             <div className="options-grid">
               {currentQuestion.options.map((opt, i) => {
-                const mySelection = selections[myPlayerId];
                 const reveal = showResult;
-                const isMySelected = i === mySelection;
+                const isMySelected = i === mySelection; // Use state mySelection, not selections[myPlayerId]
 
                 let backgroundImage = `url(${btnNormal})`;
                 let boxShadow = "none";
@@ -1490,6 +1498,13 @@ useEffect(() => {
                     style={{ backgroundImage, boxShadow }}
                     onMouseEnter={playHoverSound}
                     onClick={() => {
+                      console.log(`🔥 Button ${i} clicked!`, {
+                        reveal,
+                        mySelection,
+                        disabled: reveal || mySelection !== null,
+                        myPlayerId,
+                        showResult
+                      });
                       onSelectOption(myPlayerId, i);
                     }}
                   >
