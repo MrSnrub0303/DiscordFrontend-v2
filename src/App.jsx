@@ -257,8 +257,8 @@ export default function App() {
 
     // Initialize socket connection when Discord user info is available
   useEffect(() => {
-    if (discordUser?.username && !socket) {
-      console.log('🎮 Initializing multiplayer socket for:', discordUser.username);
+    if (currentUser?.username && !socket) {
+      console.log('🎮 Initializing multiplayer socket for:', currentUser.username);
       
       const initSocket = async () => {
         try {
@@ -276,9 +276,9 @@ export default function App() {
               try {
                 await newSocket.emit('join_room', { 
                   room: roomId, 
-                  username: discordUser.username 
+                  username: currentUser.username 
                 });
-                console.log(`🏠 Joined room: ${roomId} as ${discordUser.username}`);
+                console.log(`🏠 Joined room: ${roomId} as ${currentUser.username}`);
               } catch (error) {
                 joinAttempts++;
                 console.log(`⚠️ Join room attempt ${joinAttempts} failed:`, error.message);
@@ -305,7 +305,7 @@ export default function App() {
       
       initSocket();
     }
-  }, [discordUser, roomId]);
+  }, [currentUser, roomId]);
 
 // Initialize playlist audios on mount AND create AudioContext + decode reveal sound
 useEffect(() => {
