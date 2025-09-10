@@ -20,7 +20,8 @@ class DiscordProxySocket {
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }
+        },
+        timeout: 10000 // 10 second timeout
       });
       
       console.log('📡 Response status:', response.status);
@@ -39,6 +40,30 @@ class DiscordProxySocket {
       }
     } catch (error) {
       console.log('⚠️ Discord proxy connection failed:', error.message);
+      console.log('🔄 Retrying connection in 3 seconds...');
+      
+      // Retry once after a delay
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      try {
+        const retryResponse = await fetch(`${this.serverUrl}/health`, {
+          method: 'GET',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (retryResponse.ok) {
+          console.log('✅ Retry successful - multiplayer mode enabled!');
+          this.connected = true;
+          this.localMode = false;
+          return true;
+        }
+      } catch (retryError) {
+        console.log('⚠️ Retry also failed:', retryError.message);
+      }
+      
       console.log('🏠 Falling back to local single-player mode');
       this.localMode = true;
       this.connected = true;

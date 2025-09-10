@@ -255,44 +255,57 @@ export default function App() {
     }
   };
 
-  // Initialize socket connection when user joins voice channel
-useEffect(() => {
-  if (isInVoiceChannel && currentUser && voiceChannel) {
-    // Connect with auth
-    socket.auth = {
-      token: currentUser.accessToken,
-      channelId: "shared-quiz-room" // Force everyone into same room for testing
-    };
-    socket.connect();
-
-    // Listen for game state updates
-    socket.on('room_state', ({players, scores}) => {
-      setPlayers(players);
-      setScores(scores);
-    });
-
-    socket.on('question_started', ({question, startTime, maxTime}) => {
-      setCurrentQuestion(question);
-      setTimeLeft(maxTime);
-      setShowResult(false);
-      setSelections({});
-    });
-
-    socket.on('player_selected', ({playerId, optionIndex}) => {
-      setSelections(prev => ({...prev, [playerId]: optionIndex}));
-    });
-
-    socket.on('show_result', ({correctIndex, scores, selections}) => {
-      setShowResult(true);
-      setScores(scores);
-      setSelections(selections);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }
-}, [isInVoiceChannel, currentUser, voiceChannel]);
+    // Initialize socket connection when Discord user info is available
+  useEffect(() => {
+    if (discordUser?.username && !socket) {
+      console.log('🎮 Initializing multiplayer socket for:', discordUser.username);
+      
+      const initSocket = async () => {
+        try {
+          const newSocket = new DiscordProxySocket();
+          const connected = await newSocket.connect();
+          
+          if (connected && !newSocket.localMode) {
+            console.log('🌐 Successfully connected to multiplayer mode');
+            
+            // Join shared room with retry logic
+            let joinAttempts = 0;
+            const maxAttempts = 3;
+            
+            const joinRoom = async () => {
+              try {
+                await newSocket.emit('join_room', { 
+                  room: roomId, 
+                  username: discordUser.username 
+                });
+                console.log(`🏠 Joined room: ${roomId} as ${discordUser.username}`);
+              } catch (error) {
+                joinAttempts++;
+                console.log(`⚠️ Join room attempt ${joinAttempts} failed:`, error.message);
+                
+                if (joinAttempts < maxAttempts) {
+                  console.log(`🔄 Retrying join room in 2 seconds...`);
+                  setTimeout(joinRoom, 2000);
+                } else {
+                  console.log('❌ Failed to join room after max attempts');
+                }
+              }
+            };
+            
+            await joinRoom();
+          } else {
+            console.log('🏠 Using local single-player mode');
+          }
+          
+          setSocket(newSocket);
+        } catch (error) {
+          console.error('❌ Socket initialization failed:', error);
+        }
+      };
+      
+      initSocket();
+    }
+  }, [discordUser, roomId]);
 
 // Initialize playlist audios on mount AND create AudioContext + decode reveal sound
 useEffect(() => {
@@ -609,11 +622,39 @@ useEffect(() => {
     if (selections[playerId] !== undefined) return;
     if (!isInVoiceChannel || !voiceChannel) return;
 
-    // Emit selection to server
-    socket.emit('select_option', {
-      roomId: "shared-quiz-room", // Force everyone into same room
-      optionIndex
-    });
+    // Emit selection to server with retry logic
+    const submitSelection = async () => {
+      if (socket && !socket.localMode) {
+        let attempts = 0;
+        const maxAttempts = 3;
+        
+        const trySubmit = async () => {
+          try {
+            await socket.emit('select_option', {
+              roomId: "shared-quiz-room", // Force everyone into same room
+              optionIndex
+            });
+            console.log('📤 Option selection submitted successfully');
+          } catch (error) {
+            attempts++;
+            console.log(`⚠️ Selection submit attempt ${attempts} failed:`, error.message);
+            
+            if (attempts < maxAttempts) {
+              console.log(`🔄 Retrying selection submission in 1 second...`);
+              setTimeout(trySubmit, 1000);
+            } else {
+              console.log('❌ Failed to submit selection after max attempts');
+            }
+          }
+        };
+        
+        await trySubmit();
+      } else {
+        console.log('🏠 Local mode - selection recorded locally');
+      }
+    };
+    
+    submitSelection();
 
     // update selection state for UI
     setSelections((prev) => {
