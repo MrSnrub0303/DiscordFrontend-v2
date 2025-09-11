@@ -128,6 +128,7 @@ export default function App() {
   const [showResult, setShowResult] = useState(false);
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
+  const [playerNames, setPlayerNames] = useState({}); // Player names from server
 
   // For card-mode: input state and last attempt feedback
   const [cardInput, setCardInput] = useState("");
@@ -767,6 +768,10 @@ useEffect(() => {
                 console.log('📊 Server scores:', result.data.scores);
                 console.log('📊 Server selections:', result.data.selections);
                 setSelections(result.data.selections || {});
+                if (result.data.playerNames) {
+                  setPlayerNames(result.data.playerNames);
+                  console.log('👥 Player names from server:', result.data.playerNames);
+                }
                 if (result.data.scores) {
                   setScores(result.data.scores);
                   setServerScoredThisRound(true); // Flag that server provided scores
@@ -1573,9 +1578,9 @@ useEffect(() => {
                     {/* Show all player names after reveal */}
                     {reveal && (
                       <span className="option-badge">
-                        {players
-                          .filter((p) => selections[p.id] === i)
-                          .map((p) => p.name)
+                        {Object.entries(selections)
+                          .filter(([playerId, optionIndex]) => optionIndex === i)
+                          .map(([playerId]) => playerNames[playerId] || `Player ${playerId.slice(-4)}`)
                           .join(", ")}
                       </span>
                     )}
