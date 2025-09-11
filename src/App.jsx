@@ -836,6 +836,7 @@ useEffect(() => {
             await socket.emit('select_option', {
               roomId: roomId,
               playerId: playerId,
+              playerName: currentUser?.global_name || currentUser?.username || 'Unknown Player',
               optionIndex: optionIndex,
               timeTaken: MAX_TIME - timeLeft
             });
