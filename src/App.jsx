@@ -764,7 +764,7 @@ useEffect(() => {
               roomId: roomId
             }).then((result) => {
               console.log('📡 Round completion response:', result);
-              if (result && result.data) {
+              if (result && result.data && result.data.selections) {
                 console.log('📊 Server scores:', result.data.scores);
                 console.log('📊 Server selections:', result.data.selections);
                 setSelections(result.data.selections || {});
@@ -779,8 +779,18 @@ useEffect(() => {
                 }
                 setShowResult(true);
               } else {
-                // Fallback to local reveal
+                // Fallback to local reveal with current user's selection
                 console.log('⚠️ No server response, falling back to local reveal');
+                console.log('🔧 Using local mySelection:', mySelection);
+                console.log('🔧 Current user ID:', currentUser?.id);
+                
+                // Create selections object from local data
+                const localSelections = {};
+                if (mySelection !== null && currentUser?.id) {
+                  localSelections[currentUser.id] = mySelection;
+                  console.log('🔧 Created local selections:', localSelections);
+                }
+                setSelections(localSelections);
                 setShowResult(true);
               }
             }).catch((error) => {
@@ -1583,10 +1593,6 @@ useEffect(() => {
                             .filter(([playerId, optionIndex]) => optionIndex === i);
                           
                           console.log(`🔍 Option ${i} players:`, playersForOption);
-                          console.log(`🔍 Current selections:`, selections);
-                          console.log(`🔍 Current playerNames:`, playerNames);
-                          console.log(`🔍 Current players array:`, players);
-                          console.log(`🔍 Current user:`, currentUser);
                           
                           if (playersForOption.length === 0) {
                             return ""; // No players for this option
@@ -1594,11 +1600,6 @@ useEffect(() => {
                           
                           return playersForOption
                             .map(([playerId]) => {
-                              // TEMPORARY: Force a test name to see if display works
-                              let testName = `TEST-${playerId.slice(-4)}`;
-                              console.log(`🧪 FORCED TEST NAME: "${testName}"`);
-                              return testName;
-                              
                               // Try multiple sources for player name
                               let playerName = playerNames[playerId]; // From server
                               console.log(`🔍 Server name for ${playerId}:`, playerName);
