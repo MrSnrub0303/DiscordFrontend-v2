@@ -1578,26 +1578,52 @@ useEffect(() => {
                     {/* Show all player names after reveal */}
                     {reveal && (
                       <span className="option-badge">
-                        {Object.entries(selections)
-                          .filter(([playerId, optionIndex]) => optionIndex === i)
-                          .map(([playerId]) => {
-                            // Try multiple sources for player name
-                            let playerName = playerNames[playerId]; // From server
-                            if (!playerName) {
-                              // Fallback to local players array
-                              const player = players.find(p => p.id === playerId);
-                              playerName = player?.name;
-                            }
-                            if (!playerName && playerId === currentUser?.id) {
-                              // Fallback to current user info
-                              playerName = currentUser?.username || currentUser?.global_name;
-                            }
-                            // Final fallback
-                            const finalName = playerName || `Player ${playerId.slice(-4)}`;
-                            console.log(`🏷️ Name resolution for ${playerId}: server="${playerNames[playerId]}" local="${players.find(p => p.id === playerId)?.name}" final="${finalName}"`);
-                            return finalName;
-                          })
-                          .join(", ")}
+                        {(() => {
+                          const playersForOption = Object.entries(selections)
+                            .filter(([playerId, optionIndex]) => optionIndex === i);
+                          
+                          console.log(`🔍 Option ${i} players:`, playersForOption);
+                          console.log(`🔍 Current selections:`, selections);
+                          console.log(`🔍 Current playerNames:`, playerNames);
+                          console.log(`🔍 Current players array:`, players);
+                          console.log(`🔍 Current user:`, currentUser);
+                          
+                          if (playersForOption.length === 0) {
+                            return ""; // No players for this option
+                          }
+                          
+                          return playersForOption
+                            .map(([playerId]) => {
+                              // TEMPORARY: Force a test name to see if display works
+                              let testName = `TEST-${playerId.slice(-4)}`;
+                              console.log(`🧪 FORCED TEST NAME: "${testName}"`);
+                              return testName;
+                              
+                              // Try multiple sources for player name
+                              let playerName = playerNames[playerId]; // From server
+                              console.log(`🔍 Server name for ${playerId}:`, playerName);
+                              
+                              if (!playerName) {
+                                // Fallback to local players array
+                                const player = players.find(p => p.id === playerId);
+                                playerName = player?.name;
+                                console.log(`🔍 Local player found for ${playerId}:`, player);
+                                console.log(`🔍 Local name for ${playerId}:`, playerName);
+                              }
+                              
+                              if (!playerName && playerId === currentUser?.id) {
+                                // Fallback to current user info
+                                playerName = currentUser?.username || currentUser?.global_name;
+                                console.log(`🔍 Current user fallback for ${playerId}:`, playerName);
+                              }
+                              
+                              // Final fallback
+                              const finalName = playerName || `Player ${playerId.slice(-4)}`;
+                              console.log(`🏷️ Final name for ${playerId}: "${finalName}"`);
+                              return finalName;
+                            })
+                            .join(", ");
+                        })()}
                       </span>
                     )}
                   </button>
