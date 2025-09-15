@@ -701,8 +701,8 @@ useEffect(() => {
   };
 
   const pickAndSetRandomQuestion = () => {
-    // 30% chance to pick a HC card "guess the card" style question
-    const pickCard = Math.random() < 0.3 && cardNames.length > 0;
+    // 45% chance to pick a HC card "guess the card" style question
+    const pickCard = Math.random() < 0.45 && cardNames.length > 0;
 
     if (pickCard) {
       const idx = Math.floor(Math.random() * cardNames.length);
@@ -1004,64 +1004,17 @@ useEffect(() => {
   }, [showResult]);
 
   const onNextQuestion = async () => {
-    // In local mode or when not connected, directly start next question
-    if (socket.localMode || !socket.connected) {
-      console.log('🏠 Starting next question in local mode');
-      // Start next question locally
-      pickAndSetRandomQuestion();
-      setShowResult(false);
-      setSelections({});
-      // Reset per-question tracking
-      answerTimesRef.current = {};
-      awardedDoneRef.current = false;
-    } else if (isHost && isInVoiceChannel && voiceChannel) {
-      console.log('🌐 Starting next question in multiplayer mode');
-      // In multiplayer mode, emit to server and handle response
-      try {
-        const result = await socket.emit('start_question', {
-          roomId: roomId // Use Discord instance ID
-        });
-        
-        console.log('📡 Start question response:', result);
-        
-        // Handle direct HTTP response (for our HTTP-based socket system)
-        if (result && result.data && result.data.question) {
-          setCurrentQuestion(result.data.question);
-          setShowResult(false);
-          setSelections({});
-          setMySelection(null); // Reset my selection for new question
-          currentSelectionRef.current = null; // Reset ref too
-          setTimeLeft(result.data.timeLeft || MAX_TIME);
-          // Reset per-question tracking
-          answerTimesRef.current = {};
-          awardedDoneRef.current = false;
-          console.log('✅ Next question loaded from server');
-        } else if (result && result.question) {
-          // Handle different response format
-          setCurrentQuestion(result.question);
-          setShowResult(false);
-          setSelections({});
-          setMySelection(null); // Reset my selection for new question
-          currentSelectionRef.current = null; // Reset ref too
-          setTimeLeft(result.timeLeft || MAX_TIME);
-          answerTimesRef.current = {};
-          awardedDoneRef.current = false;
-          console.log('✅ Next question loaded from server (alt format)');
-        } else {
-          console.log('⚠️ No question in server response, falling back to local');
-          // Fallback to local if server doesn't respond properly
-          pickAndSetRandomQuestion();
-        }
-      } catch (error) {
-        console.log('⚠️ Failed to get question from server, falling back to local:', error);
-        // Fallback to local mode
-        pickAndSetRandomQuestion();
-      }
-    } else {
-      console.log('🏠 Fallback to local mode');
-      // Fallback to local mode
-      pickAndSetRandomQuestion();
-    }
+    // Always use local question generation to support card questions
+    // The server doesn't have card question logic, so we generate locally
+    console.log('� Starting next question with local generation (includes cards)');
+    pickAndSetRandomQuestion();
+    setShowResult(false);
+    setSelections({});
+    setMySelection(null); // Reset my selection for new question
+    currentSelectionRef.current = null; // Reset ref too
+    // Reset per-question tracking
+    answerTimesRef.current = {};
+    awardedDoneRef.current = false;
   };
 
   // Build a sorted leaderboard from scores
