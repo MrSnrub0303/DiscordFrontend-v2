@@ -156,9 +156,6 @@ export default function App() {
   // shape: { playerId: number (timeLeftAtClick), ... }
   const answerTimesRef = useRef({});
 
-  // Track which players have been awarded points this round to avoid double-awarding
-  const awardedPlayersRef = useRef(new Set());
-
   // NEW — Audio refs
   const clickSound = useRef(new Audio(clickSoundFile));
   const hoverSound = useRef(new Audio(hoverSoundFile));
@@ -724,7 +721,6 @@ useEffect(() => {
 
       // reset per-question tracking
       answerTimesRef.current = {};
-      awardedPlayersRef.current.clear();
       awardedDoneRef.current = false;
       return;
     }
@@ -934,26 +930,6 @@ useEffect(() => {
 
       setSelections((prev) => ({ ...prev, [playerId]: true }));
       setCardLastWrong(false);
-      
-      // Award points immediately for correct answer in card mode
-      const timeAtAnswer = clickedTimeLeft;
-      const computePointsFromTime = (time) => {
-        if (!time || time <= 0) return 0;
-        const x = Math.max(0, Math.min(1, time / MAX_TIME)); // normalized [0..1]
-        const raw = MAX_POINTS * Math.pow(x, SCORING_EXPONENT);
-        return Math.round(raw);
-      };
-      const points = computePointsFromTime(timeAtAnswer);
-      console.log(`🎯 Awarding ${points} points to ${playerId} for correct answer (time: ${timeAtAnswer})`);
-      
-      setScores((prevScores) => ({
-        ...prevScores,
-        [playerId]: (prevScores[playerId] || 0) + points
-      }));
-
-      // Mark this player as awarded to avoid double-awarding
-      awardedPlayersRef.current.add(playerId);
-
       // don't reveal immediately — follow the same reveal rules (either everyone or timer)
 
       // play click to reward the user feel
@@ -1001,12 +977,10 @@ useEffect(() => {
       if (isCardMode) {
         // award points to any player who answered correctly (selections[playerId] === true)
         players.forEach(({ id }) => {
-          if (selections[id] === true && !awardedPlayersRef.current.has(id)) {
+          if (selections[id] === true) {
             const timeAtAnswer = answerTimesRef.current[id];
             const points = timeAtAnswer ? computePointsFromTime(timeAtAnswer) : 0;
             newScores[id] = (newScores[id] || 0) + points;
-            awardedPlayersRef.current.add(id);
-            console.log(`🎯 Late awarding ${points} points to ${id} (reveal phase)`);
           }
         });
       } else {
@@ -1039,7 +1013,6 @@ useEffect(() => {
       setSelections({});
       // Reset per-question tracking
       answerTimesRef.current = {};
-      awardedPlayersRef.current.clear();
       awardedDoneRef.current = false;
     } else if (isHost && isInVoiceChannel && voiceChannel) {
       console.log('🌐 Starting next question in multiplayer mode');
@@ -1061,7 +1034,6 @@ useEffect(() => {
           setTimeLeft(result.data.timeLeft || MAX_TIME);
           // Reset per-question tracking
           answerTimesRef.current = {};
-          awardedPlayersRef.current.clear();
           awardedDoneRef.current = false;
           console.log('✅ Next question loaded from server');
         } else if (result && result.question) {
@@ -1073,7 +1045,6 @@ useEffect(() => {
           currentSelectionRef.current = null; // Reset ref too
           setTimeLeft(result.timeLeft || MAX_TIME);
           answerTimesRef.current = {};
-          awardedPlayersRef.current.clear();
           awardedDoneRef.current = false;
           console.log('✅ Next question loaded from server (alt format)');
         } else {
