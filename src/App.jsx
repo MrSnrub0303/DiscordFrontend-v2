@@ -1692,7 +1692,7 @@ useEffect(() => {
         /* subtle highlight for "you" */
         .leaderboard-item.you .leaderboard-row { background: rgba(255,255,255,0.025); }
 
-        .leaderboard-name { flex: 1; min-width: 120px; white-space: nowrap; overflow: visible; }
+        .leaderboard-name { flex: 1; min-width: 120px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .leaderboard-score { min-width: 48px; text-align: right; display: inline-block; transform-origin: center; }
 
         /* keep score bump animation unchanged */
