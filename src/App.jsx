@@ -789,11 +789,58 @@ useEffect(() => {
     
     checkForExistingGame();
   }, [socket, isInVoiceChannel, roomId]);
+
+  // Add polling for question synchronization in multiplayer mode
+  useEffect(() => {
+    if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel || !roomId) {
+      return;
+    }
+
+    const syncWithServer = async () => {
+      try {
+        const result = await socket.emit("start_question", {
+          roomId: roomId
+        });
+        
+        if (result && (result.data?.question || result.question)) {
+          const serverQuestion = result.data?.question || result.question;
+          const serverTimeLeft = result.data?.timeLeft || result.timeLeft || MAX_TIME;
+          
+          // Only update if we don't have a question or it's different from server
+          if (!currentQuestion || 
+              currentQuestion.question !== serverQuestion.question ||
+              currentQuestion.cardName !== serverQuestion.cardName) {
+            console.log("🔄 Syncing with server question:", serverQuestion.isCard ? 'Card Question' : 'Regular Question');
+            setCurrentQuestion(serverQuestion);
+            setTimeLeft(serverTimeLeft);
+            setShowResult(false);
+            setSelections({});
+            setMySelection(null);
+            currentSelectionRef.current = null;
+            answerTimesRef.current = {};
+            awardedDoneRef.current = false;
+          } else if (Math.abs(timeLeft - serverTimeLeft) > 2) {
+            // Sync timer if there's a significant difference (more than 2 seconds)
+            console.log(`🕒 Syncing timer: client=${timeLeft}s, server=${serverTimeLeft}s`);
+            setTimeLeft(serverTimeLeft);
+          }
+        }
+      } catch (error) {
+        // Ignore polling errors to avoid spam
+      }
+    };
+
+    // Poll every 3 seconds for question synchronization
+    const pollInterval = setInterval(syncWithServer, 3000);
+    
+    return () => clearInterval(pollInterval);
+  }, [socket, isInVoiceChannel, roomId, currentQuestion, timeLeft]);
+
   useEffect(() => {
     if (!currentQuestion) return;
     if (showResult) return;
 
-    setTimeLeft(MAX_TIME);
+    // Don't reset timeLeft to MAX_TIME here - it should already be set correctly by checkForExistingGame or onNextQuestion
     setServerScoredThisRound(false); // Reset server scoring flag for new question
     clearInterval(timerRef.current);
 
