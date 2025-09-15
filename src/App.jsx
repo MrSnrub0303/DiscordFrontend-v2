@@ -746,8 +746,14 @@ useEffect(() => {
   };
 
   useEffect(() => {
-    pickAndSetRandomQuestion();
-   
+    // Only load initial question in single player mode
+    // In multiplayer mode, wait for user to click "Start Quiz"
+    if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel) {
+      console.log('� Loading initial question for single player mode');
+      pickAndSetRandomQuestion();
+    } else {
+      console.log('� Multiplayer mode detected - waiting for user to start quiz');
+    }
   }, []);
 
   useEffect(() => {
@@ -1640,7 +1646,70 @@ useEffect(() => {
         </>
         ) : (
           <div style={{ textAlign: "center", color: "#ccc", padding: "40px" }}>
-            <p>No question loaded. Wait for the host to start the quiz.</p>
+            {socket && !socket.localMode && socket.connected && isInVoiceChannel ? (
+              <div>
+                <p>Ready to start the quiz?</p>
+                <button
+                  className="next-question-button"
+                  style={{
+                    marginTop: 16,
+                    width: 360,
+                    height: 65,
+                    backgroundImage: `url(${btnMainMenuDisabled})`,
+                    backgroundSize: "contain",
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "center",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    borderRadius: 12,
+                    color: "white",
+                    fontFamily: '"Trajan Pro Bold", serif',
+                    fontWeight: 600,
+                    fontSize: "1.7rem",
+                    cursor: "pointer",
+                    outline: "none",
+                    filter: "drop-shadow(0 0 8px gold)",
+                    userSelect: "none",
+                  }}
+                  onMouseEnter={() => playHoverSound()}
+                  onClick={async () => {
+                    playClickSound();
+                    console.log('🎮 Starting first question in multiplayer mode');
+                    // Trigger the same logic as onNextQuestion for starting server-side questions
+                    try {
+                      const result = await socket.emit('start_question', {
+                        roomId: roomId
+                      });
+                      
+                      console.log('📡 Start question response:', result);
+                      
+                      if (result && (result.data?.question || result.question)) {
+                        const question = result.data?.question || result.question;
+                        setCurrentQuestion(question);
+                        setShowResult(false);
+                        setSelections({});
+                        setMySelection(null);
+                        currentSelectionRef.current = null;
+                        setTimeLeft(result.data?.timeLeft || result.timeLeft || MAX_TIME);
+                        answerTimesRef.current = {};
+                        awardedDoneRef.current = false;
+                        console.log('✅ First question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
+                      } else {
+                        console.log('⚠️ No question in server response, falling back to local');
+                        pickAndSetRandomQuestion();
+                      }
+                    } catch (error) {
+                      console.log('⚠️ Failed to get question from server, falling back to local:', error);
+                      pickAndSetRandomQuestion();
+                    }
+                  }}
+                >
+                  Start Quiz
+                </button>
+              </div>
+            ) : (
+              <p>No question loaded. Wait for the host to start the quiz.</p>
+            )}
           </div>
         )}
       </div>
