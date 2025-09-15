@@ -1004,53 +1004,19 @@ useEffect(() => {
   }, [showResult]);
 
   const onNextQuestion = async () => {
-    // In local mode or when not connected, use local question generation
-    if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel) {
-      console.log('🏠 Starting next question in local mode');
-      // Start next question locally
-      pickAndSetRandomQuestion();
-      setShowResult(false);
-      setSelections({});
-      setMySelection(null);
-      currentSelectionRef.current = null;
-      // Reset per-question tracking
-      answerTimesRef.current = {};
-      awardedDoneRef.current = false;
-    } else {
-      console.log('🌐 Starting next question in multiplayer mode');
-      // In multiplayer mode, emit to server for synchronized questions
-      try {
-        const result = await socket.emit('start_question', {
-          roomId: roomId // Use Discord instance ID
-        });
-        
-        console.log('📡 Start question response:', result);
-        
-        // Handle server response with both regular and card questions
-        if (result && (result.data?.question || result.question)) {
-          const question = result.data?.question || result.question;
-          setCurrentQuestion(question);
-          setShowResult(false);
-          setSelections({});
-          setMySelection(null);
-          currentSelectionRef.current = null;
-          setTimeLeft(result.data?.timeLeft || result.timeLeft || MAX_TIME);
-          // Reset per-question tracking
-          answerTimesRef.current = {};
-          awardedDoneRef.current = false;
-          console.log('✅ Next question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
-        } else {
-          console.log('⚠️ No question in server response, falling back to local');
-          // Fallback to local if server doesn't respond properly
-          pickAndSetRandomQuestion();
-        }
-      } catch (error) {
-        console.log('⚠️ Failed to get question from server, falling back to local:', error);
-        // Fallback to local mode
-        pickAndSetRandomQuestion();
-      }
-    }
+    // Always use local question generation to support card questions
+    // The server doesn't have card question logic, so we generate locally
+    console.log('� Starting next question with local generation (includes cards)');
+    pickAndSetRandomQuestion();
+    setShowResult(false);
+    setSelections({});
+    setMySelection(null); // Reset my selection for new question
+    currentSelectionRef.current = null; // Reset ref too
+    // Reset per-question tracking
+    answerTimesRef.current = {};
+    awardedDoneRef.current = false;
   };
+
   // Build a sorted leaderboard from scores
   const sortedPlayers = useMemo(() => {
     return players
