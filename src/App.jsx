@@ -148,6 +148,9 @@ export default function App() {
 
   // Track whether awarding has been performed for the current question
   const awardedDoneRef = useRef(false);
+  
+  // Store current selection in ref for persistence during reveals
+  const currentSelectionRef = useRef(null);
 
   // Record per-player answer-time (timeLeft at moment of click)
   // shape: { playerId: number (timeLeftAtClick), ... }
@@ -197,6 +200,7 @@ export default function App() {
           setShowResult(false);
           setSelections({});
           setMySelection(null); // Reset my selection for new question
+          currentSelectionRef.current = null; // Reset ref too
           setTimeLeft(data.timeLeft || MAX_TIME);
           // Reset per-question tracking
           answerTimesRef.current = {};
@@ -709,6 +713,7 @@ useEffect(() => {
       setCurrentQuestion({ isCard: true, cardName: name, cardUrl: url });
       setSelections({});
       setMySelection(null); // Reset my selection
+      currentSelectionRef.current = null; // Reset ref too
       setShowResult(false);
       setTimeLeft(MAX_TIME);
       setCardInput("");
@@ -731,6 +736,7 @@ useEffect(() => {
     setCurrentQuestion(q);
     setSelections({});
     setMySelection(null); 
+    currentSelectionRef.current = null; // Reset ref too
     setShowResult(false);
     setTimeLeft(MAX_TIME);
 
@@ -782,13 +788,17 @@ useEffect(() => {
                 // Fallback to local reveal with current user's selection
                 console.log('⚠️ No server response, falling back to local reveal');
                 console.log('🔧 Using local mySelection:', mySelection);
+                console.log('🔧 Using ref selection:', currentSelectionRef.current);
                 console.log('🔧 Current user ID:', currentUser?.id);
                 
-                // Create selections object from local data
+                // Create selections object from local data - try both state and ref
                 const localSelections = {};
-                if (mySelection !== null && currentUser?.id) {
-                  localSelections[currentUser.id] = mySelection;
+                const selectionToUse = mySelection !== null ? mySelection : currentSelectionRef.current;
+                if (selectionToUse !== null && currentUser?.id) {
+                  localSelections[currentUser.id] = selectionToUse;
                   console.log('🔧 Created local selections:', localSelections);
+                } else {
+                  console.log('🚨 No selection found in state or ref!');
                 }
                 setSelections(localSelections);
                 setShowResult(true);
@@ -838,7 +848,9 @@ useEffect(() => {
 
     // Allow changing selection - update to new choice
     setMySelection(optionIndex);
+    currentSelectionRef.current = optionIndex; // Store in ref for persistence
     console.log(`🎯 You selected option ${optionIndex} (${mySelection !== null ? 'changed from ' + mySelection : 'new selection'})`);
+    console.log(`🔧 Stored selection in ref:`, optionIndex);
 
     // Emit selection to server with retry logic
     const submitSelection = async () => {
@@ -1018,6 +1030,7 @@ useEffect(() => {
           setShowResult(false);
           setSelections({});
           setMySelection(null); // Reset my selection for new question
+          currentSelectionRef.current = null; // Reset ref too
           setTimeLeft(result.data.timeLeft || MAX_TIME);
           // Reset per-question tracking
           answerTimesRef.current = {};
@@ -1029,6 +1042,7 @@ useEffect(() => {
           setShowResult(false);
           setSelections({});
           setMySelection(null); // Reset my selection for new question
+          currentSelectionRef.current = null; // Reset ref too
           setTimeLeft(result.timeLeft || MAX_TIME);
           answerTimesRef.current = {};
           awardedDoneRef.current = false;
