@@ -792,38 +792,65 @@ useEffect(() => {
     return () => clearTimeout(timeoutId);
   }, [socket, isInVoiceChannel, roomId]);
 
-  // Add keyboard shortcut to manually sync (for testing)
+  // Continuous synchronization for multiplayer
   useEffect(() => {
-    const handleKeyPress = (e) => {
-      // Press 'S' to manually sync with server
-      if (e.key.toLowerCase() === 's' && socket && !socket.localMode) {
-        console.log("🔄 Manual sync triggered");
-        socket.emit("start_question", { roomId: roomId })
-          .then((result) => {
-            if (result && (result.data?.question || result.question)) {
-              const question = result.data?.question || result.question;
-              const timeLeft = result.data?.timeLeft || result.timeLeft || MAX_TIME;
-              console.log("📡 Manual sync result:", { question: question.isCard ? 'Card' : 'Trivia', timeLeft });
-              
-              // Always update on manual sync
-              setCurrentQuestion(question);
-              setTimeLeft(timeLeft);
-              setShowResult(false);
-              setSelections({});
-              setMySelection(null);
-              currentSelectionRef.current = null;
-              answerTimesRef.current = {};
-              awardedDoneRef.current = false;
+    if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel || !roomId) {
+      return;
+    }
+
+    const syncGameState = async () => {
+      try {
+        const result = await socket.emit("start_question", { roomId: roomId });
+        
+        if (result && (result.data?.question || result.question)) {
+          const serverQuestion = result.data?.question || result.question;
+          const serverTimeLeft = result.data?.timeLeft || result.timeLeft || MAX_TIME;
+          const serverShowResult = serverTimeLeft <= 0;
+          
+          // Check if this is a different question than what we have
+          const isDifferentQuestion = !currentQuestion || 
+            (currentQuestion.question !== serverQuestion.question && !serverQuestion.isCard) ||
+            (currentQuestion.cardName !== serverQuestion.cardName && serverQuestion.isCard) ||
+            (currentQuestion.isCard !== serverQuestion.isCard);
+          
+          if (isDifferentQuestion) {
+            console.log("🔄 New question detected, syncing:", serverQuestion.isCard ? 'Card Question' : 'Regular Question');
+            setCurrentQuestion(serverQuestion);
+            setTimeLeft(serverTimeLeft);
+            setShowResult(serverShowResult);
+            setSelections({});
+            setMySelection(null);
+            currentSelectionRef.current = null;
+            answerTimesRef.current = {};
+            awardedDoneRef.current = false;
+          } else {
+            // Same question, just sync timer and result state
+            const timeDiff = Math.abs(timeLeft - serverTimeLeft);
+            if (timeDiff > 2) {
+              console.log(`🕒 Syncing timer: ${timeLeft}s → ${serverTimeLeft}s`);
+              setTimeLeft(serverTimeLeft);
             }
-          })
-          .catch(console.log);
+            if (serverShowResult !== showResult) {
+              console.log(`🎯 Syncing result state: ${showResult} → ${serverShowResult}`);
+              setShowResult(serverShowResult);
+            }
+          }
+        }
+      } catch (error) {
+        // Silently handle sync errors
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [socket, roomId]);
+    // Initial sync
+    syncGameState();
+    
+    // Sync every 2 seconds to catch question changes
+    const syncInterval = setInterval(syncGameState, 2000);
+    
+    return () => clearInterval(syncInterval);
+  }, [socket, isInVoiceChannel, roomId]);
 
+  // Remove the manual sync keyboard shortcut
   useEffect(() => {
     if (!currentQuestion) return;
     if (showResult) return;
