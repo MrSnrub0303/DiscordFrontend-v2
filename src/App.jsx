@@ -730,18 +730,18 @@ useEffect(() => {
     setAvailableQuestions((prev) => prev.filter((_, i) => i !== index));
     setCurrentQuestion(q);
     setSelections({});
-    setMySelection(null); // Reset my selection
+    setMySelection(null); 
     setShowResult(false);
     setTimeLeft(MAX_TIME);
 
-    // reset per-question tracking
+   
     answerTimesRef.current = {};
     awardedDoneRef.current = false;
   };
 
   useEffect(() => {
     pickAndSetRandomQuestion();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   useEffect(() => {
