@@ -1600,47 +1600,50 @@ useEffect(() => {
                     )}
                     
                     {/* Show all player names after reveal */}
-                    {reveal && (
-                      <span className="option-badge">
-                        {(() => {
-                          const playersForOption = Object.entries(selections)
-                            .filter(([playerId, optionIndex]) => optionIndex === i);
+                    {reveal && (() => {
+                      const playersForOption = Object.entries(selections)
+                        .filter(([playerId, optionIndex]) => optionIndex === i);
+                      
+                      console.log(`🔍 Option ${i} players:`, playersForOption);
+                      
+                      // Only render badge if there are players for this option
+                      if (playersForOption.length === 0) {
+                        return null; // Don't render anything
+                      }
+                      
+                      const playerNames_display = playersForOption
+                        .map(([playerId]) => {
+                          // Try multiple sources for player name
+                          let playerName = playerNames[playerId]; // From server
+                          console.log(`🔍 Server name for ${playerId}:`, playerName);
                           
-                          console.log(`🔍 Option ${i} players:`, playersForOption);
-                          
-                          if (playersForOption.length === 0) {
-                            return ""; // No players for this option
+                          if (!playerName) {
+                            // Fallback to local players array
+                            const player = players.find(p => p.id === playerId);
+                            playerName = player?.name;
+                            console.log(`🔍 Local player found for ${playerId}:`, player);
+                            console.log(`🔍 Local name for ${playerId}:`, playerName);
                           }
                           
-                          return playersForOption
-                            .map(([playerId]) => {
-                              // Try multiple sources for player name
-                              let playerName = playerNames[playerId]; // From server
-                              console.log(`🔍 Server name for ${playerId}:`, playerName);
-                              
-                              if (!playerName) {
-                                // Fallback to local players array
-                                const player = players.find(p => p.id === playerId);
-                                playerName = player?.name;
-                                console.log(`🔍 Local player found for ${playerId}:`, player);
-                                console.log(`🔍 Local name for ${playerId}:`, playerName);
-                              }
-                              
-                              if (!playerName && playerId === currentUser?.id) {
-                                // Fallback to current user info
-                                playerName = currentUser?.username || currentUser?.global_name;
-                                console.log(`🔍 Current user fallback for ${playerId}:`, playerName);
-                              }
-                              
-                              // Final fallback
-                              const finalName = playerName || `Player ${playerId.slice(-4)}`;
-                              console.log(`🏷️ Final name for ${playerId}: "${finalName}"`);
-                              return finalName;
-                            })
-                            .join(", ");
-                        })()}
-                      </span>
-                    )}
+                          if (!playerName && playerId === currentUser?.id) {
+                            // Fallback to current user info
+                            playerName = currentUser?.username || currentUser?.global_name;
+                            console.log(`🔍 Current user fallback for ${playerId}:`, playerName);
+                          }
+                          
+                          // Final fallback
+                          const finalName = playerName || `Player ${playerId.slice(-4)}`;
+                          console.log(`🏷️ Final name for ${playerId}: "${finalName}"`);
+                          return finalName;
+                        })
+                        .join(", ");
+                      
+                      return (
+                        <span className="option-badge">
+                          {playerNames_display}
+                        </span>
+                      );
+                    })()}
                   </button>
                 );
               })}
