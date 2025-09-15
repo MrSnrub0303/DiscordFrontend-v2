@@ -1580,7 +1580,23 @@ useEffect(() => {
                       <span className="option-badge">
                         {Object.entries(selections)
                           .filter(([playerId, optionIndex]) => optionIndex === i)
-                          .map(([playerId]) => playerNames[playerId] || `Player ${playerId.slice(-4)}`)
+                          .map(([playerId]) => {
+                            // Try multiple sources for player name
+                            let playerName = playerNames[playerId]; // From server
+                            if (!playerName) {
+                              // Fallback to local players array
+                              const player = players.find(p => p.id === playerId);
+                              playerName = player?.name;
+                            }
+                            if (!playerName && playerId === currentUser?.id) {
+                              // Fallback to current user info
+                              playerName = currentUser?.username || currentUser?.global_name;
+                            }
+                            // Final fallback
+                            const finalName = playerName || `Player ${playerId.slice(-4)}`;
+                            console.log(`🏷️ Name resolution for ${playerId}: server="${playerNames[playerId]}" local="${players.find(p => p.id === playerId)?.name}" final="${finalName}"`);
+                            return finalName;
+                          })
                           .join(", ")}
                       </span>
                     )}
