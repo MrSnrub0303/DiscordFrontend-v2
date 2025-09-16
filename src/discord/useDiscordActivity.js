@@ -121,6 +121,7 @@ export function useDiscordActivity() {
     participants,
     currentUser,
     instanceId,
+    channelId: context?.sdk?.channelId,
     isHost: true, // For now, assume current user is host
     isInVoiceChannel: !!voiceChannel && participants.length > 0
   };

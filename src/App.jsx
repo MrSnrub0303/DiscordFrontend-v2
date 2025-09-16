@@ -116,12 +116,16 @@ export default function App() {
     participants, 
     currentUser,
     instanceId,
+    channelId,
     isHost,
     isInVoiceChannel
   } = useDiscordActivity();
 
-  // Use Discord's instanceId for proper multiplayer session management
-  const roomId = instanceId || "fallback-quiz-room";
+  // Use Discord channel ID as room ID so all players in same voice channel join same game
+  // Fall back to instance ID, then to fallback room
+  const roomId = channelId || instanceId || "fallback-quiz-room";
+  
+  console.log('🏠 Using room ID:', roomId, '(channelId:', channelId, 'instanceId:', instanceId, ')');
 
   const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -784,7 +788,27 @@ useEffect(() => {
             setIsTimerRunning(true);
           }
         } else {
-          console.log("No active question found - player can start new quiz");
+          console.log("No active question found - auto-starting first question");
+          // Auto-start first question in multiplayer mode
+          if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
+            const result = await socket.emit('start_question', {
+              roomId: roomId,
+              forceNew: true
+            });
+            
+            if (result && (result.data?.question || result.question)) {
+              const question = result.data?.question || result.question;
+              setCurrentQuestion(question);
+              setShowResult(false);
+              setSelections({});
+              setMySelection(null);
+              currentSelectionRef.current = null;
+              setTimeLeft(result.data?.timeLeft || result.timeLeft || MAX_TIME);
+              answerTimesRef.current = {};
+              awardedDoneRef.current = false;
+              console.log('✅ Auto-started first question:', question.isCard ? 'Card Question' : 'Regular Question');
+            }
+          }
         }
       } catch (error) {
         console.log("Failed to check room state:", error);
@@ -1392,7 +1416,7 @@ useEffect(() => {
           <button
             className="restart-button"
             onMouseEnter={playHoverSound}
-            onClick={async () => {
+            onClick={() => {
               playClickSound();
               setAvailableQuestions([...questions]);
               setScores(
@@ -1404,9 +1428,7 @@ useEffect(() => {
               // reset per-question tracking
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
-              
-              // Use the same multiplayer logic as Next Question button
-              await onNextQuestion();
+              pickAndSetRandomQuestion();
             }}
           >
             Restart Quiz
@@ -1780,8 +1802,33 @@ useEffect(() => {
                   onClick={async () => {
                     playClickSound();
                     console.log('🎮 Starting first question in multiplayer mode');
-                    // Use the same logic as onNextQuestion for consistent multiplayer behavior
-                    await onNextQuestion();
+                    // Trigger the same logic as onNextQuestion for starting server-side questions
+                    try {
+                      const result = await socket.emit('start_question', {
+                        roomId: roomId
+                      });
+                      
+                      console.log('📡 Start question response:', result);
+                      
+                      if (result && (result.data?.question || result.question)) {
+                        const question = result.data?.question || result.question;
+                        setCurrentQuestion(question);
+                        setShowResult(false);
+                        setSelections({});
+                        setMySelection(null);
+                        currentSelectionRef.current = null;
+                        setTimeLeft(result.data?.timeLeft || result.timeLeft || MAX_TIME);
+                        answerTimesRef.current = {};
+                        awardedDoneRef.current = false;
+                        console.log('✅ First question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
+                      } else {
+                        console.log('⚠️ No question in server response, falling back to local');
+                        pickAndSetRandomQuestion();
+                      }
+                    } catch (error) {
+                      console.log('⚠️ Failed to get question from server, falling back to local:', error);
+                      pickAndSetRandomQuestion();
+                    }
                   }}
                 >
                   Start Quiz
