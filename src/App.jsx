@@ -791,22 +791,32 @@ useEffect(() => {
           console.log("No active question found - auto-starting first question");
           // Auto-start first question in multiplayer mode
           if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
-            const result = await socket.emit('start_question', {
-              roomId: roomId,
-              forceNew: true
-            });
-            
-            if (result && (result.data?.question || result.question)) {
-              const question = result.data?.question || result.question;
-              setCurrentQuestion(question);
-              setShowResult(false);
-              setSelections({});
-              setMySelection(null);
-              currentSelectionRef.current = null;
-              setTimeLeft(result.data?.timeLeft || result.timeLeft || MAX_TIME);
-              answerTimesRef.current = {};
-              awardedDoneRef.current = false;
-              console.log('✅ Auto-started first question:', question.isCard ? 'Card Question' : 'Regular Question');
+            try {
+              const response = await fetch(`${API_BASE_URL}/start_question`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  roomId: roomId,
+                  forceNew: false  // Auto-start doesn't need forceNew
+                })
+              });
+              
+              const result = await response.json();
+              
+              if (result && result.success && result.question) {
+                const question = result.question;
+                setCurrentQuestion(question);
+                setShowResult(false);
+                setSelections({});
+                setMySelection(null);
+                currentSelectionRef.current = null;
+                setTimeLeft(result.timeLeft || MAX_TIME);
+                answerTimesRef.current = {};
+                awardedDoneRef.current = false;
+                console.log('✅ Auto-started first question:', question.isCard ? 'Card Question' : 'Regular Question');
+              }
+            } catch (error) {
+              console.log('⚠️ Failed to auto-start question:', error);
             }
           }
         }
@@ -898,47 +908,73 @@ useEffect(() => {
           // In multiplayer mode, request round completion from server
           if (socket && !socket.localMode) {
             console.log('⏰ Time up! Requesting round completion from server...');
-            socket.emit('end_round', {
-              roomId: roomId
-            }).then((result) => {
-              console.log('📡 Round completion response:', result);
-              if (result && result.data && result.data.selections) {
-                console.log('📊 Server scores:', result.data.scores);
-                console.log('📊 Server selections:', result.data.selections);
-                setSelections(result.data.selections || {});
-                if (result.data.playerNames) {
-                  setPlayerNames(result.data.playerNames);
-                  console.log('👥 Player names from server:', result.data.playerNames);
-                }
-                if (result.data.scores) {
-                  setScores(result.data.scores);
-                  setServerScoredThisRound(true); // Flag that server provided scores
-                  console.log('✅ Scores updated from server:', result.data.scores);
-                }
-                setShowResult(true);
-              } else {
-                // Fallback to local reveal with current user's selection
-                console.log('⚠️ No server response, falling back to local reveal');
-                console.log('🔧 Using local mySelection:', mySelection);
-                console.log('🔧 Using ref selection:', currentSelectionRef.current);
-                console.log('🔧 Current user ID:', currentUser?.id);
+            
+            const endRoundRequest = async () => {
+              try {
+                const response = await fetch(`${API_BASE_URL}/game-event`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    event: 'end_round',
+                    data: {
+                      roomId: roomId
+                    }
+                  })
+                });
                 
-                // Create selections object from local data - try both state and ref
+                if (response.ok) {
+                  const result = await response.json();
+                  console.log('📡 Round completion response:', result);
+                  if (result && result.data && result.data.selections) {
+                    console.log('📊 Server scores:', result.data.scores);
+                    console.log('📊 Server selections:', result.data.selections);
+                    setSelections(result.data.selections || {});
+                    if (result.data.playerNames) {
+                      setPlayerNames(result.data.playerNames);
+                      console.log('👥 Player names from server:', result.data.playerNames);
+                    }
+                    if (result.data.scores) {
+                      setScores(result.data.scores);
+                      setServerScoredThisRound(true); // Flag that server provided scores
+                      console.log('✅ Scores updated from server:', result.data.scores);
+                    }
+                    setShowResult(true);
+                  } else {
+                    // Fallback to local reveal with current user's selection
+                    console.log('⚠️ No server response, falling back to local reveal');
+                    console.log('🔧 Using local mySelection:', mySelection);
+                    console.log('🔧 Using ref selection:', currentSelectionRef.current);
+                    console.log('🔧 Current user ID:', currentUser?.id);
+                    
+                    // Create selections object from local data - try both state and ref
+                    const localSelections = {};
+                    const selectionToUse = mySelection !== null ? mySelection : currentSelectionRef.current;
+                    if (selectionToUse !== null && currentUser?.id) {
+                      localSelections[currentUser.id] = selectionToUse;
+                      console.log('🔧 Created local selections:', localSelections);
+                    } else {
+                      console.log('🚨 No selection found in state or ref!');
+                    }
+                    setSelections(localSelections);
+                    setShowResult(true);
+                  }
+                } else {
+                  throw new Error(`Server responded with status: ${response.status}`);
+                }
+              } catch (error) {
+                console.log('⚠️ Failed to end round via server:', error);
+                // Fallback to local reveal
                 const localSelections = {};
                 const selectionToUse = mySelection !== null ? mySelection : currentSelectionRef.current;
                 if (selectionToUse !== null && currentUser?.id) {
                   localSelections[currentUser.id] = selectionToUse;
-                  console.log('🔧 Created local selections:', localSelections);
-                } else {
-                  console.log('🚨 No selection found in state or ref!');
                 }
                 setSelections(localSelections);
                 setShowResult(true);
               }
-            }).catch((error) => {
-              console.log('⚠️ Server round completion failed, falling back to local:', error);
-              setShowResult(true);
-            });
+            };
+            
+            endRoundRequest();
           } else {
             // Local mode - just show result
             console.log('🏠 Local mode - no server scoring');
@@ -992,14 +1028,26 @@ useEffect(() => {
         
         const trySubmit = async () => {
           try {
-            await socket.emit('select_option', {
-              roomId: roomId,
-              playerId: playerId,
-              playerName: currentUser?.global_name || currentUser?.username || 'Unknown Player',
-              optionIndex: optionIndex,
-              timeTaken: MAX_TIME - timeLeft
+            const response = await fetch(`${API_BASE_URL}/game-event`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                event: 'select_option',
+                data: {
+                  roomId: roomId,
+                  playerId: playerId,
+                  playerName: currentUser?.global_name || currentUser?.username || 'Unknown Player',
+                  optionIndex: optionIndex,
+                  timeTaken: MAX_TIME - timeLeft
+                }
+              })
             });
-            console.log('📤 Option selection submitted successfully');
+            
+            if (response.ok) {
+              console.log('📤 Option selection submitted successfully');
+            } else {
+              throw new Error(`Server responded with status: ${response.status}`);
+            }
           } catch (error) {
             attempts++;
             console.log(`⚠️ Selection submit attempt ${attempts} failed:`, error.message);
@@ -1150,24 +1198,29 @@ useEffect(() => {
       awardedDoneRef.current = false;
     } else {
       console.log('🌐 Starting next question in multiplayer mode');
-      // In multiplayer mode, emit to server for synchronized questions
+      // In multiplayer mode, use HTTP endpoint for synchronized questions
       try {
-        const result = await socket.emit('start_question', {
-          roomId: roomId, // Use Discord instance ID
-          forceNew: true  // Explicitly request new question (Next button clicked)
+        const response = await fetch(`${API_BASE_URL}/start_question`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomId: roomId,
+            forceNew: true  // Explicitly request new question (Next button clicked)
+          })
         });
         
+        const result = await response.json();
         console.log('📡 Start question response:', result);
         
         // Handle server response with both regular and card questions
-        if (result && (result.data?.question || result.question)) {
-          const question = result.data?.question || result.question;
+        if (result && result.success && result.question) {
+          const question = result.question;
           setCurrentQuestion(question);
           setShowResult(false);
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
-          setTimeLeft(result.data?.timeLeft || result.timeLeft || MAX_TIME);
+          setTimeLeft(result.timeLeft || MAX_TIME);
           // Reset per-question tracking
           answerTimesRef.current = {};
           awardedDoneRef.current = false;
@@ -1802,22 +1855,28 @@ useEffect(() => {
                   onClick={async () => {
                     playClickSound();
                     console.log('🎮 Starting first question in multiplayer mode');
-                    // Trigger the same logic as onNextQuestion for starting server-side questions
+                    // Use the same HTTP endpoint as onNextQuestion for consistency
                     try {
-                      const result = await socket.emit('start_question', {
-                        roomId: roomId
+                      const response = await fetch(`${API_BASE_URL}/start_question`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          roomId: roomId,
+                          forceNew: false  // First question doesn't need forceNew
+                        })
                       });
                       
+                      const result = await response.json();
                       console.log('📡 Start question response:', result);
                       
-                      if (result && (result.data?.question || result.question)) {
-                        const question = result.data?.question || result.question;
+                      if (result && result.success && result.question) {
+                        const question = result.question;
                         setCurrentQuestion(question);
                         setShowResult(false);
                         setSelections({});
                         setMySelection(null);
                         currentSelectionRef.current = null;
-                        setTimeLeft(result.data?.timeLeft || result.timeLeft || MAX_TIME);
+                        setTimeLeft(result.timeLeft || MAX_TIME);
                         answerTimesRef.current = {};
                         awardedDoneRef.current = false;
                         console.log('✅ First question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
