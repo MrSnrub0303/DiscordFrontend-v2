@@ -765,7 +765,7 @@ useEffect(() => {
       
       try {
         // Use game-state endpoint to check without generating new questions
-        const response = await fetch(`${API_BASE_URL}/api/game-state/${roomId}`);
+        const response = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const data = await response.json();
         
         console.log("Room state response:", data);
@@ -839,7 +839,7 @@ useEffect(() => {
     const syncGameState = async () => {
       try {
         // Use game-state endpoint to sync without generating new questions
-        const response = await fetch(`${API_BASE_URL}/api/game-state/${roomId}`);
+        const response = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const data = await response.json();
         
         if (data.success && data.currentQuestion) {
@@ -881,14 +881,21 @@ useEffect(() => {
         // Silently handle sync errors
       }
     };
+    
+    // Expose syncGameState globally for immediate triggering
+    window.syncGameStateFunc = syncGameState;
 
     // Initial sync
     syncGameState();
     
-    // Sync every 2 seconds to catch question changes
-    const syncInterval = setInterval(syncGameState, 2000);
-    
-    return () => clearInterval(syncInterval);
+    // Sync every 500ms for faster synchronization
+    const syncInterval = setInterval(syncGameState, 500);
+
+    return () => {
+      clearInterval(syncInterval);
+      // Clean up global reference
+      window.syncGameStateFunc = null;
+    };
   }, [socket, isInVoiceChannel, roomId]);
 
   // Remove the manual sync keyboard shortcut
@@ -1200,17 +1207,30 @@ useEffect(() => {
       console.log('🌐 Starting next question in multiplayer mode');
       // In multiplayer mode, use HTTP endpoint for synchronized questions
       try {
-        const response = await fetch(`${API_BASE_URL}/start_question`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            roomId: roomId,
-            forceNew: true  // Explicitly request new question (Next button clicked)
-          })
-        });
+        const attemptStartQuestion = async (retryCount = 0) => {
+          const response = await fetch(`${API_BASE_URL}/start_question`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              roomId: roomId,
+              forceNew: true  // Explicitly request new question (Next button clicked)
+            })
+          });
+          
+          const result = await response.json();
+          console.log('📡 Start question response:', result);
+          
+          // If question generation is in progress (409), retry after a short delay
+          if (response.status === 409 && retryCount < 3) {
+            console.log(`⏳ Question generation in progress, retrying in 200ms (attempt ${retryCount + 1}/3)`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return attemptStartQuestion(retryCount + 1);
+          }
+          
+          return { response, result };
+        };
         
-        const result = await response.json();
-        console.log('📡 Start question response:', result);
+        const { response, result } = await attemptStartQuestion();
         
         // Handle server response with both regular and card questions
         if (result && result.success && result.question) {
@@ -1225,6 +1245,11 @@ useEffect(() => {
           answerTimesRef.current = {};
           awardedDoneRef.current = false;
           console.log('✅ Next question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
+          
+          // Trigger immediate sync for other players by calling syncGameState
+          if (window.syncGameStateFunc) {
+            setTimeout(() => window.syncGameStateFunc(), 100);
+          }
         } else {
           console.log('⚠️ No question in server response, falling back to local');
           // Fallback to local if server doesn't respond properly
