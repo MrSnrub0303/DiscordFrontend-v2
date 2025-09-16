@@ -1392,7 +1392,7 @@ useEffect(() => {
           <button
             className="restart-button"
             onMouseEnter={playHoverSound}
-            onClick={() => {
+            onClick={async () => {
               playClickSound();
               setAvailableQuestions([...questions]);
               setScores(
@@ -1404,7 +1404,9 @@ useEffect(() => {
               // reset per-question tracking
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
-              pickAndSetRandomQuestion();
+              
+              // Use the same multiplayer logic as Next Question button
+              await onNextQuestion();
             }}
           >
             Restart Quiz
@@ -1778,33 +1780,8 @@ useEffect(() => {
                   onClick={async () => {
                     playClickSound();
                     console.log('🎮 Starting first question in multiplayer mode');
-                    // Trigger the same logic as onNextQuestion for starting server-side questions
-                    try {
-                      const result = await socket.emit('start_question', {
-                        roomId: roomId
-                      });
-                      
-                      console.log('📡 Start question response:', result);
-                      
-                      if (result && (result.data?.question || result.question)) {
-                        const question = result.data?.question || result.question;
-                        setCurrentQuestion(question);
-                        setShowResult(false);
-                        setSelections({});
-                        setMySelection(null);
-                        currentSelectionRef.current = null;
-                        setTimeLeft(result.data?.timeLeft || result.timeLeft || MAX_TIME);
-                        answerTimesRef.current = {};
-                        awardedDoneRef.current = false;
-                        console.log('✅ First question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
-                      } else {
-                        console.log('⚠️ No question in server response, falling back to local');
-                        pickAndSetRandomQuestion();
-                      }
-                    } catch (error) {
-                      console.log('⚠️ Failed to get question from server, falling back to local:', error);
-                      pickAndSetRandomQuestion();
-                    }
+                    // Use the same logic as onNextQuestion for consistent multiplayer behavior
+                    await onNextQuestion();
                   }}
                 >
                   Start Quiz
