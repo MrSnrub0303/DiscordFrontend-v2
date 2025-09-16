@@ -1129,7 +1129,8 @@ useEffect(() => {
       // In multiplayer mode, emit to server for synchronized questions
       try {
         const result = await socket.emit('start_question', {
-          roomId: roomId // Use Discord instance ID
+          roomId: roomId, // Use Discord instance ID
+          forceNew: true  // Explicitly request new question (Next button clicked)
         });
         
         console.log('📡 Start question response:', result);
