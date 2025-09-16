@@ -37,6 +37,9 @@ import soundOffIcon from "./assets/notification_sound_off.png";
 // REVEAL SOUND (we'll decode and play via WebAudio)
 import revealSoundFile from "./assets/chatreceived.wav";
 
+// API configuration - use same base URL as socket
+const API_BASE_URL = '/api';
+
 const MAX_TIME = 15;
 
 // Volume/fade settings
@@ -757,28 +760,29 @@ useEffect(() => {
       console.log("Multiplayer mode detected - checking for existing game...");
       
       try {
-        // Check if there's already an active question in the room
-        const result = await socket.emit("start_question", {
-          roomId: roomId
-        });
+        // Use game-state endpoint to check without generating new questions
+        const response = await fetch(`${API_BASE_URL}/api/game-state/${roomId}`);
+        const data = await response.json();
         
-        console.log("Room check response:", result);
+        console.log("Room state response:", data);
         
-        if (result && (result.data?.question || result.question)) {
-          const question = result.data?.question || result.question;
-          const timeLeft = result.data?.timeLeft || result.timeLeft || MAX_TIME;
-          
+        if (data.success && data.currentQuestion) {
           console.log("Found existing question in room, joining game in progress");
-          console.log("Time remaining:", timeLeft);
+          console.log("Time remaining:", data.timeLeft);
           
-          setCurrentQuestion(question);
-          setShowResult(false);
+          setCurrentQuestion(data.currentQuestion);
+          setShowResult(data.showResult);
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
-          setTimeLeft(timeLeft);
+          setTimeLeft(data.timeLeft);
           answerTimesRef.current = {};
           awardedDoneRef.current = false;
+          
+          // Start timer if game is still active
+          if (data.gameState === 'playing' && !data.showResult && data.timeLeft > 0) {
+            setIsTimerRunning(true);
+          }
         } else {
           console.log("No active question found - player can start new quiz");
         }
@@ -800,39 +804,42 @@ useEffect(() => {
 
     const syncGameState = async () => {
       try {
-        const result = await socket.emit("start_question", { roomId: roomId });
+        // Use game-state endpoint to sync without generating new questions
+        const response = await fetch(`${API_BASE_URL}/api/game-state/${roomId}`);
+        const data = await response.json();
         
-        if (result && (result.data?.question || result.question)) {
-          const serverQuestion = result.data?.question || result.question;
-          const serverTimeLeft = result.data?.timeLeft || result.timeLeft || MAX_TIME;
-          const serverShowResult = serverTimeLeft <= 0;
-          
+        if (data.success && data.currentQuestion) {
           // Check if this is a different question than what we have
           const isDifferentQuestion = !currentQuestion || 
-            (currentQuestion.question !== serverQuestion.question && !serverQuestion.isCard) ||
-            (currentQuestion.cardName !== serverQuestion.cardName && serverQuestion.isCard) ||
-            (currentQuestion.isCard !== serverQuestion.isCard);
+            (currentQuestion.question !== data.currentQuestion.question && !data.currentQuestion.isCard) ||
+            (currentQuestion.cardName !== data.currentQuestion.cardName && data.currentQuestion.isCard) ||
+            (currentQuestion.isCard !== data.currentQuestion.isCard);
           
           if (isDifferentQuestion) {
-            console.log("🔄 New question detected, syncing:", serverQuestion.isCard ? 'Card Question' : 'Regular Question');
-            setCurrentQuestion(serverQuestion);
-            setTimeLeft(serverTimeLeft);
-            setShowResult(serverShowResult);
+            console.log("🔄 New question detected, syncing:", data.currentQuestion.isCard ? 'Card Question' : 'Regular Question');
+            setCurrentQuestion(data.currentQuestion);
+            setTimeLeft(data.timeLeft);
+            setShowResult(data.showResult);
             setSelections({});
             setMySelection(null);
             currentSelectionRef.current = null;
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
+            
+            // Update timer state
+            setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
           } else {
             // Same question, just sync timer and result state
-            const timeDiff = Math.abs(timeLeft - serverTimeLeft);
+            const timeDiff = Math.abs(timeLeft - data.timeLeft);
             if (timeDiff > 2) {
-              console.log(`🕒 Syncing timer: ${timeLeft}s → ${serverTimeLeft}s`);
-              setTimeLeft(serverTimeLeft);
+              console.log(`🕒 Syncing timer: ${timeLeft}s → ${data.timeLeft}s`);
+              setTimeLeft(data.timeLeft);
+              setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
             }
-            if (serverShowResult !== showResult) {
-              console.log(`🎯 Syncing result state: ${showResult} → ${serverShowResult}`);
-              setShowResult(serverShowResult);
+            if (data.showResult !== showResult) {
+              console.log(`🎯 Syncing result state: ${showResult} → ${data.showResult}`);
+              setShowResult(data.showResult);
+              setIsTimerRunning(false);
             }
           }
         }
