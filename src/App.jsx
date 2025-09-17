@@ -858,7 +858,7 @@ useEffect(() => {
     if (!currentQuestion && !questionFetchInProgressRef.current) {
       getQuestionFromServer();
     }
-  }, [isInVoiceChannel, roomId, currentUser]);
+  }, [roomId, currentUser]); // Removed isInVoiceChannel to prevent mid-session re-runs
 
   console.log('🔍 DEBUG: Top level component state:', {
     socket: !!socket,
@@ -963,16 +963,22 @@ useEffect(() => {
             }
           } else {
             // Same question, just sync timer and result state - but only if significantly different
-            const timeDiff = Math.abs(timeLeft - data.timeLeft);
-            if (timeDiff > 3) { // Increased threshold to prevent flickering
-              console.log(`🕒 Syncing timer: ${timeLeft}s → ${data.timeLeft}s`);
-              setTimeLeft(data.timeLeft);
-              setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
-            }
-            if (data.showResult !== showResult) {
-              console.log(`🎯 Syncing result state: ${showResult} → ${data.showResult}`);
-              setShowResult(data.showResult);
-              setIsTimerRunning(false);
+            // Don't sync during active gameplay (when timer > 10s) to prevent mid-game disruption
+            const isActiveGameplay = timeLeft > 10 && !showResult;
+            if (!isActiveGameplay) {
+              const timeDiff = Math.abs(timeLeft - data.timeLeft);
+              if (timeDiff > 3) { // Increased threshold to prevent flickering
+                console.log(`🕒 Syncing timer: ${timeLeft}s → ${data.timeLeft}s`);
+                setTimeLeft(data.timeLeft);
+                setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
+              }
+              if (data.showResult !== showResult) {
+                console.log(`🎯 Syncing result state: ${showResult} → ${data.showResult}`);
+                setShowResult(data.showResult);
+                setIsTimerRunning(false);
+              }
+            } else {
+              console.log('⏸️ Skipping sync - active gameplay in progress');
             }
           }
         }
@@ -1095,7 +1101,7 @@ useEffect(() => {
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [currentQuestion, showResult, socket, roomId, isInVoiceChannel]);
+  }, [currentQuestion, showResult, socket, roomId]); // Removed isInVoiceChannel to prevent timer restarts
 
   // Use current user ID if available, fallback to "player1"
   const myPlayerId = currentUser?.id || "player1";
@@ -1571,8 +1577,8 @@ useEffect(() => {
     );
   }
 
-  // Completed screen
-  if (!currentQuestion) {
+  // Completed screen - only show if we're not loading and really have no question
+  if (!currentQuestion && !isLoading && !questionFetchInProgressRef.current) {
     return (
       <div
         className="app-container"
