@@ -887,6 +887,8 @@ useEffect(() => {
 
   console.log('🔍 DEBUG: Top level component state:', {
     socket: !!socket,
+    socketConnected: socket?.connected,
+    socketLocalMode: socket?.localMode,
     isInVoiceChannel,
     roomId,
     currentQuestion: !!currentQuestion
@@ -894,6 +896,7 @@ useEffect(() => {
 
   // Continuous synchronization for multiplayer
   useEffect(() => {
+    console.log('🔧 SYNC USEEFFECT TRIGGERED! Checking conditions...');
     console.log('🔧 Sync useEffect triggered with conditions:', {
       socket: !!socket,
       localMode: socket?.localMode,
@@ -904,7 +907,13 @@ useEffect(() => {
     });
     
     if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel || !roomId) {
-      console.log('❌ Sync disabled - conditions not met');
+      console.log('❌ Sync disabled - conditions not met. Details:', {
+        noSocket: !socket,
+        localMode: socket?.localMode,
+        notConnected: !socket?.connected,
+        notInVoiceChannel: !isInVoiceChannel,
+        noRoomId: !roomId
+      });
       return;
     }
 
