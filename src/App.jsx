@@ -37,8 +37,8 @@ import soundOffIcon from "./assets/notification_sound_off.png";
 // REVEAL SOUND (we'll decode and play via WebAudio)
 import revealSoundFile from "./assets/chatreceived.wav";
 
-// API configuration - use direct connection for local testing
-const API_BASE_URL = 'http://localhost:3001';
+// API configuration - environment-aware
+const API_BASE_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 
 const MAX_TIME = 15;
 
@@ -898,13 +898,6 @@ useEffect(() => {
               try {
                 const stateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
                 const stateData = await stateResponse.json();
-                console.log("🔍 Server state check result:", {
-                  success: stateData.success,
-                  hasQuestion: !!stateData.currentQuestion,
-                  timeLeft: stateData.timeLeft,
-                  gameState: stateData.gameState,
-                  questionType: stateData.currentQuestion?.isCard ? 'Card' : 'Regular'
-                });
                 if (stateData.success && stateData.currentQuestion) {
                   console.log("🚫 Server already has question, syncing instead of auto-starting");
                   // Trigger sync instead of auto-start
@@ -913,7 +906,6 @@ useEffect(() => {
                   }
                   return;
                 }
-                console.log("✅ Server has no question, proceeding with auto-start");
               } catch (error) {
                 console.log("⚠️ Error checking server state, proceeding with auto-start:", error);
               }
@@ -1066,7 +1058,6 @@ useEffect(() => {
             
             // Batch all state updates together to prevent flickering
             setCurrentQuestion(data.currentQuestion);
-            console.log('⏰ Setting timeLeft in sync (new question):', data.timeLeft);
             setTimeLeft(data.timeLeft);
             // Always start with showResult: false for new questions to prevent revealed state
             setShowResult(false);
@@ -1093,7 +1084,6 @@ useEffect(() => {
             const isInitialSync = timeLeft === 30; // Default value indicates initial sync needed
             if (timeDiff > 2 || isInitialSync) {
               console.log(`🕒 Syncing timer: ${timeLeft}s → ${data.timeLeft}s (initial: ${isInitialSync})`);
-              console.log('⏰ Setting timeLeft in sync (same question):', data.timeLeft);
               setTimeLeft(data.timeLeft);
               setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
             }
@@ -1134,13 +1124,6 @@ useEffect(() => {
 
   // Timer control useEffect - only run timer when isTimerRunning is true
   useEffect(() => {
-    console.log('🔄 Timer useEffect triggered:', {
-      currentQuestion: !!currentQuestion,
-      showResult: showResult,
-      isTimerRunning: isTimerRunning,
-      timeLeft: timeLeft
-    });
-    
     if (!currentQuestion) return;
     if (showResult) return;
     if (!isTimerRunning) return; // Don't start timer unless explicitly running
@@ -1153,9 +1136,6 @@ useEffect(() => {
 
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
-        if (t % 5 === 0 || t <= 5) {
-          console.log('⏱️ Timer tick:', t, '→', t - 1);
-        }
         if (t <= 1) {
           clearInterval(timerRef.current);
           

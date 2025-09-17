@@ -6,13 +6,13 @@ class DiscordProxySocket {
     this.connected = false;
     this.localMode = true;
     this.eventCallbacks = new Map();
-    // For local testing, connect directly to local server
-    this.serverUrl = 'http://localhost:3001';
+    // Environment-aware server URL
+    this.serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
   }
   
   async connect() {
     try {
-      console.log('🔍 Testing local server connection...');
+      console.log('🔍 Testing Discord proxy connection to backend...');
       console.log('🔗 Trying URL:', `${this.serverUrl}/health`);
       
       const response = await fetch(`${this.serverUrl}/health`, {
@@ -32,7 +32,7 @@ class DiscordProxySocket {
         console.log('📡 Response data:', data);
         this.connected = true;
         this.localMode = false;
-        console.log('🌐 Multiplayer mode enabled via local server!');
+        console.log('🌐 Multiplayer mode enabled via Discord proxy!');
         console.log('🔧 Socket state changed:', { connected: this.connected, localMode: this.localMode });
         return true;
       } else {
