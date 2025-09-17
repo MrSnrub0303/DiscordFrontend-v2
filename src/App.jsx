@@ -893,6 +893,23 @@ useEffect(() => {
                 return;
               }
               
+              // CRITICAL: Check server state first before auto-starting
+              console.log("🔍 Checking server state before auto-start...");
+              try {
+                const stateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
+                const stateData = await stateResponse.json();
+                if (stateData.success && stateData.currentQuestion) {
+                  console.log("🚫 Server already has question, syncing instead of auto-starting");
+                  // Trigger sync instead of auto-start
+                  if (window.syncGameStateFunc) {
+                    window.syncGameStateFunc();
+                  }
+                  return;
+                }
+              } catch (error) {
+                console.log("⚠️ Error checking server state, proceeding with auto-start:", error);
+              }
+              
               if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
                 const attemptAutoStart = async (retryCount = 0) => {
                   const response = await fetch(`${API_BASE_URL}/start_question`, {
@@ -990,12 +1007,23 @@ useEffect(() => {
 
     console.log('✅ Starting sync for multiplayer mode');
     const syncGameState = async () => {
-      console.log('🔄 Sync executing for room:', roomId);
+      console.log('🔄 Sync executing for room:', roomId, { 
+        hasCurrentQuestion: !!currentQuestion,
+        currentTimeLeft: timeLeft,
+        currentGameState: gameState,
+        isTimerRunning: isTimerRunning
+      });
       try {
         // Use game-state endpoint to sync without generating new questions
         const response = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const data = await response.json();
-        console.log('📡 Sync response:', { success: data.success, hasQuestion: !!data.currentQuestion });
+        console.log('📡 Sync response:', { 
+          success: data.success, 
+          hasQuestion: !!data.currentQuestion,
+          timeLeft: data.timeLeft,
+          gameState: data.gameState,
+          roomId: roomId
+        });
         
         if (data.success && data.currentQuestion) {
           // Check if this is a different question than what we have
@@ -1024,7 +1052,9 @@ useEffect(() => {
               isCard: data.currentQuestion.isCard,
               cardName: data.currentQuestion.cardName,
               cardUrl: data.currentQuestion.cardUrl,
-              questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A'
+              questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A',
+              serverTimeLeft: data.timeLeft,
+              serverGameState: data.gameState
             });
             
             // Batch all state updates together to prevent flickering
