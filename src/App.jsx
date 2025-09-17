@@ -1322,8 +1322,11 @@ useEffect(() => {
           console.log('✅ Next question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
           
           // Trigger immediate sync for other players by calling syncGameState
+          // Use multiple sync attempts to ensure other players get the update quickly
           if (window.syncGameStateFunc) {
-            setTimeout(() => window.syncGameStateFunc(), 100);
+            setTimeout(() => window.syncGameStateFunc(), 50);   // First sync at 50ms
+            setTimeout(() => window.syncGameStateFunc(), 200);  // Second sync at 200ms
+            setTimeout(() => window.syncGameStateFunc(), 500);  // Third sync at 500ms
           }
         } else {
           console.log('⚠️ No question in server response - waiting for server');
