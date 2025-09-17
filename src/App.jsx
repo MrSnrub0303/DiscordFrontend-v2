@@ -943,7 +943,8 @@ useEffect(() => {
             }
           } else {
             // Same question, just sync timer and result state - but only if significantly different
-            // Don't sync during active gameplay (when timer > 10s) to prevent mid-game disruption
+            // Don't sync timer/results during active gameplay (when timer > 10s) to prevent mid-game disruption
+            // BUT always allow new questions to sync through
             const isActiveGameplay = timeLeft > 10 && !showResult;
             if (!isActiveGameplay) {
               const timeDiff = Math.abs(timeLeft - data.timeLeft);
@@ -958,7 +959,7 @@ useEffect(() => {
                 setIsTimerRunning(false);
               }
             } else {
-              console.log('⏸️ Skipping sync - active gameplay in progress');
+              console.log('⏸️ Skipping timer/result sync - active gameplay in progress');
             }
           }
         }
@@ -974,8 +975,8 @@ useEffect(() => {
     // Initial sync - wait longer to avoid conflict with main question fetch
     setTimeout(syncGameState, 3000);
     
-    // Sync every 3000ms for synchronization (increased to reduce conflicts)
-    const syncInterval = setInterval(syncGameState, 3000);
+    // Sync every 1000ms for better responsiveness in multiplayer
+    const syncInterval = setInterval(syncGameState, 1000);
 
     return () => {
       clearInterval(syncInterval);
@@ -1324,6 +1325,12 @@ useEffect(() => {
         answerTimesRef.current = {};
         awardedDoneRef.current = false;
         console.log('✅ Got next question from server:', question.isCard ? 'Card Question' : 'Regular Question');
+        
+        // Trigger immediate sync for other users to pick up the new question
+        if (window.syncGameStateFunc) {
+          console.log('🔄 Triggering immediate sync for other users...');
+          setTimeout(() => window.syncGameStateFunc(), 500);
+        }
       } else {
         console.log('⚠️ Failed to get next question from server');
       }
@@ -1672,6 +1679,12 @@ useEffect(() => {
                   setMySelection(null);
                   currentSelectionRef.current = null;
                   console.log('✅ Restarted with new question from server');
+                  
+                  // Trigger immediate sync for other users to pick up the restart
+                  if (window.syncGameStateFunc) {
+                    console.log('🔄 Triggering immediate sync after restart...');
+                    setTimeout(() => window.syncGameStateFunc(), 500);
+                  }
                 }
               } catch (error) {
                 console.error('❌ Error restarting quiz:', error);
