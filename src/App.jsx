@@ -273,6 +273,9 @@ export default function App() {
   // Animation frames refs for the score count animations so we can cancel if needed
   const scoreAnimFramesRef = useRef({});
 
+  // Prevent double execution of initial game check
+  const gameCheckExecutedRef = useRef(false);
+
   // small highlight state for when score bumps (used to add a temporary CSS class)
   const [scoreHighlight, setScoreHighlight] = useState({});
 
@@ -753,15 +756,22 @@ useEffect(() => {
   };
 
   useEffect(() => {
+    // Prevent double execution
+    if (gameCheckExecutedRef.current) {
+      return;
+    }
+
     // Check for existing game state when app loads
     const checkForExistingGame = async () => {
       if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel) {
         console.log("Loading initial question for single player mode");
         pickAndSetRandomQuestion();
+        gameCheckExecutedRef.current = true;
         return;
       }
 
       console.log("Multiplayer mode detected - checking for existing game...");
+      gameCheckExecutedRef.current = true;
       
       try {
         // Use game-state endpoint to check without generating new questions
@@ -788,37 +798,10 @@ useEffect(() => {
             setIsTimerRunning(true);
           }
         } else {
-          console.log("No active question found - auto-starting first question");
-          // Auto-start first question in multiplayer mode
-          if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
-            try {
-              const response = await fetch(`${API_BASE_URL}/start_question`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  roomId: roomId,
-                  forceNew: false  // Auto-start doesn't need forceNew
-                })
-              });
-              
-              const result = await response.json();
-              
-              if (result && result.success && result.question) {
-                const question = result.question;
-                setCurrentQuestion(question);
-                setShowResult(false);
-                setSelections({});
-                setMySelection(null);
-                currentSelectionRef.current = null;
-                setTimeLeft(result.timeLeft || MAX_TIME);
-                answerTimesRef.current = {};
-                awardedDoneRef.current = false;
-                console.log('✅ Auto-started first question:', question.isCard ? 'Card Question' : 'Regular Question');
-              }
-            } catch (error) {
-              console.log('⚠️ Failed to auto-start question:', error);
-            }
-          }
+          console.log("No active question found - waiting for host to start or manual start");
+          // Don't auto-start to prevent race conditions
+          // Let players manually click "Start Quiz" button instead
+          // This eliminates the risk of multiple players simultaneously requesting first question
         }
       } catch (error) {
         console.log("Failed to check room state:", error);
