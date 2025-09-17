@@ -885,6 +885,13 @@ useEffect(() => {
     return () => clearTimeout(timeoutId);
   }, [socket, isInVoiceChannel, roomId]);
 
+  console.log('🔍 DEBUG: Top level component state:', {
+    socket: !!socket,
+    isInVoiceChannel,
+    roomId,
+    currentQuestion: !!currentQuestion
+  });
+
   // Continuous synchronization for multiplayer
   useEffect(() => {
     console.log('🔧 Sync useEffect triggered with conditions:', {
