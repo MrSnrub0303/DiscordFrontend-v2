@@ -33,6 +33,7 @@ class DiscordProxySocket {
         this.connected = true;
         this.localMode = false;
         console.log('🌐 Multiplayer mode enabled via Discord proxy!');
+        console.log('🔧 Socket state changed:', { connected: this.connected, localMode: this.localMode });
         return true;
       } else {
         const errorText = await response.text();
