@@ -780,13 +780,19 @@ useEffect(() => {
   };
 
   useEffect(() => {
-    // Prevent double execution
-    if (gameCheckExecutedRef.current) {
-      return;
-    }
-
-    // Check for existing game state when app loads
+    // Check for existing game state when app loads or when socket connection state changes
     const checkForExistingGame = async () => {
+      // Reset game check if socket just connected to multiplayer mode
+      if (gameCheckExecutedRef.current && socket && !socket.localMode && socket.connected && isInVoiceChannel) {
+        console.log('🔄 Socket connected to multiplayer mode - resetting game check to enable auto-start');
+        gameCheckExecutedRef.current = false;
+        gameCheckRetriesRef.current = 0;
+      }
+      
+      // Prevent double execution (unless we just reset above)
+      if (gameCheckExecutedRef.current) {
+        return;
+      }
       // Wait a bit more for socket to be ready if it exists but isn't connected yet
       if (socket && !socket.connected && !socket.localMode && gameCheckRetriesRef.current < MAX_SOCKET_WAIT_RETRIES) {
         gameCheckRetriesRef.current++;
@@ -946,7 +952,7 @@ useEffect(() => {
     // Add a small delay to ensure socket is fully connected
     const timeoutId = setTimeout(checkForExistingGame, 500);
     return () => clearTimeout(timeoutId);
-  }, [socket, isInVoiceChannel, roomId]);
+  }, [socket, socket?.connected, socket?.localMode, isInVoiceChannel, roomId]);
 
   console.log('🔍 DEBUG: Top level component state:', {
     socket: !!socket,
