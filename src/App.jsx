@@ -807,7 +807,8 @@ useEffect(() => {
           console.log("Time remaining:", data.timeLeft);
           
           setCurrentQuestion(data.currentQuestion);
-          setShowResult(data.showResult);
+          // Always start with showResult: false for clean state, handle expired questions after
+          setShowResult(false);
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
@@ -816,8 +817,16 @@ useEffect(() => {
           awardedDoneRef.current = false;
           
           // Start timer if game is still active
-          if (data.gameState === 'playing' && !data.showResult && data.timeLeft > 0) {
+          if (data.gameState === 'playing' && data.timeLeft > 0) {
             setIsTimerRunning(true);
+          }
+          
+          // If question has already timed out, show results after a brief delay
+          if (data.timeLeft <= 0 && data.showResult) {
+            setTimeout(() => {
+              setShowResult(true);
+              setIsTimerRunning(false);
+            }, 100);
           }
         } else {
           console.log("No active question found - checking if another player has started a question");
@@ -832,7 +841,8 @@ useEffect(() => {
               if (checkData.success && checkData.currentQuestion) {
                 console.log("✅ Found question started by another player, syncing");
                 setCurrentQuestion(checkData.currentQuestion);
-                setShowResult(checkData.showResult);
+                // Always start with showResult: false for clean state
+                setShowResult(false);
                 setSelections({});
                 setMySelection(null);
                 currentSelectionRef.current = null;
@@ -840,8 +850,16 @@ useEffect(() => {
                 answerTimesRef.current = {};
                 awardedDoneRef.current = false;
                 
-                if (checkData.gameState === 'playing' && !checkData.showResult && checkData.timeLeft > 0) {
+                if (checkData.gameState === 'playing' && checkData.timeLeft > 0) {
                   setIsTimerRunning(true);
+                }
+                
+                // If question has already timed out, show results after a brief delay
+                if (checkData.timeLeft <= 0 && checkData.showResult) {
+                  setTimeout(() => {
+                    setShowResult(true);
+                    setIsTimerRunning(false);
+                  }, 100);
                 }
                 return;
               }
@@ -981,22 +999,29 @@ useEffect(() => {
               cardUrl: data.currentQuestion.cardUrl,
               questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A'
             });
+            
+            // Batch all state updates together to prevent flickering
             setCurrentQuestion(data.currentQuestion);
             setTimeLeft(data.timeLeft);
-            setShowResult(data.showResult);
+            // Always start with showResult: false for new questions to prevent revealed state
+            setShowResult(false);
             setSelections({});
             setMySelection(null);
             currentSelectionRef.current = null;
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
             
-            // Update timer state
-            setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
+            // Update timer state - if time is already up, show result after a brief delay
+            const shouldShowTimer = data.gameState === 'playing' && data.timeLeft > 0;
+            setIsTimerRunning(shouldShowTimer);
             
-            // Trigger additional syncs to ensure all players get the update
-            setTimeout(() => {
-              if (window.syncGameStateFunc) window.syncGameStateFunc();
-            }, 100);
+            // If the question has already timed out, show results after a brief delay
+            if (data.timeLeft <= 0 && data.showResult) {
+              setTimeout(() => {
+                setShowResult(true);
+                setIsTimerRunning(false);
+              }, 100);
+            }
           } else {
             // Same question, just sync timer and result state
             const timeDiff = Math.abs(timeLeft - data.timeLeft);
@@ -1020,12 +1045,11 @@ useEffect(() => {
     // Expose syncGameState globally for immediate triggering
     window.syncGameStateFunc = syncGameState;
 
-    // Initial sync - run immediately and then again after 1 second
+    // Initial sync - run immediately
     syncGameState();
-    setTimeout(() => syncGameState(), 1000);
     
-    // Sync every 500ms for faster synchronization
-    const syncInterval = setInterval(syncGameState, 500);
+    // Sync every 1000ms for synchronization (reduced from 500ms to prevent flickering)
+    const syncInterval = setInterval(syncGameState, 1000);
 
     return () => {
       clearInterval(syncInterval);
