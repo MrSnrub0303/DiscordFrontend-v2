@@ -830,8 +830,9 @@ useEffect(() => {
           }
         } else {
           console.log("No active question found - checking if another player has started a question");
+          console.log('🕐 Will wait 3 seconds for other players to potentially start a question');
           
-          // Wait a bit longer for potential sync from other players, then try auto-start
+          // Wait longer for potential sync from other players, then try auto-start
           setTimeout(async () => {
             try {
               // Check one more time if another player started a question
@@ -917,7 +918,7 @@ useEffect(() => {
             } catch (error) {
               console.log('⚠️ Failed to check/auto-start question:', error);
             }
-          }, 2000); // Wait 2 seconds to give other players a chance to start first
+          }, 3000); // Wait 3 seconds to give other players a chance to start first
         }
       } catch (error) {
         console.log("Failed to check room state:", error);
