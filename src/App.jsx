@@ -1005,7 +1005,7 @@ useEffect(() => {
       // Clean up global reference
       window.syncGameStateFunc = null;
     };
-  }, [socket, isInVoiceChannel, roomId]);
+  }, [socket, socket?.connected, socket?.localMode, isInVoiceChannel, roomId]);
 
   // Remove the manual sync keyboard shortcut
   useEffect(() => {
