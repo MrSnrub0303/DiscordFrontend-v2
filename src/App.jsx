@@ -892,6 +892,56 @@ useEffect(() => {
               // No question found after waiting - try to auto-start
               console.log("No question found after waiting - attempting to auto-start first question");
               if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
+                
+                // If we have a current local question, try to sync it to the server first
+                if (currentQuestion) {
+                  console.log("🔄 Have local question, attempting to sync to server first");
+                  try {
+                    const syncResponse = await fetch(`${API_BASE_URL}/sync_local_question`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        roomId: roomId,
+                        question: currentQuestion,
+                        timeLeft: timeLeft
+                      })
+                    });
+                    
+                    const syncResult = await syncResponse.json();
+                    console.log('📡 Sync local question response:', syncResult);
+                    
+                    if (syncResult.success) {
+                      if (syncResult.hadExisting) {
+                        console.log("🔄 Server had existing question, syncing to server's question");
+                        // Server already had a question, sync to it
+                        setCurrentQuestion(syncResult.question);
+                        setTimeLeft(syncResult.timeLeft);
+                        setShowResult(false);
+                        setSelections({});
+                        setMySelection(null);
+                        currentSelectionRef.current = null;
+                        answerTimesRef.current = {};
+                        awardedDoneRef.current = false;
+                        
+                        if (syncResult.timeLeft > 0) {
+                          setIsTimerRunning(true);
+                        }
+                      } else {
+                        console.log("✅ Successfully synced local question to server - other players will now see same question");
+                        // Our local question is now the server question - no need to change anything
+                        // Just make sure timer is running if we have time left
+                        if (timeLeft > 0) {
+                          setIsTimerRunning(true);
+                        }
+                      }
+                      return; // Skip auto-start since we synced successfully
+                    }
+                  } catch (error) {
+                    console.log('⚠️ Failed to sync local question, falling back to auto-start:', error);
+                  }
+                }
+                
+                // If no local question or sync failed, proceed with auto-start
                 const attemptAutoStart = async (retryCount = 0) => {
                   const response = await fetch(`${API_BASE_URL}/start_question`, {
                     method: 'POST',
