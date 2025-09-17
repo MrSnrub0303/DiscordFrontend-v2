@@ -846,7 +846,9 @@ useEffect(() => {
           }
         } else {
           console.log("No active question found - checking if another player has started a question");
-          console.log('🕐 Will wait 3 seconds for other players to potentially start a question');
+          // Use random delay between 2-4 seconds to prevent all players hitting auto-start simultaneously
+          const randomDelay = 2000 + Math.random() * 2000; // 2-4 seconds
+          console.log(`🕐 Will wait ${Math.round(randomDelay)}ms for other players to potentially start a question`);
           
           // Wait longer for potential sync from other players, then try auto-start
           setTimeout(async () => {
@@ -934,7 +936,7 @@ useEffect(() => {
             } catch (error) {
               console.log('⚠️ Failed to check/auto-start question:', error);
             }
-          }, 3000); // Wait 3 seconds to give other players a chance to start first
+          }, randomDelay); // Random delay to stagger auto-start attempts
         }
       } catch (error) {
         console.log("Failed to check room state:", error);
