@@ -887,15 +887,28 @@ useEffect(() => {
 
   // Continuous synchronization for multiplayer
   useEffect(() => {
+    console.log('🔧 Sync useEffect triggered with conditions:', {
+      socket: !!socket,
+      localMode: socket?.localMode,
+      connected: socket?.connected,
+      isInVoiceChannel,
+      roomId,
+      shouldSync: !(!socket || socket.localMode || !socket.connected || !isInVoiceChannel || !roomId)
+    });
+    
     if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel || !roomId) {
+      console.log('❌ Sync disabled - conditions not met');
       return;
     }
 
+    console.log('✅ Starting sync for multiplayer mode');
     const syncGameState = async () => {
+      console.log('🔄 Sync executing for room:', roomId);
       try {
         // Use game-state endpoint to sync without generating new questions
         const response = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const data = await response.json();
+        console.log('📡 Sync response:', { success: data.success, hasQuestion: !!data.currentQuestion });
         
         if (data.success && data.currentQuestion) {
           // Check if this is a different question than what we have
