@@ -944,18 +944,20 @@ useEffect(() => {
             });
             
             // Only show transition loading if we already have a question (not during initial load)
-            // and we're not already in the main loading state
-            const shouldShowTransition = currentQuestion && !isLoading;
+            // For other players in multiplayer sync, show transition unless in main loading
+            const isInitialLoad = !currentQuestion && isLoading;
+            const shouldShowTransition = !isInitialLoad;
             console.log('🔄 Transition check:', { 
               hasCurrentQuestion: !!currentQuestion, 
-              isLoading, 
+              isLoading,
+              isInitialLoad,
               shouldShowTransition 
             });
             if (shouldShowTransition) {
               console.log('✨ Showing transition loader for question change');
               setIsTransitioning(true);
             } else {
-              console.log('⏭️ Skipping transition loader (initial load or already loading)');
+              console.log('⏭️ Skipping transition loader (initial load)');
             }
             
             // Batch all state updates together to prevent flickering - use setTimeout to avoid race conditions
@@ -972,9 +974,11 @@ useEffect(() => {
               
               // Hide transition loading after question is loaded (only if it was shown)
               if (shouldShowTransition) {
+                console.log('⏰ Scheduling transition hide in 500ms');
                 setTimeout(() => {
+                  console.log('✨ Hiding transition loader');
                   setIsTransitioning(false);
-                }, 300); // Small delay to show the loader briefly
+                }, 500); // Increased delay to ensure other players see the loader
               }
             }, 0);
             
@@ -1379,7 +1383,7 @@ useEffect(() => {
         // Trigger immediate sync for other users to pick up the new question
         if (window.syncGameStateFunc) {
           console.log('🔄 Triggering immediate sync for other users...');
-          setTimeout(() => window.syncGameStateFunc(), 500);
+          setTimeout(() => window.syncGameStateFunc(), 800); // Increased delay to give time for transition
         }
       } else {
         console.log('⚠️ Failed to get next question from server');
@@ -1734,7 +1738,7 @@ useEffect(() => {
                   // Trigger immediate sync for other users to pick up the restart
                   if (window.syncGameStateFunc) {
                     console.log('🔄 Triggering immediate sync after restart...');
-                    setTimeout(() => window.syncGameStateFunc(), 500);
+                    setTimeout(() => window.syncGameStateFunc(), 800); // Consistent timing with Next Question
                   }
                 }
               } catch (error) {
