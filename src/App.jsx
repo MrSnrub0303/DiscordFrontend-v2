@@ -37,11 +37,8 @@ import soundOffIcon from "./assets/notification_sound_off.png";
 // REVEAL SOUND (we'll decode and play via WebAudio)
 import revealSoundFile from "./assets/chatreceived.wav";
 
-// API configuration - temporarily use direct backend URL to test server fixes
-const getApiBaseUrl = () => {
-  // For testing: use direct backend URL to bypass Discord proxy issues
-  return 'https://discordbackend-xggi.onrender.com/api';
-};
+// API configuration - use same base URL as socket
+const API_BASE_URL = '/api';
 
 const MAX_TIME = 15;
 
@@ -1573,39 +1570,7 @@ useEffect(() => {
               // reset per-question tracking
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
-              
-              // In multiplayer mode, request new question from server
-              if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
-                console.log('🔄 Restarting quiz in multiplayer mode - requesting from server');
-                // Use auto-start logic to get first question from server
-                fetch(`${API_BASE_URL}/start_question`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    roomId: roomId,
-                    forceNew: false
-                  })
-                })
-                .then(response => response.json())
-                .then(result => {
-                  if (result && result.success && result.question) {
-                    setCurrentQuestion(result.question);
-                    setShowResult(false);
-                    setSelections({});
-                    setMySelection(null);
-                    currentSelectionRef.current = null;
-                    setTimeLeft(result.timeLeft || MAX_TIME);
-                    console.log('✅ Restart: Got question from server');
-                  }
-                })
-                .catch(error => {
-                  console.log('⚠️ Restart: Failed to get question from server:', error);
-                });
-              } else {
-                // Single player mode - use local generation
-                console.log('🏠 Restarting quiz in local mode');
-                pickAndSetRandomQuestion();
-              }
+              pickAndSetRandomQuestion();
             }}
           >
             Restart Quiz
