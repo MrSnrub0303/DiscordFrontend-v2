@@ -765,7 +765,8 @@ useEffect(() => {
     const index = Math.floor(Math.random() * availableQuestions.length);
     const q = availableQuestions[index];
     setAvailableQuestions((prev) => prev.filter((_, i) => i !== index));
-    setCurrentQuestion(q);
+    // Ensure trivia questions have isCard: false for proper sync comparison
+    setCurrentQuestion({ ...q, isCard: false });
     setSelections({});
     setMySelection(null); 
     currentSelectionRef.current = null; // Reset ref too
@@ -967,10 +968,7 @@ useEffect(() => {
             // Update timer state
             setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
             
-            // Trigger additional syncs to ensure all players get the update
-            setTimeout(() => {
-              if (window.syncGameStateFunc) window.syncGameStateFunc();
-            }, 100);
+            // Note: Removed recursive setTimeout sync call to prevent infinite loop
           } else {
             // Same question, just sync timer and result state
             const timeDiff = Math.abs(timeLeft - data.timeLeft);
