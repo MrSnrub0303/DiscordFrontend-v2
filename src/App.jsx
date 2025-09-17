@@ -37,8 +37,8 @@ import soundOffIcon from "./assets/notification_sound_off.png";
 // REVEAL SOUND (we'll decode and play via WebAudio)
 import revealSoundFile from "./assets/chatreceived.wav";
 
-// API configuration - use same base URL as socket
-const API_BASE_URL = '/api';
+// API configuration - use direct connection for local testing
+const API_BASE_URL = 'http://localhost:3001';
 
 const MAX_TIME = 15;
 
