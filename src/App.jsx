@@ -159,6 +159,7 @@ export default function App() {
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
   const [playerNames, setPlayerNames] = useState({}); // Player names from server
   const [isLoading, setIsLoading] = useState(true); // Loading state for server questions
+  const [isTimerRunning, setIsTimerRunning] = useState(false); // Track timer state to prevent sync conflicts
 
   // For card-mode: input state and last attempt feedback
   const [cardInput, setCardInput] = useState("");
@@ -740,7 +741,7 @@ useEffect(() => {
     const getQuestionFromServer = async () => {
       setIsLoading(true);
       
-      // Wait for Discord integration to be ready with timeout
+      // Faster Discord integration check with exponential backoff
       if (!currentUser || !roomId) {
         console.log('⏳ Waiting for Discord integration...', {
           currentUser: !!currentUser,
@@ -752,8 +753,8 @@ useEffect(() => {
         // Track attempts to prevent infinite waiting
         window.discordWaitAttempts = (window.discordWaitAttempts || 0) + 1;
         
-        // After 20 attempts (10 seconds), proceed anyway if we have basic info
-        if (window.discordWaitAttempts > 20) {
+        // More aggressive timeout - after 8 attempts (4 seconds), proceed anyway
+        if (window.discordWaitAttempts > 8) {
           if (channelId) {
             console.log('⚠️ Proceeding without currentUser after timeout - using channelId as fallback');
             // Continue with just channelId - we can work without perfect user info
@@ -763,8 +764,9 @@ useEffect(() => {
             return;
           }
         } else {
-          // Keep checking every 500ms until ready
-          setTimeout(getQuestionFromServer, 500);
+          // Exponential backoff: start with 100ms, increase to max 500ms
+          const delay = Math.min(500, 100 * Math.pow(1.5, window.discordWaitAttempts - 1));
+          setTimeout(getQuestionFromServer, delay);
           return;
         }
       } else {
@@ -772,21 +774,23 @@ useEffect(() => {
         window.discordWaitAttempts = 0;
       }
 
-      // Small delay for better UX 
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       try {
         console.log('🌐 Getting question from server for room:', roomId);
         
-        // Check if room already has an active question
+        // Check if room already has an active question FIRST
         const gameStateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const gameStateData = await gameStateResponse.json();
         
         if (gameStateData.success && gameStateData.currentQuestion) {
           console.log('✅ Found existing question in room');
-          setCurrentQuestion(gameStateData.currentQuestion);
-          setTimeLeft(gameStateData.timeLeft);
-          setShowResult(gameStateData.showResult || gameStateData.timeLeft <= 0);
+          // Batch all state updates to prevent flickering
+          const question = gameStateData.currentQuestion;
+          const timeLeft = gameStateData.timeLeft;
+          const showResult = gameStateData.showResult || timeLeft <= 0;
+          
+          setCurrentQuestion(question);
+          setTimeLeft(timeLeft);
+          setShowResult(showResult);
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
@@ -811,8 +815,12 @@ useEffect(() => {
         
         if (startData.success && startData.question) {
           console.log('✅ Got new question from server:', startData.question.isCard ? 'Card Question' : 'Regular Question');
-          setCurrentQuestion(startData.question);
-          setTimeLeft(startData.timeLeft || MAX_TIME);
+          // Batch state updates to prevent visual glitches
+          const question = startData.question;
+          const timeLeft = startData.timeLeft || MAX_TIME;
+          
+          setCurrentQuestion(question);
+          setTimeLeft(timeLeft);
           setShowResult(false);
           setSelections({});
           setMySelection(null);
@@ -904,16 +912,18 @@ useEffect(() => {
               questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A'
             });
             
-            // Batch all state updates together to prevent flickering
-            setCurrentQuestion(data.currentQuestion);
-            setTimeLeft(data.timeLeft);
-            // Always start with showResult: false for new questions to prevent revealed state
-            setShowResult(false);
-            setSelections({});
-            setMySelection(null);
-            currentSelectionRef.current = null;
-            answerTimesRef.current = {};
-            awardedDoneRef.current = false;
+            // Batch all state updates together to prevent flickering - use setTimeout to avoid race conditions
+            setTimeout(() => {
+              setCurrentQuestion(data.currentQuestion);
+              setTimeLeft(data.timeLeft);
+              // Always start with showResult: false for new questions to prevent revealed state
+              setShowResult(false);
+              setSelections({});
+              setMySelection(null);
+              currentSelectionRef.current = null;
+              answerTimesRef.current = {};
+              awardedDoneRef.current = false;
+            }, 0);
             
             // Update timer state - if time is already up, show result after a brief delay
             const shouldShowTimer = data.gameState === 'playing' && data.timeLeft > 0;
@@ -924,12 +934,12 @@ useEffect(() => {
               setTimeout(() => {
                 setShowResult(true);
                 setIsTimerRunning(false);
-              }, 100);
+              }, 200);
             }
           } else {
-            // Same question, just sync timer and result state
+            // Same question, just sync timer and result state - but only if significantly different
             const timeDiff = Math.abs(timeLeft - data.timeLeft);
-            if (timeDiff > 2) {
+            if (timeDiff > 3) { // Increased threshold to prevent flickering
               console.log(`🕒 Syncing timer: ${timeLeft}s → ${data.timeLeft}s`);
               setTimeLeft(data.timeLeft);
               setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
@@ -942,18 +952,19 @@ useEffect(() => {
           }
         }
       } catch (error) {
-        // Silently handle sync errors
+        // Silently handle sync errors to prevent noise
+        console.log('⚠️ Sync error (non-critical):', error.message);
       }
     };
     
     // Expose syncGameState globally for immediate triggering
     window.syncGameStateFunc = syncGameState;
 
-    // Initial sync - run immediately
-    syncGameState();
+    // Initial sync - run immediately but with small delay to prevent race conditions
+    setTimeout(syncGameState, 100);
     
-    // Sync every 1000ms for synchronization (reduced from 500ms to prevent flickering)
-    const syncInterval = setInterval(syncGameState, 1000);
+    // Sync every 2000ms for synchronization (increased from 1000ms to prevent frequent updates)
+    const syncInterval = setInterval(syncGameState, 2000);
 
     return () => {
       clearInterval(syncInterval);
@@ -1331,35 +1342,6 @@ useEffect(() => {
   };
 
   // FLIP animation using layout measurements — triggers whenever sortedPlayers changes.
-  useEffect(() => {
-    // Test Discord URL mapping
-    console.log('🧪 Testing Discord URL mapping...');
-    
-    fetch('/api/discord-test')
-      .then(response => {
-        console.log('✅ Discord URL mapping test - Status:', response.status);
-        return response.json();
-      })
-      .then(data => {
-        console.log('✅ Discord URL mapping working!', data);
-      })
-      .catch(error => {
-        console.log('❌ Discord URL mapping failed:', error.message);
-      });
-      
-    fetch('/api/health')
-      .then(response => {
-        console.log('✅ Health endpoint - Status:', response.status);
-        return response.json();
-      })
-      .then(data => {
-        console.log('✅ Health endpoint working!', data);
-      })
-      .catch(error => {
-        console.log('❌ Health endpoint failed:', error.message);
-      });
-  }, []);
-
   useLayoutEffect(() => {
     // Capture new positions
     const newRects = {};
