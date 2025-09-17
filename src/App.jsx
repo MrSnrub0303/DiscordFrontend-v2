@@ -154,7 +154,6 @@ export default function App() {
   const [selections, setSelections] = useState({}); // Final revealed selections
   const [mySelection, setMySelection] = useState(null); // Only my selection (for immediate feedback)
   const [timeLeft, setTimeLeft] = useState(MAX_TIME);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
@@ -886,30 +885,6 @@ useEffect(() => {
               
               // No question found after waiting - try to auto-start
               console.log("No question found after waiting - attempting to auto-start first question");
-              
-              // One final check: make sure no question was set by sync in the meantime
-              if (currentQuestion) {
-                console.log("🚫 Question already exists (likely from sync), skipping auto-start");
-                return;
-              }
-              
-              // CRITICAL: Check server state first before auto-starting
-              console.log("🔍 Checking server state before auto-start...");
-              try {
-                const stateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
-                const stateData = await stateResponse.json();
-                if (stateData.success && stateData.currentQuestion) {
-                  console.log("🚫 Server already has question, syncing instead of auto-starting");
-                  // Trigger sync instead of auto-start
-                  if (window.syncGameStateFunc) {
-                    window.syncGameStateFunc();
-                  }
-                  return;
-                }
-              } catch (error) {
-                console.log("⚠️ Error checking server state, proceeding with auto-start:", error);
-              }
-              
               if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
                 const attemptAutoStart = async (retryCount = 0) => {
                   const response = await fetch(`${API_BASE_URL}/start_question`, {
@@ -1007,22 +982,12 @@ useEffect(() => {
 
     console.log('✅ Starting sync for multiplayer mode');
     const syncGameState = async () => {
-      console.log('🔄 Sync executing for room:', roomId, { 
-        hasCurrentQuestion: !!currentQuestion,
-        currentTimeLeft: timeLeft,
-        isTimerRunning: isTimerRunning
-      });
+      console.log('🔄 Sync executing for room:', roomId);
       try {
         // Use game-state endpoint to sync without generating new questions
         const response = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const data = await response.json();
-        console.log('📡 Sync response:', { 
-          success: data.success, 
-          hasQuestion: !!data.currentQuestion,
-          timeLeft: data.timeLeft,
-          gameState: data.gameState,
-          roomId: roomId
-        });
+        console.log('📡 Sync response:', { success: data.success, hasQuestion: !!data.currentQuestion });
         
         if (data.success && data.currentQuestion) {
           // Check if this is a different question than what we have
@@ -1051,9 +1016,7 @@ useEffect(() => {
               isCard: data.currentQuestion.isCard,
               cardName: data.currentQuestion.cardName,
               cardUrl: data.currentQuestion.cardUrl,
-              questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A',
-              serverTimeLeft: data.timeLeft,
-              serverGameState: data.gameState
+              questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A'
             });
             
             // Batch all state updates together to prevent flickering
@@ -1081,9 +1044,8 @@ useEffect(() => {
           } else {
             // Same question, just sync timer and result state
             const timeDiff = Math.abs(timeLeft - data.timeLeft);
-            const isInitialSync = timeLeft === 30; // Default value indicates initial sync needed
-            if (timeDiff > 2 || isInitialSync) {
-              console.log(`🕒 Syncing timer: ${timeLeft}s → ${data.timeLeft}s (initial: ${isInitialSync})`);
+            if (timeDiff > 2) {
+              console.log(`🕒 Syncing timer: ${timeLeft}s → ${data.timeLeft}s`);
               setTimeLeft(data.timeLeft);
               setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
             }
@@ -1091,11 +1053,6 @@ useEffect(() => {
               console.log(`🎯 Syncing result state: ${showResult} → ${data.showResult}`);
               setShowResult(data.showResult);
               setIsTimerRunning(false);
-            }
-            // Sync game state if different
-            if (data.gameState !== gameState) {
-              console.log(`🎮 Syncing game state: ${gameState} → ${data.gameState}`);
-              setGameState(data.gameState);
             }
           }
         }
@@ -1107,12 +1064,10 @@ useEffect(() => {
     // Expose syncGameState globally for immediate triggering
     window.syncGameStateFunc = syncGameState;
 
-    // Initial sync - run immediately and frequently for first few seconds
+    // Initial sync - run immediately
     syncGameState();
-    setTimeout(() => syncGameState(), 500);  // Extra sync after 500ms
-    setTimeout(() => syncGameState(), 1500); // Extra sync after 1.5s
     
-    // Regular sync every 1000ms for synchronization
+    // Sync every 1000ms for synchronization (reduced from 500ms to prevent flickering)
     const syncInterval = setInterval(syncGameState, 1000);
 
     return () => {
@@ -1122,17 +1077,14 @@ useEffect(() => {
     };
   }, [socket, socket?.connected, socket?.localMode, isInVoiceChannel, roomId]);
 
-  // Timer control useEffect - only run timer when isTimerRunning is true
+  // Remove the manual sync keyboard shortcut
   useEffect(() => {
     if (!currentQuestion) return;
     if (showResult) return;
-    if (!isTimerRunning) return; // Don't start timer unless explicitly running
 
     // Don't reset timeLeft to MAX_TIME here - it should already be set correctly by checkForExistingGame or onNextQuestion
     setServerScoredThisRound(false); // Reset server scoring flag for new question
     clearInterval(timerRef.current);
-
-    console.log('🕐 Timer starting with timeLeft:', timeLeft, 'isTimerRunning:', isTimerRunning);
 
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
@@ -1222,7 +1174,7 @@ useEffect(() => {
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [currentQuestion, showResult, isTimerRunning, socket, roomId, isInVoiceChannel]);
+  }, [currentQuestion, showResult, socket, roomId, isInVoiceChannel]);
 
   // Use current user ID if available, fallback to "player1"
   const myPlayerId = currentUser?.id || "player1";
