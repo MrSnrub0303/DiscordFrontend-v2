@@ -820,10 +820,53 @@ useEffect(() => {
             setIsTimerRunning(true);
           }
         } else {
-          console.log("No active question found - waiting for host to start or manual start");
-          // Don't auto-start to prevent race conditions
-          // Let players manually click "Start Quiz" button instead
-          // This eliminates the risk of multiple players simultaneously requesting first question
+          console.log("No active question found - attempting to auto-start first question");
+          // Auto-start first question in multiplayer mode with retry logic for race conditions
+          if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
+            try {
+              const attemptAutoStart = async (retryCount = 0) => {
+                const response = await fetch(`${API_BASE_URL}/start_question`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    roomId: roomId,
+                    forceNew: false  // Auto-start doesn't need forceNew
+                  })
+                });
+                
+                const result = await response.json();
+                console.log('📡 Auto-start question response:', result);
+                
+                // If question generation is in progress (409), retry after a short delay
+                if (response.status === 409 && retryCount < 2) {
+                  console.log(`⏳ Auto-start: Question generation in progress, retrying in 300ms (attempt ${retryCount + 1}/2)`);
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                  return attemptAutoStart(retryCount + 1);
+                }
+                
+                return { response, result };
+              };
+              
+              const { response, result } = await attemptAutoStart();
+              
+              if (result && result.success && result.question) {
+                const question = result.question;
+                setCurrentQuestion(question);
+                setShowResult(false);
+                setSelections({});
+                setMySelection(null);
+                currentSelectionRef.current = null;
+                setTimeLeft(result.timeLeft || MAX_TIME);
+                answerTimesRef.current = {};
+                awardedDoneRef.current = false;
+                console.log('✅ Auto-started first question:', question.isCard ? 'Card Question' : 'Regular Question');
+              } else {
+                console.log('⚠️ Auto-start failed, will show Start Quiz button');
+              }
+            } catch (error) {
+              console.log('⚠️ Failed to auto-start question:', error);
+            }
+          }
         }
       } catch (error) {
         console.log("Failed to check room state:", error);
