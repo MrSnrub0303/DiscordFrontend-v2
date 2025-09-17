@@ -301,6 +301,7 @@ export default function App() {
   const gameCheckExecutedRef = useRef(false);
   const gameCheckRetriesRef = useRef(0);
   const MAX_SOCKET_WAIT_RETRIES = 6; // Wait up to 3 seconds for socket
+  const questionFetchInProgressRef = useRef(false); // Prevent duplicate question fetches
 
   // small highlight state for when score bumps (used to add a temporary CSS class)
   const [scoreHighlight, setScoreHighlight] = useState({});
@@ -739,106 +740,124 @@ useEffect(() => {
   useEffect(() => {
     // Always get questions from server - no more local generation
     const getQuestionFromServer = async () => {
+      // Prevent duplicate question fetches
+      if (questionFetchInProgressRef.current) {
+        console.log('⚠️ Question fetch already in progress, skipping duplicate');
+        return;
+      }
+      
+      questionFetchInProgressRef.current = true;
       setIsLoading(true);
       
-      // Faster Discord integration check with exponential backoff
-      if (!currentUser || !roomId) {
-        console.log('⏳ Waiting for Discord integration...', {
-          currentUser: !!currentUser,
-          roomId: !!roomId,
-          channelId: !!channelId,
-          attempts: window.discordWaitAttempts || 0
-        });
-        
-        // Track attempts to prevent infinite waiting
-        window.discordWaitAttempts = (window.discordWaitAttempts || 0) + 1;
-        
-        // More aggressive timeout - after 8 attempts (4 seconds), proceed anyway
-        if (window.discordWaitAttempts > 8) {
-          if (channelId) {
-            console.log('⚠️ Proceeding without currentUser after timeout - using channelId as fallback');
-            // Continue with just channelId - we can work without perfect user info
+      try {
+        // Faster Discord integration check with exponential backoff
+        if (!currentUser || !roomId) {
+          console.log('⏳ Waiting for Discord integration...', {
+            currentUser: !!currentUser,
+            roomId: !!roomId,
+            channelId: !!channelId,
+            attempts: window.discordWaitAttempts || 0
+          });
+          
+          // Track attempts to prevent infinite waiting
+          window.discordWaitAttempts = (window.discordWaitAttempts || 0) + 1;
+          
+          // More aggressive timeout - after 8 attempts (4 seconds), proceed anyway
+          if (window.discordWaitAttempts > 8) {
+            if (channelId) {
+              console.log('⚠️ Proceeding without currentUser after timeout - using channelId as fallback');
+              // Continue with just channelId - we can work without perfect user info
+            } else {
+              console.log('❌ No Discord integration after timeout - giving up');
+              setIsLoading(false);
+              questionFetchInProgressRef.current = false;
+              return;
+            }
           } else {
-            console.log('❌ No Discord integration after timeout - giving up');
-            setIsLoading(false);
+            // Exponential backoff: start with 100ms, increase to max 500ms
+            const delay = Math.min(500, 100 * Math.pow(1.5, window.discordWaitAttempts - 1));
+            setTimeout(() => {
+              questionFetchInProgressRef.current = false;
+              getQuestionFromServer();
+            }, delay);
             return;
           }
         } else {
-          // Exponential backoff: start with 100ms, increase to max 500ms
-          const delay = Math.min(500, 100 * Math.pow(1.5, window.discordWaitAttempts - 1));
-          setTimeout(getQuestionFromServer, delay);
-          return;
+          // Reset attempts when successfully connected
+          window.discordWaitAttempts = 0;
         }
-      } else {
-        // Reset attempts when successfully connected
-        window.discordWaitAttempts = 0;
-      }
 
-      try {
-        console.log('🌐 Getting question from server for room:', roomId);
-        
-        // Check if room already has an active question FIRST
-        const gameStateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
-        const gameStateData = await gameStateResponse.json();
-        
-        if (gameStateData.success && gameStateData.currentQuestion) {
-          console.log('✅ Found existing question in room');
-          // Batch all state updates to prevent flickering
-          const question = gameStateData.currentQuestion;
-          const timeLeft = gameStateData.timeLeft;
-          const showResult = gameStateData.showResult || timeLeft <= 0;
+        try {
+          console.log('🌐 Getting question from server for room:', roomId);
           
-          setCurrentQuestion(question);
-          setTimeLeft(timeLeft);
-          setShowResult(showResult);
-          setSelections({});
-          setMySelection(null);
-          currentSelectionRef.current = null;
-          answerTimesRef.current = {};
-          awardedDoneRef.current = false;
-          setIsLoading(false);
-          return;
-        }
-
-        // No active question, start a new one
-        console.log('🆕 Starting new question from server');
-        const startResponse = await fetch(`${API_BASE_URL}/start_question`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            roomId: roomId,
-            forceNew: false
-          })
-        });
-
-        const startData = await startResponse.json();
-        
-        if (startData.success && startData.question) {
-          console.log('✅ Got new question from server:', startData.question.isCard ? 'Card Question' : 'Regular Question');
-          // Batch state updates to prevent visual glitches
-          const question = startData.question;
-          const timeLeft = startData.timeLeft || MAX_TIME;
+          // Check if room already has an active question FIRST
+          const gameStateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
+          const gameStateData = await gameStateResponse.json();
           
-          setCurrentQuestion(question);
-          setTimeLeft(timeLeft);
-          setShowResult(false);
-          setSelections({});
-          setMySelection(null);
-          currentSelectionRef.current = null;
-          answerTimesRef.current = {};
-          awardedDoneRef.current = false;
-        } else {
-          console.log('⚠️ Failed to get question from server:', startData);
+          if (gameStateData.success && gameStateData.currentQuestion) {
+            console.log('✅ Found existing question in room - timer at:', gameStateData.timeLeft);
+            // Batch all state updates to prevent flickering
+            const question = gameStateData.currentQuestion;
+            const timeLeft = gameStateData.timeLeft;
+            const showResult = gameStateData.showResult || timeLeft <= 0;
+            
+            setCurrentQuestion(question);
+            setTimeLeft(timeLeft);
+            setShowResult(showResult);
+            setSelections({});
+            setMySelection(null);
+            currentSelectionRef.current = null;
+            answerTimesRef.current = {};
+            awardedDoneRef.current = false;
+            setIsLoading(false);
+            questionFetchInProgressRef.current = false;
+            return;
+          }
+
+          // No active question, start a new one
+          console.log('🆕 Starting new question from server');
+          const startResponse = await fetch(`${API_BASE_URL}/start_question`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              roomId: roomId,
+              forceNew: false
+            })
+          });
+
+          const startData = await startResponse.json();
+          
+          if (startData.success && startData.question) {
+            console.log('✅ Got new question from server - timer at:', startData.timeLeft || MAX_TIME);
+            // Batch state updates to prevent visual glitches
+            const question = startData.question;
+            const timeLeft = startData.timeLeft || MAX_TIME;
+            
+            setCurrentQuestion(question);
+            setTimeLeft(timeLeft);
+            setShowResult(false);
+            setSelections({});
+            setMySelection(null);
+            currentSelectionRef.current = null;
+            answerTimesRef.current = {};
+            awardedDoneRef.current = false;
+          } else {
+            console.log('⚠️ Failed to get question from server:', startData);
+          }
+          
+        } catch (error) {
+          console.error('❌ Error getting question from server:', error);
         }
-        
-      } catch (error) {
-        console.error('❌ Error getting question from server:', error);
       } finally {
         setIsLoading(false);
+        questionFetchInProgressRef.current = false;
       }
     };
 
-    getQuestionFromServer();
+    // Only fetch if we don't already have a current question (prevent duplicate fetches)
+    if (!currentQuestion && !questionFetchInProgressRef.current) {
+      getQuestionFromServer();
+    }
   }, [isInVoiceChannel, roomId, currentUser]);
 
   console.log('🔍 DEBUG: Top level component state:', {
@@ -875,6 +894,12 @@ useEffect(() => {
 
     console.log('✅ Starting sync for multiplayer mode');
     const syncGameState = async () => {
+      // Don't sync if question fetch is in progress to prevent conflicts
+      if (questionFetchInProgressRef.current) {
+        console.log('⚠️ Skipping sync - question fetch in progress');
+        return;
+      }
+      
       console.log('🔄 Sync executing for room:', roomId);
       try {
         // Use game-state endpoint to sync without generating new questions
@@ -960,11 +985,11 @@ useEffect(() => {
     // Expose syncGameState globally for immediate triggering
     window.syncGameStateFunc = syncGameState;
 
-    // Initial sync - run immediately but with small delay to prevent race conditions
-    setTimeout(syncGameState, 100);
+    // Initial sync - wait longer to avoid conflict with main question fetch
+    setTimeout(syncGameState, 3000);
     
-    // Sync every 2000ms for synchronization (increased from 1000ms to prevent frequent updates)
-    const syncInterval = setInterval(syncGameState, 2000);
+    // Sync every 3000ms for synchronization (increased to reduce conflicts)
+    const syncInterval = setInterval(syncGameState, 3000);
 
     return () => {
       clearInterval(syncInterval);
