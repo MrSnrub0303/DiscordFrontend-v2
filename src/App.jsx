@@ -209,8 +209,8 @@ export default function App() {
 
   // Setup socket connection and handlers
   useEffect(() => {
-    // Connect socket when user joins voice channel 
-    if (isInVoiceChannel) {
+    // Connect socket when Discord user is ready 
+    if (currentUser) {
       socket.connect();
       
       // Set up socket event listeners
@@ -287,7 +287,7 @@ export default function App() {
         socket.disconnect();
       };
     }
-  }, [isInVoiceChannel, currentUser]);
+  }, [currentUser]);
 
   // For animation (FLIP) of leaderboard
   // We store the previous bounding rects so we can compute deltas when order changes
@@ -426,7 +426,7 @@ export default function App() {
 
   // Sync Discord participants with players state
   useEffect(() => {
-    if (participants && participants.length > 0 && isInVoiceChannel) {
+    if (participants && participants.length > 0 && currentUser) {
       console.log('🎮 Syncing Discord participants to players:', participants);
       
       // Convert Discord participants to player objects using Discord's proper format
@@ -480,7 +480,7 @@ export default function App() {
       setScores(initialScores);
       
       console.log('✅ Players synced with Discord instance:', discordPlayers);
-    } else if (!isInVoiceChannel || !participants || participants.length === 0) {
+    } else if (!participants || participants.length === 0) {
       // Fallback to single player mode with current user
       if (currentUser) {
         const currentUserDisplayName = currentUser.global_name || currentUser.username || 'You';
@@ -502,7 +502,7 @@ export default function App() {
         console.log('🏠 Fallback to single player mode:', singlePlayer);
       }
     }
-  }, [participants, currentUser, isInVoiceChannel]);
+  }, [participants, currentUser]);
 
 // Initialize playlist audios on mount AND create AudioContext + decode reveal sound
 useEffect(() => {
@@ -741,11 +741,11 @@ useEffect(() => {
       setIsLoading(true);
       
       // Wait for Discord integration to be ready
-      if (!isInVoiceChannel || !roomId || !currentUser) {
+      if (!currentUser || !roomId) {
         console.log('⏳ Waiting for Discord integration...', {
-          isInVoiceChannel,
+          currentUser: !!currentUser,
           roomId: !!roomId,
-          currentUser: !!currentUser
+          channelId: !!channelId
         });
         // Keep checking every 500ms until ready
         setTimeout(getQuestionFromServer, 500);
@@ -817,7 +817,7 @@ useEffect(() => {
     socket: !!socket,
     socketConnected: socket?.connected,
     socketLocalMode: socket?.localMode,
-    isInVoiceChannel,
+    currentUser: !!currentUser,
     roomId,
     currentQuestion: !!currentQuestion
   });
@@ -829,17 +829,17 @@ useEffect(() => {
       socket: !!socket,
       localMode: socket?.localMode,
       connected: socket?.connected,
-      isInVoiceChannel,
+      currentUser: !!currentUser,
       roomId,
-      shouldSync: !(!socket || socket.localMode || !socket.connected || !isInVoiceChannel || !roomId)
+      shouldSync: !(!socket || socket.localMode || !socket.connected || !currentUser || !roomId)
     });
     
-    if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel || !roomId) {
+    if (!socket || socket.localMode || !socket.connected || !currentUser || !roomId) {
       console.log('❌ Sync disabled - conditions not met. Details:', {
         noSocket: !socket,
         localMode: socket?.localMode,
         notConnected: !socket?.connected,
-        notInVoiceChannel: !isInVoiceChannel,
+        noCurrentUser: !currentUser,
         noRoomId: !roomId
       });
       return;
@@ -940,7 +940,7 @@ useEffect(() => {
       // Clean up global reference
       window.syncGameStateFunc = null;
     };
-  }, [socket, socket?.connected, socket?.localMode, isInVoiceChannel, roomId]);
+  }, [socket, socket?.connected, socket?.localMode, currentUser, roomId]);
 
   // Remove the manual sync keyboard shortcut
   useEffect(() => {

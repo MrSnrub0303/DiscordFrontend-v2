@@ -123,6 +123,8 @@ export function useDiscordActivity() {
     instanceId,
     channelId: context?.sdk?.channelId,
     isHost: true, // For now, assume current user is host
-    isInVoiceChannel: !!voiceChannel && participants.length > 0
+    // Discord Activities can run in any channel, not just voice channels
+    // We're "in voice channel" if we have a current user and channel ID
+    isInVoiceChannel: !!(currentUser && context?.sdk?.channelId)
   };
 }
