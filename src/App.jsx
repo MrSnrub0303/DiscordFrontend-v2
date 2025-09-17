@@ -149,7 +149,7 @@ export default function App() {
     finalRoomId: roomId 
   });
 
-  const [availableQuestions, setAvailableQuestions] = useState([...questions]);
+  const [availableQuestions, setAvailableQuestions] = useState([...questions]); // Not used anymore but keep for compatibility
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [selections, setSelections] = useState({}); // Final revealed selections
   const [mySelection, setMySelection] = useState(null); // Only my selection (for immediate feedback)
@@ -158,6 +158,7 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
   const [playerNames, setPlayerNames] = useState({}); // Player names from server
+  const [isLoading, setIsLoading] = useState(true); // Loading state for server questions
 
   // For card-mode: input state and last attempt feedback
   const [cardInput, setCardInput] = useState("");
@@ -734,275 +735,83 @@ useEffect(() => {
     hoverSound.current.play().catch(() => {});
   };
 
-  const pickAndSetRandomQuestion = () => {
-    // 45% chance to pick a HC card "guess the card" style question
-    const pickCard = Math.random() < 0.45 && cardNames.length > 0;
-
-    if (pickCard) {
-      const idx = Math.floor(Math.random() * cardNames.length);
-      const name = cardNames[idx];
-      // Get the card image path using our helper function
-      const url = getCardImagePath(name);
-
-      setCurrentQuestion({ isCard: true, cardName: name, cardUrl: url });
-      setSelections({});
-      setMySelection(null); // Reset my selection
-      currentSelectionRef.current = null; // Reset ref too
-      setShowResult(false);
-      setTimeLeft(MAX_TIME);
-      setCardInput("");
-      setCardLastWrong(false);
-
-      // reset per-question tracking
-      answerTimesRef.current = {};
-      awardedDoneRef.current = false;
-      return;
-    }
-
-    // Otherwise pick trivia as before
-    if (availableQuestions.length === 0) {
-      setCurrentQuestion(null);
-      return;
-    }
-    const index = Math.floor(Math.random() * availableQuestions.length);
-    const q = availableQuestions[index];
-    setAvailableQuestions((prev) => prev.filter((_, i) => i !== index));
-    setCurrentQuestion(q);
-    setSelections({});
-    setMySelection(null); 
-    currentSelectionRef.current = null; // Reset ref too
-    setShowResult(false);
-    setTimeLeft(MAX_TIME);
-
-   
-    answerTimesRef.current = {};
-    awardedDoneRef.current = false;
-  };
-
   useEffect(() => {
-    // Check for existing game state when app loads or when socket connection state changes
-    const checkForExistingGame = async () => {
-      // Reset game check if socket just connected to multiplayer mode
-      if (gameCheckExecutedRef.current && socket && !socket.localMode && socket.connected && isInVoiceChannel) {
-        console.log('🔄 Socket connected to multiplayer mode - resetting game check to enable auto-start');
-        gameCheckExecutedRef.current = false;
-        gameCheckRetriesRef.current = 0;
-      }
+    // Always get questions from server - no more local generation
+    const getQuestionFromServer = async () => {
+      setIsLoading(true);
       
-      // Prevent double execution (unless we just reset above)
-      if (gameCheckExecutedRef.current) {
-        return;
-      }
-      // Wait a bit more for socket to be ready if it exists but isn't connected yet
-      if (socket && !socket.connected && !socket.localMode && gameCheckRetriesRef.current < MAX_SOCKET_WAIT_RETRIES) {
-        gameCheckRetriesRef.current++;
-        console.log(`Socket exists but not connected yet, waiting... (retry ${gameCheckRetriesRef.current}/${MAX_SOCKET_WAIT_RETRIES})`);
-        setTimeout(checkForExistingGame, 500);
-        return;
-      }
-      
-      if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel) {
-        console.log("❌ Falling back to single player mode - generating LOCAL question", {
-          noSocket: !socket,
-          localMode: socket?.localMode,
-          notConnected: !socket?.connected,
-          notInVoiceChannel: !isInVoiceChannel,
-          retriesUsed: gameCheckRetriesRef.current
+      // Wait for Discord integration to be ready
+      if (!isInVoiceChannel || !roomId || !currentUser) {
+        console.log('⏳ Waiting for Discord integration...', {
+          isInVoiceChannel,
+          roomId: !!roomId,
+          currentUser: !!currentUser
         });
-        pickAndSetRandomQuestion();
-        gameCheckExecutedRef.current = true;
+        // Keep checking every 500ms until ready
+        setTimeout(getQuestionFromServer, 500);
         return;
       }
 
-      console.log("✅ Multiplayer mode confirmed - will use SERVER questions");
-      gameCheckExecutedRef.current = true;
-      
+      // Small delay for better UX 
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       try {
-        // Use game-state endpoint to check without generating new questions
-        const response = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
-        const data = await response.json();
+        console.log('🌐 Getting question from server for room:', roomId);
         
-        console.log("Room state response:", data);
+        // Check if room already has an active question
+        const gameStateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
+        const gameStateData = await gameStateResponse.json();
         
-        if (data.success && data.currentQuestion) {
-          console.log("Found existing question in room, joining game in progress");
-          console.log("Time remaining:", data.timeLeft);
-          
-          setCurrentQuestion(data.currentQuestion);
-          // Always start with showResult: false for clean state, handle expired questions after
+        if (gameStateData.success && gameStateData.currentQuestion) {
+          console.log('✅ Found existing question in room');
+          setCurrentQuestion(gameStateData.currentQuestion);
+          setTimeLeft(gameStateData.timeLeft);
+          setShowResult(gameStateData.showResult || gameStateData.timeLeft <= 0);
+          setSelections({});
+          setMySelection(null);
+          currentSelectionRef.current = null;
+          answerTimesRef.current = {};
+          awardedDoneRef.current = false;
+          setIsLoading(false);
+          return;
+        }
+
+        // No active question, start a new one
+        console.log('🆕 Starting new question from server');
+        const startResponse = await fetch(`${API_BASE_URL}/start_question`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomId: roomId,
+            forceNew: false
+          })
+        });
+
+        const startData = await startResponse.json();
+        
+        if (startData.success && startData.question) {
+          console.log('✅ Got new question from server:', startData.question.isCard ? 'Card Question' : 'Regular Question');
+          setCurrentQuestion(startData.question);
+          setTimeLeft(startData.timeLeft || MAX_TIME);
           setShowResult(false);
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
-          setTimeLeft(data.timeLeft);
           answerTimesRef.current = {};
           awardedDoneRef.current = false;
-          
-          // Start timer if game is still active
-          if (data.gameState === 'playing' && data.timeLeft > 0) {
-            setIsTimerRunning(true);
-          }
-          
-          // If question has already timed out, show results after a brief delay
-          if (data.timeLeft <= 0 && data.showResult) {
-            setTimeout(() => {
-              setShowResult(true);
-              setIsTimerRunning(false);
-            }, 100);
-          }
         } else {
-          console.log("No active question found - checking if another player has started a question");
-          // Use random delay between 2-4 seconds to prevent all players hitting auto-start simultaneously
-          const randomDelay = 2000 + Math.random() * 2000; // 2-4 seconds
-          console.log(`🕐 Will wait ${Math.round(randomDelay)}ms for other players to potentially start a question`);
-          
-          // Wait longer for potential sync from other players, then try auto-start
-          setTimeout(async () => {
-            try {
-              // Check one more time if another player started a question
-              const checkResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
-              const checkData = await checkResponse.json();
-              
-              if (checkData.success && checkData.currentQuestion) {
-                console.log("✅ Found question started by another player, syncing");
-                setCurrentQuestion(checkData.currentQuestion);
-                // Always start with showResult: false for clean state
-                setShowResult(false);
-                setSelections({});
-                setMySelection(null);
-                currentSelectionRef.current = null;
-                setTimeLeft(checkData.timeLeft);
-                answerTimesRef.current = {};
-                awardedDoneRef.current = false;
-                
-                if (checkData.gameState === 'playing' && checkData.timeLeft > 0) {
-                  setIsTimerRunning(true);
-                }
-                
-                // If question has already timed out, show results after a brief delay
-                if (checkData.timeLeft <= 0 && checkData.showResult) {
-                  setTimeout(() => {
-                    setShowResult(true);
-                    setIsTimerRunning(false);
-                  }, 100);
-                }
-                return;
-              }
-              
-              // No question found after waiting - try to auto-start
-              console.log("No question found after waiting - attempting to auto-start first question");
-              if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
-                
-                // If we have a current local question, try to sync it to the server first
-                if (currentQuestion) {
-                  console.log("🔄 Have local question, attempting to sync to server first");
-                  try {
-                    const syncResponse = await fetch(`${API_BASE_URL}/sync_local_question`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        roomId: roomId,
-                        question: currentQuestion,
-                        timeLeft: timeLeft
-                      })
-                    });
-                    
-                    const syncResult = await syncResponse.json();
-                    console.log('📡 Sync local question response:', syncResult);
-                    
-                    if (syncResult.success) {
-                      if (syncResult.hadExisting) {
-                        console.log("🔄 Server had existing question, syncing to server's question");
-                        // Server already had a question, sync to it
-                        setCurrentQuestion(syncResult.question);
-                        setTimeLeft(syncResult.timeLeft);
-                        setShowResult(false);
-                        setSelections({});
-                        setMySelection(null);
-                        currentSelectionRef.current = null;
-                        answerTimesRef.current = {};
-                        awardedDoneRef.current = false;
-                        
-                        if (syncResult.timeLeft > 0) {
-                          setIsTimerRunning(true);
-                        }
-                      } else {
-                        console.log("✅ Successfully synced local question to server - other players will now see same question");
-                        // Our local question is now the server question - no need to change anything
-                        // Just make sure timer is running if we have time left
-                        if (timeLeft > 0) {
-                          setIsTimerRunning(true);
-                        }
-                      }
-                      return; // Skip auto-start since we synced successfully
-                    }
-                  } catch (error) {
-                    console.log('⚠️ Failed to sync local question, falling back to auto-start:', error);
-                  }
-                }
-                
-                // If no local question or sync failed, proceed with auto-start
-                const attemptAutoStart = async (retryCount = 0) => {
-                  const response = await fetch(`${API_BASE_URL}/start_question`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      roomId: roomId,
-                      forceNew: false  // Auto-start doesn't need forceNew
-                    })
-                  });
-                  
-                  const result = await response.json();
-                  console.log('📡 Auto-start question response:', result);
-                  
-                  // If question generation is in progress (409), retry after a short delay
-                  if (response.status === 409 && retryCount < 2) {
-                    console.log(`⏳ Auto-start: Question generation in progress, retrying in 300ms (attempt ${retryCount + 1}/2)`);
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    return attemptAutoStart(retryCount + 1);
-                  }
-                  
-                  // If rate limited (429), wait longer and retry
-                  if (response.status === 429 && retryCount < 1) {
-                    console.log(`🚫 Auto-start: Rate limited, retrying in 1000ms (attempt ${retryCount + 1}/1)`);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    return attemptAutoStart(retryCount + 1);
-                  }
-                  
-                  return { response, result };
-                };
-                
-                const { response, result } = await attemptAutoStart();
-                
-                if (result && result.success && result.question) {
-                  const question = result.question;
-                  setCurrentQuestion(question);
-                  setShowResult(false);
-                  setSelections({});
-                  setMySelection(null);
-                  currentSelectionRef.current = null;
-                  setTimeLeft(result.timeLeft || MAX_TIME);
-                  answerTimesRef.current = {};
-                  awardedDoneRef.current = false;
-                  console.log('✅ Auto-started first question:', question.isCard ? 'Card Question' : 'Regular Question');
-                } else {
-                  console.log('⚠️ Auto-start failed, will show Start Quiz button');
-                }
-              }
-            } catch (error) {
-              console.log('⚠️ Failed to check/auto-start question:', error);
-            }
-          }, randomDelay); // Random delay to stagger auto-start attempts
+          console.log('⚠️ Failed to get question from server:', startData);
         }
+        
       } catch (error) {
-        console.log("Failed to check room state:", error);
+        console.error('❌ Error getting question from server:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
-    
-    // Add a small delay to ensure socket is fully connected
-    const timeoutId = setTimeout(checkForExistingGame, 500);
-    return () => clearTimeout(timeoutId);
-  }, [socket, socket?.connected, socket?.localMode, isInVoiceChannel, roomId]);
+
+    getQuestionFromServer();
+  }, [isInVoiceChannel, roomId, currentUser]);
 
   console.log('🔍 DEBUG: Top level component state:', {
     socket: !!socket,
@@ -1426,94 +1235,61 @@ useEffect(() => {
   }, [showResult]);
 
   const onNextQuestion = async () => {
-    // In local mode or when not connected, use local question generation
-    if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel) {
-      console.log('🏠 Starting next question in local mode');
-      // Start next question locally
-      pickAndSetRandomQuestion();
-      setShowResult(false);
-      setSelections({});
-      setMySelection(null);
-      currentSelectionRef.current = null;
-      // Reset per-question tracking
-      answerTimesRef.current = {};
-      awardedDoneRef.current = false;
-    } else {
-      console.log('🌐 Starting next question in multiplayer mode');
-      // In multiplayer mode, use HTTP endpoint for synchronized questions
-      try {
-        const attemptStartQuestion = async (retryCount = 0) => {
-          const response = await fetch(`${API_BASE_URL}/start_question`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              roomId: roomId,
-              forceNew: true  // Explicitly request new question (Next button clicked)
-            })
-          });
-          
-          const result = await response.json();
-          console.log('📡 Start question response:', result);
-          console.log('📄 Next button received question details:', {
-            success: result.success,
-            isCard: result.question?.isCard,
-            cardName: result.question?.cardName,
-            cardUrl: result.question?.cardUrl,
-            questionText: result.question?.question ? result.question.question.substring(0, 50) + '...' : 'N/A'
-          });
-          
-          // If question generation is in progress (409), retry after a short delay
-          if (response.status === 409 && retryCount < 3) {
-            console.log(`⏳ Question generation in progress, retrying in 200ms (attempt ${retryCount + 1}/3)`);
-            await new Promise(resolve => setTimeout(resolve, 200));
-            return attemptStartQuestion(retryCount + 1);
-          }
-          
-          // If rate limited (429), wait longer and retry
-          if (response.status === 429 && retryCount < 2) {
-            console.log(`🚫 Rate limited, retrying in 1000ms (attempt ${retryCount + 1}/2)`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return attemptStartQuestion(retryCount + 1);
-          }
-          
-          return { response, result };
-        };
+    console.log('� Starting next question from server');
+    setIsLoading(true);
+    
+    try {
+      const attemptStartQuestion = async (retryCount = 0) => {
+        const response = await fetch(`${API_BASE_URL}/start_question`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roomId: roomId,
+            forceNew: true  // Next button always generates new question
+          })
+        });
         
-        const { response, result } = await attemptStartQuestion();
+        const result = await response.json();
+        console.log('📡 Next question response:', result);
         
-        // Handle server response with both regular and card questions
-        if (result && result.success && result.question) {
-          const question = result.question;
-          setCurrentQuestion(question);
-          setShowResult(false);
-          setSelections({});
-          setMySelection(null);
-          currentSelectionRef.current = null;
-          setTimeLeft(result.timeLeft || MAX_TIME);
-          // Reset per-question tracking
-          answerTimesRef.current = {};
-          awardedDoneRef.current = false;
-          console.log('✅ Next question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
-          
-          // Trigger immediate sync for other players by calling syncGameState
-          // Use multiple sync attempts to ensure other players get the update quickly
-          if (window.syncGameStateFunc) {
-            setTimeout(() => window.syncGameStateFunc(), 50);   // First sync at 50ms
-            setTimeout(() => window.syncGameStateFunc(), 200);  // Second sync at 200ms
-            setTimeout(() => window.syncGameStateFunc(), 500);  // Third sync at 500ms
-          }
-        } else {
-          console.log('⚠️ No question in server response - waiting for server');
-          // In multiplayer mode, do NOT fall back to local generation
-          // This ensures all players get questions from the same source
-          console.log('🌐 Multiplayer mode: Questions must come from server only');
+        // If question generation is in progress (409), retry after a short delay
+        if (response.status === 409 && retryCount < 2) {
+          console.log(`⏳ Next: Question generation in progress, retrying in 300ms (attempt ${retryCount + 1}/2)`);
+          await new Promise(resolve => setTimeout(resolve, 300));
+          return attemptStartQuestion(retryCount + 1);
         }
-      } catch (error) {
-        console.log('⚠️ Failed to get question from server:', error);
-        // In multiplayer mode, do NOT fall back to local generation
-        // This ensures all players get questions from the same source
-        console.log('🌐 Multiplayer mode: Will retry server request instead of local fallback');
+        
+        // If rate limited (429), wait longer and retry
+        if (response.status === 429 && retryCount < 1) {
+          console.log(`🚫 Next: Rate limited, retrying in 1000ms (attempt ${retryCount + 1}/1)`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return attemptStartQuestion(retryCount + 1);
+        }
+        
+        return { response, result };
+      };
+      
+      const { response, result } = await attemptStartQuestion();
+      
+      if (result && result.success && result.question) {
+        const question = result.question;
+        setCurrentQuestion(question);
+        setShowResult(false);
+        setSelections({});
+        setMySelection(null);
+        currentSelectionRef.current = null;
+        setTimeLeft(result.timeLeft || MAX_TIME);
+        answerTimesRef.current = {};
+        awardedDoneRef.current = false;
+        console.log('✅ Got next question from server:', question.isCard ? 'Card Question' : 'Regular Question');
+      } else {
+        console.log('⚠️ Failed to get next question from server');
       }
+      
+    } catch (error) {
+      console.error('❌ Error getting next question:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
   // Build a sorted leaderboard from scores
@@ -1670,6 +1446,104 @@ useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scores]);
 
+  // Loading screen with themed design
+  if (isLoading) {
+    return (
+      <div
+        className="app-container"
+        style={{
+          backgroundImage: `url(${marbleBg})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          height: "100vh",
+          width: "100vw",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: 20,
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          className="wood-panel"
+          style={{
+            backgroundImage: `url(${woodPanelBg})`,
+            backgroundSize: "contain",
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "center",
+            padding: 60,
+            boxSizing: "border-box",
+            width: 600,
+            maxWidth: "95vw",
+            minHeight: 400,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+            color: "white",
+            textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+          }}
+        >
+          <h1 style={{ 
+            fontSize: 48, 
+            fontWeight: "bold", 
+            marginBottom: 30,
+            textAlign: "center",
+            color: "#FFE4B5"
+          }}>
+            Age of Empires III Quiz
+          </h1>
+          
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 20
+          }}>
+            {/* Animated loading spinner */}
+            <div style={{
+              width: 60,
+              height: 60,
+              border: "4px solid rgba(255, 228, 181, 0.3)",
+              borderTop: "4px solid #FFE4B5",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite"
+            }}></div>
+            
+            <p style={{
+              fontSize: 20,
+              textAlign: "center",
+              color: "#FFE4B5",
+              margin: 0
+            }}>
+              Getting questions from server...
+            </p>
+            
+            <p style={{
+              fontSize: 14,
+              textAlign: "center",
+              color: "rgba(255, 228, 181, 0.7)",
+              margin: 0,
+              fontStyle: "italic"
+            }}>
+              Preparing your Age of Empires III challenge
+            </p>
+          </div>
+        </div>
+        
+        {/* Add CSS animation for spinner */}
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   // Completed screen
   if (!currentQuestion) {
     return (
@@ -1748,19 +1622,49 @@ useEffect(() => {
           <button
             className="restart-button"
             onMouseEnter={playHoverSound}
-            onClick={() => {
+            onClick={async () => {
               playClickSound();
-              setAvailableQuestions([...questions]);
+              
+              // Reset scores for all players
               setScores(
                 players.reduce((acc, p) => {
                   acc[p.id] = 0;
                   return acc;
                 }, {})
               );
-              // reset per-question tracking
+              
+              // Reset per-question tracking
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
-              pickAndSetRandomQuestion();
+              
+              // Get new question from server
+              setIsLoading(true);
+              try {
+                const response = await fetch(`${API_BASE_URL}/start_question`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    roomId: roomId,
+                    forceNew: true
+                  })
+                });
+
+                const result = await response.json();
+                
+                if (result.success && result.question) {
+                  setCurrentQuestion(result.question);
+                  setTimeLeft(result.timeLeft || MAX_TIME);
+                  setShowResult(false);
+                  setSelections({});
+                  setMySelection(null);
+                  currentSelectionRef.current = null;
+                  console.log('✅ Restarted with new question from server');
+                }
+              } catch (error) {
+                console.error('❌ Error restarting quiz:', error);
+              } finally {
+                setIsLoading(false);
+              }
             }}
           >
             Restart Quiz
