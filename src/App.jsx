@@ -912,9 +912,9 @@ useEffect(() => {
           });
           
           const isDifferentQuestion = !currentQuestion || 
-            (currentQuestion.question !== data.currentQuestion.question && !data.currentQuestion.isCard) ||
-            (currentQuestion.cardName !== data.currentQuestion.cardName && data.currentQuestion.isCard) ||
-            (currentQuestion.isCard !== data.currentQuestion.isCard);
+            (currentQuestion.isCard !== data.currentQuestion.isCard) ||
+            (!currentQuestion.isCard && !data.currentQuestion.isCard && currentQuestion.question !== data.currentQuestion.question) ||
+            (currentQuestion.isCard && data.currentQuestion.isCard && currentQuestion.cardName !== data.currentQuestion.cardName);
           
           console.log('🔍 Is different question?', isDifferentQuestion);
           
@@ -937,6 +937,11 @@ useEffect(() => {
             
             // Update timer state
             setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
+            
+            // Trigger additional syncs to ensure all players get the update
+            setTimeout(() => {
+              if (window.syncGameStateFunc) window.syncGameStateFunc();
+            }, 100);
           } else {
             // Same question, just sync timer and result state
             const timeDiff = Math.abs(timeLeft - data.timeLeft);
