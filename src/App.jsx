@@ -1313,14 +1313,16 @@ useEffect(() => {
             setTimeout(() => window.syncGameStateFunc(), 100);
           }
         } else {
-          console.log('⚠️ No question in server response, falling back to local');
-          // Fallback to local if server doesn't respond properly
-          pickAndSetRandomQuestion();
+          console.log('⚠️ No question in server response - waiting for server');
+          // In multiplayer mode, do NOT fall back to local generation
+          // This ensures all players get questions from the same source
+          console.log('🌐 Multiplayer mode: Questions must come from server only');
         }
       } catch (error) {
-        console.log('⚠️ Failed to get question from server, falling back to local:', error);
-        // Fallback to local mode
-        pickAndSetRandomQuestion();
+        console.log('⚠️ Failed to get question from server:', error);
+        // In multiplayer mode, do NOT fall back to local generation
+        // This ensures all players get questions from the same source
+        console.log('🌐 Multiplayer mode: Will retry server request instead of local fallback');
       }
     }
   };
@@ -1968,12 +1970,12 @@ useEffect(() => {
                         awardedDoneRef.current = false;
                         console.log('✅ First question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
                       } else {
-                        console.log('⚠️ No question in server response, falling back to local');
-                        pickAndSetRandomQuestion();
+                        console.log('⚠️ No question in server response - staying in waiting state');
+                        // In multiplayer mode, do NOT fall back to local generation
                       }
                     } catch (error) {
-                      console.log('⚠️ Failed to get question from server, falling back to local:', error);
-                      pickAndSetRandomQuestion();
+                      console.log('⚠️ Failed to get question from server:', error);
+                      // In multiplayer mode, do NOT fall back to local generation
                     }
                   }}
                 >
