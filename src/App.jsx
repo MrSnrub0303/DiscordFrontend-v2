@@ -740,16 +740,36 @@ useEffect(() => {
     const getQuestionFromServer = async () => {
       setIsLoading(true);
       
-      // Wait for Discord integration to be ready
+      // Wait for Discord integration to be ready with timeout
       if (!currentUser || !roomId) {
         console.log('⏳ Waiting for Discord integration...', {
           currentUser: !!currentUser,
           roomId: !!roomId,
-          channelId: !!channelId
+          channelId: !!channelId,
+          attempts: window.discordWaitAttempts || 0
         });
-        // Keep checking every 500ms until ready
-        setTimeout(getQuestionFromServer, 500);
-        return;
+        
+        // Track attempts to prevent infinite waiting
+        window.discordWaitAttempts = (window.discordWaitAttempts || 0) + 1;
+        
+        // After 20 attempts (10 seconds), proceed anyway if we have basic info
+        if (window.discordWaitAttempts > 20) {
+          if (channelId) {
+            console.log('⚠️ Proceeding without currentUser after timeout - using channelId as fallback');
+            // Continue with just channelId - we can work without perfect user info
+          } else {
+            console.log('❌ No Discord integration after timeout - giving up');
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          // Keep checking every 500ms until ready
+          setTimeout(getQuestionFromServer, 500);
+          return;
+        }
+      } else {
+        // Reset attempts when successfully connected
+        window.discordWaitAttempts = 0;
       }
 
       // Small delay for better UX 

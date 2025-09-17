@@ -19,6 +19,13 @@ export function useDiscordActivity() {
         console.log('🎮 Discord Instance ID:', discordInstanceId);
 
         // Get current user from authenticated context
+        console.log('🔍 Checking authentication...', {
+          hasSDK: !!context.sdk,
+          hasAuthenticated: !!context.sdk?.authenticated,
+          authenticated: context.sdk?.authenticated,
+          hasToken: !!context.token
+        });
+        
         if (context.sdk.authenticated) {
           const user = {
             id: context.sdk.authenticated.user.id,
@@ -29,7 +36,9 @@ export function useDiscordActivity() {
             accessToken: context.token
           };
           setCurrentUser(user);
-          console.log('👤 Current user:', user);
+          console.log('👤 Current user set:', user);
+        } else {
+          console.log('❌ No authenticated user found in context.sdk.authenticated');
         }
 
         // Get instance participants using Discord's built-in API
@@ -39,16 +48,37 @@ export function useDiscordActivity() {
           
           if (instanceParticipants && instanceParticipants.participants) {
             setParticipants(instanceParticipants.participants);
+            
+            // If we don't have currentUser yet, try to get it from participants
+            if (!context.sdk.authenticated && instanceParticipants.participants.length > 0) {
+              console.log('🔧 Attempting to set currentUser from participants...');
+              // In Discord Activities, often the first participant is the current user
+              const firstParticipant = instanceParticipants.participants[0];
+              if (firstParticipant && firstParticipant.user) {
+                const fallbackUser = {
+                  id: firstParticipant.user.id,
+                  username: firstParticipant.user.username,
+                  discriminator: firstParticipant.user.discriminator,
+                  avatar: firstParticipant.user.avatar,
+                  global_name: firstParticipant.user.global_name,
+                  accessToken: context.token
+                };
+                setCurrentUser(fallbackUser);
+                console.log('👤 Current user set from participants:', fallbackUser);
+              }
+            }
           } else {
             // Fallback to current user only
-            setParticipants([{ 
-              user: {
-                id: context.sdk.authenticated.user.id,
-                username: context.sdk.authenticated.user.username,
-                avatar: context.sdk.authenticated.user.avatar,
-                global_name: context.sdk.authenticated.user.global_name
-              }
-            }]);
+            if (context.sdk.authenticated) {
+              setParticipants([{ 
+                user: {
+                  id: context.sdk.authenticated.user.id,
+                  username: context.sdk.authenticated.user.username,
+                  avatar: context.sdk.authenticated.user.avatar,
+                  global_name: context.sdk.authenticated.user.global_name
+                }
+              }]);
+            }
           }
         } catch (err) {
           console.log('Could not get instance participants, using current user only:', err);
@@ -62,6 +92,18 @@ export function useDiscordActivity() {
                 global_name: context.sdk.authenticated.user.global_name
               }
             }]);
+          }
+        }
+
+        // Additional fallback: try to get user from Discord commands
+        if (!context.sdk.authenticated) {
+          try {
+            console.log('🔧 Trying alternative method to get current user...');
+            // Sometimes the user info is available through different means
+            const channel = await context.sdk.commands.getChannel({ channel_id: context.sdk.channelId });
+            console.log('📡 Channel info for user detection:', channel);
+          } catch (err) {
+            console.log('Could not get channel info for user detection:', err);
           }
         }
 
