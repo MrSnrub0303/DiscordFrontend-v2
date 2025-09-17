@@ -122,10 +122,32 @@ export default function App() {
   } = useDiscordActivity();
 
   // Use Discord channel ID as room ID so all players in same voice channel join same game
-  // Fall back to instance ID, then to fallback room
-  const roomId = channelId || instanceId || "fallback-quiz-room";
+  // Prioritize channelId, but extract channelId from instanceId as fallback
+  let roomId = channelId;
+  
+  if (!roomId && instanceId) {
+    // instanceId format: i-{sessionId}-gc-{guildId}-{channelId}
+    // Extract channelId from instanceId as fallback
+    const instanceParts = instanceId.split('-');
+    if (instanceParts.length >= 4) {
+      roomId = instanceParts[instanceParts.length - 1]; // Last part is channelId
+    } else {
+      roomId = instanceId; // Use full instanceId if parsing fails
+    }
+  }
+  
+  if (!roomId) {
+    roomId = "fallback-quiz-room";
+  }
   
   console.log('🏠 Using room ID:', roomId, '(channelId:', channelId, 'instanceId:', instanceId, ')');
+  console.log('🔍 Discord Activity Values:', { 
+    channelId, 
+    instanceId, 
+    isInVoiceChannel, 
+    participantCount: participants?.length || 0,
+    finalRoomId: roomId 
+  });
 
   const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
