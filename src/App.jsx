@@ -844,6 +844,13 @@ useEffect(() => {
                   return attemptAutoStart(retryCount + 1);
                 }
                 
+                // If rate limited (429), wait longer and retry
+                if (response.status === 429 && retryCount < 1) {
+                  console.log(`🚫 Auto-start: Rate limited, retrying in 1000ms (attempt ${retryCount + 1}/1)`);
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  return attemptAutoStart(retryCount + 1);
+                }
+                
                 return { response, result };
               };
               
@@ -1272,6 +1279,13 @@ useEffect(() => {
           if (response.status === 409 && retryCount < 3) {
             console.log(`⏳ Question generation in progress, retrying in 200ms (attempt ${retryCount + 1}/3)`);
             await new Promise(resolve => setTimeout(resolve, 200));
+            return attemptStartQuestion(retryCount + 1);
+          }
+          
+          // If rate limited (429), wait longer and retry
+          if (response.status === 429 && retryCount < 2) {
+            console.log(`🚫 Rate limited, retrying in 1000ms (attempt ${retryCount + 1}/2)`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
             return attemptStartQuestion(retryCount + 1);
           }
           
