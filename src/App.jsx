@@ -738,127 +738,107 @@ useEffect(() => {
   };
 
   useEffect(() => {
-    // Always get questions from server - no more local generation
-    const getQuestionFromServer = async () => {
-      // Prevent duplicate question fetches
-      if (questionFetchInProgressRef.current) {
-        console.log('⚠️ Question fetch already in progress, skipping duplicate');
-        return;
-      }
+    // Delay initial question fetch to ensure Discord integration stabilizes
+    const initializeQuestion = async () => {
+      // Wait a bit for Discord currentUser to stabilize
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      questionFetchInProgressRef.current = true;
-      setIsLoading(true);
-      
-      try {
-        // Faster Discord integration check with exponential backoff
-        if (!currentUser || !roomId) {
-          console.log('⏳ Waiting for Discord integration...', {
-            currentUser: !!currentUser,
-            roomId: !!roomId,
-            channelId: !!channelId,
-            attempts: window.discordWaitAttempts || 0
-          });
-          
-          // Track attempts to prevent infinite waiting
-          window.discordWaitAttempts = (window.discordWaitAttempts || 0) + 1;
-          
-          // More aggressive timeout - after 8 attempts (4 seconds), proceed anyway
-          if (window.discordWaitAttempts > 8) {
-            if (channelId) {
-              console.log('⚠️ Proceeding without currentUser after timeout - using channelId as fallback');
-              // Continue with just channelId - we can work without perfect user info
-            } else {
-              console.log('❌ No Discord integration after timeout - giving up');
-              setIsLoading(false);
-              questionFetchInProgressRef.current = false;
-              return;
-            }
-          } else {
-            // Exponential backoff: start with 100ms, increase to max 500ms
-            const delay = Math.min(500, 100 * Math.pow(1.5, window.discordWaitAttempts - 1));
-            setTimeout(() => {
-              questionFetchInProgressRef.current = false;
-              getQuestionFromServer();
-            }, delay);
-            return;
-          }
-        } else {
-          // Reset attempts when successfully connected
-          window.discordWaitAttempts = 0;
+      // Always get questions from server - no more local generation
+      const getQuestionFromServer = async () => {
+        // Prevent duplicate question fetches
+        if (questionFetchInProgressRef.current) {
+          console.log('⚠️ Question fetch already in progress, skipping duplicate');
+          return;
         }
-
+        
+        questionFetchInProgressRef.current = true;
+        setIsLoading(true);
+        
         try {
-          console.log('🌐 Getting question from server for room:', roomId);
-          
-          // Check if room already has an active question FIRST
-          const gameStateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
-          const gameStateData = await gameStateResponse.json();
-          
-          if (gameStateData.success && gameStateData.currentQuestion) {
-            console.log('✅ Found existing question in room - timer at:', gameStateData.timeLeft);
-            // Batch all state updates to prevent flickering
-            const question = gameStateData.currentQuestion;
-            const timeLeft = gameStateData.timeLeft;
-            const showResult = gameStateData.showResult || timeLeft <= 0;
-            
-            setCurrentQuestion(question);
-            setTimeLeft(timeLeft);
-            setShowResult(showResult);
-            setSelections({});
-            setMySelection(null);
-            currentSelectionRef.current = null;
-            answerTimesRef.current = {};
-            awardedDoneRef.current = false;
+          // Simplified check - just ensure we have basic requirements
+          if (!roomId) {
+            console.log('❌ No room ID available, cannot proceed');
             setIsLoading(false);
             questionFetchInProgressRef.current = false;
             return;
           }
 
-          // No active question, start a new one
-          console.log('🆕 Starting new question from server');
-          const startResponse = await fetch(`${API_BASE_URL}/start_question`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              roomId: roomId,
-              forceNew: false
-            })
-          });
-
-          const startData = await startResponse.json();
+          // Skip the Discord user wait - we'll proceed with what we have
+          console.log('🌐 Getting question from server for room:', roomId);
           
-          if (startData.success && startData.question) {
-            console.log('✅ Got new question from server - timer at:', startData.timeLeft || MAX_TIME);
-            // Batch state updates to prevent visual glitches
-            const question = startData.question;
-            const timeLeft = startData.timeLeft || MAX_TIME;
+          try {
+            // Check if room already has an active question FIRST
+            const gameStateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
+            const gameStateData = await gameStateResponse.json();
             
-            setCurrentQuestion(question);
-            setTimeLeft(timeLeft);
-            setShowResult(false);
-            setSelections({});
-            setMySelection(null);
-            currentSelectionRef.current = null;
-            answerTimesRef.current = {};
-            awardedDoneRef.current = false;
-          } else {
-            console.log('⚠️ Failed to get question from server:', startData);
+            if (gameStateData.success && gameStateData.currentQuestion) {
+              console.log('✅ Found existing question in room - timer at:', gameStateData.timeLeft);
+              // Batch all state updates to prevent flickering
+              const question = gameStateData.currentQuestion;
+              const timeLeft = gameStateData.timeLeft;
+              const showResult = gameStateData.showResult || timeLeft <= 0;
+              
+              setCurrentQuestion(question);
+              setTimeLeft(timeLeft);
+              setShowResult(showResult);
+              setSelections({});
+              setMySelection(null);
+              currentSelectionRef.current = null;
+              answerTimesRef.current = {};
+              awardedDoneRef.current = false;
+              setIsLoading(false);
+              questionFetchInProgressRef.current = false;
+              return;
+            }
+
+            // No active question, start a new one
+            console.log('🆕 Starting new question from server');
+            const startResponse = await fetch(`${API_BASE_URL}/start_question`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                roomId: roomId,
+                forceNew: false
+              })
+            });
+
+            const startData = await startResponse.json();
+            
+            if (startData.success && startData.question) {
+              console.log('✅ Got new question from server - timer at:', startData.timeLeft || MAX_TIME);
+              // Batch state updates to prevent visual glitches
+              const question = startData.question;
+              const timeLeft = startData.timeLeft || MAX_TIME;
+              
+              setCurrentQuestion(question);
+              setTimeLeft(timeLeft);
+              setShowResult(false);
+              setSelections({});
+              setMySelection(null);
+              currentSelectionRef.current = null;
+              answerTimesRef.current = {};
+              awardedDoneRef.current = false;
+            } else {
+              console.log('⚠️ Failed to get question from server:', startData);
+            }
+            
+          } catch (error) {
+            console.error('❌ Error getting question from server:', error);
           }
-          
-        } catch (error) {
-          console.error('❌ Error getting question from server:', error);
+        } finally {
+          setIsLoading(false);
+          questionFetchInProgressRef.current = false;
         }
-      } finally {
-        setIsLoading(false);
-        questionFetchInProgressRef.current = false;
+      };
+
+      // Only fetch if we don't already have a current question (prevent duplicate fetches)
+      if (!currentQuestion && !questionFetchInProgressRef.current) {
+        getQuestionFromServer();
       }
     };
 
-    // Only fetch if we don't already have a current question (prevent duplicate fetches)
-    if (!currentQuestion && !questionFetchInProgressRef.current) {
-      getQuestionFromServer();
-    }
-  }, [roomId, currentUser]); // Removed isInVoiceChannel to prevent mid-session re-runs
+    initializeQuestion();
+  }, [roomId]); // Only depend on roomId, let Discord integration settle naturally
 
   console.log('🔍 DEBUG: Top level component state:', {
     socket: !!socket,
