@@ -206,9 +206,6 @@ export default function App() {
   // shape: { playerId: number (timeLeftAtClick), ... }
   const answerTimesRef = useRef({});
 
-  // Track transition timing to prevent rapid flickering
-  const transitionTimeoutRef = useRef(null);
-
   // NEW — Audio refs
   const clickSound = useRef(new Audio(clickSoundFile));
   const hoverSound = useRef(new Audio(hoverSoundFile));
@@ -946,14 +943,19 @@ useEffect(() => {
               questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A'
             });
             
-            // Show transition loading for smoother experience (but only if not already transitioning)
-            if (!isTransitioning) {
+            // Only show transition loading if we already have a question (not during initial load)
+            // and we're not already in the main loading state
+            const shouldShowTransition = currentQuestion && !isLoading;
+            console.log('🔄 Transition check:', { 
+              hasCurrentQuestion: !!currentQuestion, 
+              isLoading, 
+              shouldShowTransition 
+            });
+            if (shouldShowTransition) {
+              console.log('✨ Showing transition loader for question change');
               setIsTransitioning(true);
-              
-              // Clear any existing transition timeout
-              if (transitionTimeoutRef.current) {
-                clearTimeout(transitionTimeoutRef.current);
-              }
+            } else {
+              console.log('⏭️ Skipping transition loader (initial load or already loading)');
             }
             
             // Batch all state updates together to prevent flickering - use setTimeout to avoid race conditions
@@ -968,12 +970,13 @@ useEffect(() => {
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
               
-              // Hide transition loading after question is loaded with longer delay for smoother experience
-              transitionTimeoutRef.current = setTimeout(() => {
-                setIsTransitioning(false);
-                transitionTimeoutRef.current = null;
-              }, 800); // Longer delay to avoid flickering
-            }, 100); // Slight delay to ensure loader shows
+              // Hide transition loading after question is loaded (only if it was shown)
+              if (shouldShowTransition) {
+                setTimeout(() => {
+                  setIsTransitioning(false);
+                }, 300); // Small delay to show the loader briefly
+              }
+            }, 0);
             
             // Update timer state - if time is already up, show result after a brief delay
             const shouldShowTimer = data.gameState === 'playing' && data.timeLeft > 0;
@@ -1370,12 +1373,7 @@ useEffect(() => {
         setTimeLeft(result.timeLeft || MAX_TIME);
         answerTimesRef.current = {};
         awardedDoneRef.current = false;
-        
-        // Hide transition loader with delay for smoother experience
-        setTimeout(() => {
-          setIsTransitioning(false);
-        }, 500); // Longer delay to match sync behavior
-        
+        setIsTransitioning(false); // Hide transition loader once question is loaded
         console.log('✅ Got next question from server:', question.isCard ? 'Card Question' : 'Regular Question');
         
         // Trigger immediate sync for other users to pick up the new question
@@ -1591,7 +1589,7 @@ useEffect(() => {
               color: "#FFE4B5",
               margin: 0
             }}>
-              {isTransitioning ? "Loading next question..." : "Getting questions from server..."}
+              {/* {isTransitioning ? "Loading next question..." : "Getting questions from server..."} */}
             </p>
             
             <p style={{
