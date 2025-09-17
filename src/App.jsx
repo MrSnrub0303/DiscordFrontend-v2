@@ -163,6 +163,7 @@ export default function App() {
   const [playerNames, setPlayerNames] = useState({}); // Player names from server
   const [isLoading, setIsLoading] = useState(true); // Loading state for server questions
   const [isTimerRunning, setIsTimerRunning] = useState(false); // Track timer state to prevent sync conflicts
+  const [isTransitioning, setIsTransitioning] = useState(false); // Loading state for question transitions
 
   // For card-mode: input state and last attempt feedback
   const [cardInput, setCardInput] = useState("");
@@ -180,6 +181,18 @@ export default function App() {
 
   // Socket state trigger for useEffect re-runs when socket properties change
   const [socketStateVersion, setSocketStateVersion] = useState(0);
+
+  // Safety timeout for transition state to prevent getting stuck
+  useEffect(() => {
+    if (isTransitioning) {
+      const timeout = setTimeout(() => {
+        console.log('⚠️ Transition timeout - resetting isTransitioning state');
+        setIsTransitioning(false);
+      }, 5000); // 5 second safety timeout
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [isTransitioning]);
 
   const timerRef = useRef(null);
 
@@ -930,6 +943,9 @@ useEffect(() => {
               questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A'
             });
             
+            // Show transition loading for smoother experience
+            setIsTransitioning(true);
+            
             // Batch all state updates together to prevent flickering - use setTimeout to avoid race conditions
             setTimeout(() => {
               setCurrentQuestion(data.currentQuestion);
@@ -941,6 +957,11 @@ useEffect(() => {
               currentSelectionRef.current = null;
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
+              
+              // Hide transition loading after question is loaded
+              setTimeout(() => {
+                setIsTransitioning(false);
+              }, 300); // Small delay to show the loader briefly
             }, 0);
             
             // Update timer state - if time is already up, show result after a brief delay
@@ -1295,6 +1316,7 @@ useEffect(() => {
     setIsLoading(true);
     
     try {
+      setIsTransitioning(true); // Show transition for the person who clicked
       const attemptStartQuestion = async (retryCount = 0) => {
         const response = await fetch(`${API_BASE_URL}/start_question`, {
           method: 'POST',
@@ -1337,6 +1359,7 @@ useEffect(() => {
         setTimeLeft(result.timeLeft || MAX_TIME);
         answerTimesRef.current = {};
         awardedDoneRef.current = false;
+        setIsTransitioning(false); // Hide transition loader once question is loaded
         console.log('✅ Got next question from server:', question.isCard ? 'Card Question' : 'Regular Question');
         
         // Trigger immediate sync for other users to pick up the new question
@@ -1352,6 +1375,7 @@ useEffect(() => {
       console.error('❌ Error getting next question:', error);
     } finally {
       setIsLoading(false);
+      setIsTransitioning(false); // Hide transition loader
     }
   };
   // Build a sorted leaderboard from scores
@@ -1480,7 +1504,7 @@ useEffect(() => {
   }, [scores]);
 
   // Loading screen with themed design
-  if (isLoading) {
+  if (isLoading || isTransitioning) {
     return (
       <div
         className="app-container"
@@ -1551,7 +1575,7 @@ useEffect(() => {
               color: "#FFE4B5",
               margin: 0
             }}>
-              Getting questions from server...
+              {/* {isTransitioning ? "Loading next question..." : "Getting questions from server..."} */}
             </p>
             
             <p style={{
@@ -1561,7 +1585,7 @@ useEffect(() => {
               margin: 0,
               fontStyle: "italic"
             }}>
-              Preparing your Age of Empires III challenge
+              {isTransitioning ? "Preparing your next challenge" : "Preparing your Age of Empires III challenge"}
             </p>
           </div>
         </div>
