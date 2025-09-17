@@ -906,6 +906,12 @@ useEffect(() => {
           
           if (isDifferentQuestion) {
             console.log("🔄 New question detected, syncing:", data.currentQuestion.isCard ? 'Card Question' : 'Regular Question');
+            console.log('📄 Client received question details:', {
+              isCard: data.currentQuestion.isCard,
+              cardName: data.currentQuestion.cardName,
+              cardUrl: data.currentQuestion.cardUrl,
+              questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A'
+            });
             setCurrentQuestion(data.currentQuestion);
             setTimeLeft(data.timeLeft);
             setShowResult(data.showResult);
@@ -1274,6 +1280,13 @@ useEffect(() => {
           
           const result = await response.json();
           console.log('📡 Start question response:', result);
+          console.log('📄 Next button received question details:', {
+            success: result.success,
+            isCard: result.question?.isCard,
+            cardName: result.question?.cardName,
+            cardUrl: result.question?.cardUrl,
+            questionText: result.question?.question ? result.question.question.substring(0, 50) + '...' : 'N/A'
+          });
           
           // If question generation is in progress (409), retry after a short delay
           if (response.status === 409 && retryCount < 3) {
