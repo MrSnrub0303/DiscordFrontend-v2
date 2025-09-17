@@ -4,7 +4,6 @@ import "./App.css";
 import questions from "./questions.json";
 import { useDiscordActivity } from './discord/useDiscordActivity';
 import { socket } from './socket';
-import { ACTIVITY_URL } from './discord/config';
 
 import marbleBg from "./assets/marblebg2.png";
 import woodPanelBg from "./assets/sendresource_bg.png";
@@ -38,8 +37,8 @@ import soundOffIcon from "./assets/notification_sound_off.png";
 // REVEAL SOUND (we'll decode and play via WebAudio)
 import revealSoundFile from "./assets/chatreceived.wav";
 
-// API configuration - use production backend URL
-const API_BASE_URL = `${ACTIVITY_URL}/api`;
+// API configuration - use same base URL as socket
+const API_BASE_URL = '/api';
 
 const MAX_TIME = 15;
 
@@ -105,21 +104,6 @@ const getCardImagePath = (cardName) => {
   // Convert spaces to underscores and remove special characters for filename
   const fileName = cardName.replace(/\s+/g, '_').replace(/[:/]/g, '');
   return new URL(`./assets/cards/${fileName}.png`, import.meta.url).href;
-};
-
-// Helper: Process server question to fix card image URLs
-const processServerQuestion = (question) => {
-  if (!question) return question;
-  
-  // If it's a card question, generate the proper image URL
-  if (question.isCard && question.cardName) {
-    return {
-      ...question,
-      cardUrl: getCardImagePath(question.cardName)
-    };
-  }
-  
-  return question;
 };
 
 export default function App() {
@@ -241,7 +225,7 @@ export default function App() {
       socket.on('question_started', (data) => {
         console.log('📡 Received question_started from server:', data);
         if (data.question) {
-          setCurrentQuestion(processServerQuestion(data.question));
+          setCurrentQuestion(data.question);
           setShowResult(false);
           setSelections({});
           setMySelection(null); // Reset my selection for new question
@@ -806,25 +790,10 @@ useEffect(() => {
       // Wait a bit more for socket to be ready if it exists but isn't connected yet
       if (socket && !socket.connected && !socket.localMode && gameCheckRetriesRef.current < MAX_SOCKET_WAIT_RETRIES) {
         gameCheckRetriesRef.current++;
-        console.log(`🔄 Socket exists but not connected yet, waiting... (retry ${gameCheckRetriesRef.current}/${MAX_SOCKET_WAIT_RETRIES})`, {
-          socketExists: !!socket,
-          connected: socket?.connected,
-          localMode: socket?.localMode,
-          isInVoiceChannel,
-          roomId
-        });
+        console.log(`Socket exists but not connected yet, waiting... (retry ${gameCheckRetriesRef.current}/${MAX_SOCKET_WAIT_RETRIES})`);
         setTimeout(checkForExistingGame, 500);
         return;
       }
-      
-      console.log('🔍 FINAL CHECK - Socket state before decision:', {
-        socketExists: !!socket,
-        connected: socket?.connected,
-        localMode: socket?.localMode,
-        isInVoiceChannel,
-        roomId,
-        retriesUsed: gameCheckRetriesRef.current
-      });
       
       if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel) {
         console.log("❌ Falling back to single player mode - generating LOCAL question", {
@@ -853,7 +822,7 @@ useEffect(() => {
           console.log("Found existing question in room, joining game in progress");
           console.log("Time remaining:", data.timeLeft);
           
-          setCurrentQuestion(processServerQuestion(data.currentQuestion));
+          setCurrentQuestion(data.currentQuestion);
           // Always start with showResult: false for clean state, handle expired questions after
           setShowResult(false);
           setSelections({});
@@ -890,7 +859,7 @@ useEffect(() => {
               
               if (checkData.success && checkData.currentQuestion) {
                 console.log("✅ Found question started by another player, syncing");
-                setCurrentQuestion(processServerQuestion(checkData.currentQuestion));
+                setCurrentQuestion(checkData.currentQuestion);
                 // Always start with showResult: false for clean state
                 setShowResult(false);
                 setSelections({});
@@ -950,7 +919,7 @@ useEffect(() => {
                 const { response, result } = await attemptAutoStart();
                 
                 if (result && result.success && result.question) {
-                  const question = processServerQuestion(result.question);
+                  const question = result.question;
                   setCurrentQuestion(question);
                   setShowResult(false);
                   setSelections({});
@@ -1051,7 +1020,7 @@ useEffect(() => {
             });
             
             // Batch all state updates together to prevent flickering
-            setCurrentQuestion(processServerQuestion(data.currentQuestion));
+            setCurrentQuestion(data.currentQuestion);
             setTimeLeft(data.timeLeft);
             // Always start with showResult: false for new questions to prevent revealed state
             setShowResult(false);
@@ -1458,7 +1427,7 @@ useEffect(() => {
         
         // Handle server response with both regular and card questions
         if (result && result.success && result.question) {
-          const question = processServerQuestion(result.question);
+          const question = result.question;
           setCurrentQuestion(question);
           setShowResult(false);
           setSelections({});
