@@ -297,6 +297,8 @@ export default function App() {
 
   // Prevent double execution of initial game check
   const gameCheckExecutedRef = useRef(false);
+  const gameCheckRetriesRef = useRef(0);
+  const MAX_SOCKET_WAIT_RETRIES = 6; // Wait up to 3 seconds for socket
 
   // small highlight state for when score bumps (used to add a temporary CSS class)
   const [scoreHighlight, setScoreHighlight] = useState({});
@@ -785,14 +787,28 @@ useEffect(() => {
 
     // Check for existing game state when app loads
     const checkForExistingGame = async () => {
+      // Wait a bit more for socket to be ready if it exists but isn't connected yet
+      if (socket && !socket.connected && !socket.localMode && gameCheckRetriesRef.current < MAX_SOCKET_WAIT_RETRIES) {
+        gameCheckRetriesRef.current++;
+        console.log(`Socket exists but not connected yet, waiting... (retry ${gameCheckRetriesRef.current}/${MAX_SOCKET_WAIT_RETRIES})`);
+        setTimeout(checkForExistingGame, 500);
+        return;
+      }
+      
       if (!socket || socket.localMode || !socket.connected || !isInVoiceChannel) {
-        console.log("Loading initial question for single player mode");
+        console.log("❌ Falling back to single player mode - generating LOCAL question", {
+          noSocket: !socket,
+          localMode: socket?.localMode,
+          notConnected: !socket?.connected,
+          notInVoiceChannel: !isInVoiceChannel,
+          retriesUsed: gameCheckRetriesRef.current
+        });
         pickAndSetRandomQuestion();
         gameCheckExecutedRef.current = true;
         return;
       }
 
-      console.log("Multiplayer mode detected - checking for existing game...");
+      console.log("✅ Multiplayer mode confirmed - will use SERVER questions");
       gameCheckExecutedRef.current = true;
       
       try {
