@@ -1010,7 +1010,6 @@ useEffect(() => {
       console.log('🔄 Sync executing for room:', roomId, { 
         hasCurrentQuestion: !!currentQuestion,
         currentTimeLeft: timeLeft,
-        currentGameState: gameState,
         isTimerRunning: isTimerRunning
       });
       try {
