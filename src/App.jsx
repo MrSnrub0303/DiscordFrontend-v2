@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useMemo, useLayoutEffect } from "react";
 import "./App.css";
 import questions from "./questions.json";
 import { useDiscordActivity } from './discord/useDiscordActivity';
-import { socket } from './socket';
+import { DiscordProxySocket } from './socket';
 
 import marbleBg from "./assets/marblebg2.png";
 import woodPanelBg from "./assets/sendresource_bg.png";
@@ -110,6 +110,9 @@ export default function App() {
   // Players will be populated from Discord voice channel
   const [players, setPlayers] = useState([]);
 
+  // Socket state for multiplayer communication
+  const [socket, setSocket] = useState(null);
+
   // Use Discord Activity hook
   const { 
     voiceChannel, 
@@ -175,6 +178,9 @@ export default function App() {
   // whether music is toggled on (user-visible setting)
   const [musicEnabled, setMusicEnabled] = useState(true);
 
+  // Socket state trigger for useEffect re-runs when socket properties change
+  const [socketStateVersion, setSocketStateVersion] = useState(0);
+
   const timerRef = useRef(null);
 
   // Track whether awarding has been performed for the current question
@@ -208,87 +214,88 @@ export default function App() {
   // single fade timer for current audio
   const fadeTimerRef = useRef(null);
 
-  // Setup socket connection and handlers
+  // Setup socket event listeners when socket is available
   useEffect(() => {
-    // Connect socket when Discord user is ready 
-    if (currentUser) {
-      socket.connect();
-      
-      // Set up socket event listeners
-      socket.on('gameState', (gameState) => {
-        setCurrentQuestion(gameState.currentQuestion);
-        setSelections(gameState.selections);
-        setShowResult(gameState.showResult); 
-        setTimeLeft(gameState.timeLeft);
-        setScores(gameState.scores);
-      });
+    if (!socket || !currentUser) return;
+    
+    // Set up socket event listeners
+    socket.on('gameState', (gameState) => {
+      setCurrentQuestion(gameState.currentQuestion);
+      setSelections(gameState.selections);
+      setShowResult(gameState.showResult); 
+      setTimeLeft(gameState.timeLeft);
+      setScores(gameState.scores);
+    });
 
-      // Listen for server responses to multiplayer events
-      socket.on('question_started', (data) => {
-        console.log('📡 Received question_started from server:', data);
-        if (data.question) {
-          setCurrentQuestion(data.question);
-          setShowResult(false);
-          setSelections({});
-          setMySelection(null); // Reset my selection for new question
-          currentSelectionRef.current = null; // Reset ref too
-          setTimeLeft(data.timeLeft || MAX_TIME);
-          // Reset per-question tracking
-          answerTimesRef.current = {};
-          awardedDoneRef.current = false;
+    // Listen for server responses to multiplayer events
+    socket.on('question_started', (data) => {
+      console.log('📡 Received question_started from server:', data);
+      if (data.question) {
+        setCurrentQuestion(data.question);
+        setShowResult(false);
+        setSelections({});
+        setMySelection(null); // Reset my selection for new question
+        currentSelectionRef.current = null; // Reset ref too
+        setTimeLeft(data.timeLeft || MAX_TIME);
+        // Reset per-question tracking
+        answerTimesRef.current = {};
+        awardedDoneRef.current = false;
+      }
+    });
+
+    // Listen for round completion and reveal phase
+    socket.on('round_complete', (data) => {
+      console.log('📡 Round complete - revealing all selections:', data);
+      if (data.selections) {
+        setSelections(data.selections);
+        setShowResult(true);
+        // Update scores if provided
+        if (data.scores) {
+          setScores(data.scores);
         }
-      });
+      }
+    });
 
-      // Listen for round completion and reveal phase
-      socket.on('round_complete', (data) => {
-        console.log('📡 Round complete - revealing all selections:', data);
-        if (data.selections) {
-          setSelections(data.selections);
-          setShowResult(true);
-          // Update scores if provided
-          if (data.scores) {
-            setScores(data.scores);
-          }
+    socket.on('player_selected', (data) => {
+      console.log('📡 Player made selection (hidden until reveal):', data.playerId);
+      // Don't show the actual selection - just acknowledge someone selected
+      // This could be used for "Player X has answered" indicators
+    });
+
+    socket.on('playerJoined', (player) => {
+      console.log('📡 Player joined via socket:', player);
+      setPlayers(prev => {
+        // Avoid duplicates
+        if (prev.find(p => p.id === player.id)) {
+          return prev;
         }
+        return [...prev, player];
       });
+    });
 
-      socket.on('player_selected', (data) => {
-        console.log('📡 Player made selection (hidden until reveal):', data.playerId);
-        // Don't show the actual selection - just acknowledge someone selected
-        // This could be used for "Player X has answered" indicators
-      });
+    // Remove local mode initialization - we now sync with Discord participants
+    // The participants useEffect will handle both multiplayer and single player setup
 
-      socket.on('playerJoined', (player) => {
-        console.log('📡 Player joined via socket:', player);
-        setPlayers(prev => {
-          // Avoid duplicates
-          if (prev.find(p => p.id === player.id)) {
-            return prev;
-          }
-          return [...prev, player];
-        });
-      });
+    socket.on('playerLeft', (playerId) => {
+      console.log('📡 Player left via socket:', playerId);
+      setPlayers(prev => prev.filter(p => p.id !== playerId));
+    });
 
-      // Remove local mode initialization - we now sync with Discord participants
-      // The participants useEffect will handle both multiplayer and single player setup
-
-      socket.on('playerLeft', (playerId) => {
-        console.log('📡 Player left via socket:', playerId);
-        setPlayers(prev => prev.filter(p => p.id !== playerId));
-      });
-
-      // Send current user info
+    // Send current user info if socket is connected
+    if (socket.connected && !socket.localMode) {
       socket.emit('join', {
         id: currentUser.id,
         name: currentUser.username,
         isHost
       });
-
-      return () => {
-        socket.disconnect();
-      };
     }
-  }, [currentUser]);
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, [socket, currentUser, isHost]);
 
   // For animation (FLIP) of leaderboard
   // We store the previous bounding rects so we can compute deltas when order changes
@@ -382,6 +389,12 @@ export default function App() {
       const initSocket = async () => {
         try {
           const newSocket = new DiscordProxySocket();
+          
+          // Set up state change callback to trigger React re-renders
+          newSocket.onStateChange(() => {
+            setSocketStateVersion(prev => prev + 1);
+          });
+          
           const connected = await newSocket.connect();
           
           if (connected && !newSocket.localMode) {
@@ -424,7 +437,7 @@ export default function App() {
       
       initSocket();
     }
-  }, [currentUser, roomId]);
+  }, [currentUser, roomId, socket]);
 
   // Sync Discord participants with players state
   useEffect(() => {
@@ -983,7 +996,7 @@ useEffect(() => {
       // Clean up global reference
       window.syncGameStateFunc = null;
     };
-  }, [socket, socket?.connected, socket?.localMode, currentUser, roomId]);
+  }, [socket, socket?.connected, socket?.localMode, currentUser, roomId, socketStateVersion]);
 
   // Remove the manual sync keyboard shortcut
   useEffect(() => {

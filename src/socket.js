@@ -6,8 +6,22 @@ class DiscordProxySocket {
     this.connected = false;
     this.localMode = true;
     this.eventCallbacks = new Map();
+    this.stateChangeCallback = null; // Callback for when socket state changes
     // Use relative URLs - Discord will proxy to your mapped backend
     this.serverUrl = '/api';
+  }
+  
+  // Set callback to be called when socket state changes
+  onStateChange(callback) {
+    this.stateChangeCallback = callback;
+  }
+  
+  // Helper to notify React when state changes
+  _notifyStateChange() {
+    if (this.stateChangeCallback) {
+      this.stateChangeCallback();
+    }
+    console.log('🔧 Socket state changed:', { connected: this.connected, localMode: this.localMode });
   }
   
   async connect() {
@@ -33,7 +47,7 @@ class DiscordProxySocket {
         this.connected = true;
         this.localMode = false;
         console.log('🌐 Multiplayer mode enabled via Discord proxy!');
-        console.log('🔧 Socket state changed:', { connected: this.connected, localMode: this.localMode });
+        this._notifyStateChange();
         return true;
       } else {
         const errorText = await response.text();
@@ -59,6 +73,7 @@ class DiscordProxySocket {
           console.log('✅ Retry successful - multiplayer mode enabled!');
           this.connected = true;
           this.localMode = false;
+          this._notifyStateChange();
           return true;
         }
       } catch (retryError) {
@@ -68,6 +83,7 @@ class DiscordProxySocket {
       console.log('🏠 Falling back to local single-player mode');
       this.localMode = true;
       this.connected = true;
+      this._notifyStateChange();
       return false;
     }
   }
@@ -141,7 +157,7 @@ class DiscordProxySocket {
   }
 }
 
-export const socket = new DiscordProxySocket();
+export { DiscordProxySocket };
 
 // TODO: To enable real multiplayer later:
 // 1. Set up URL mappings in Discord Developer Portal: /api -> your-backend-domain.com
