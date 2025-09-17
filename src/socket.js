@@ -6,8 +6,9 @@ class DiscordProxySocket {
     this.connected = false;
     this.localMode = true;
     this.eventCallbacks = new Map();
-    // Use relative URLs - Discord will proxy to your mapped backend
-    this.serverUrl = '/api';
+    // Temporarily use direct backend URL to test server fixes
+    this.serverUrl = 'https://discordbackend-xggi.onrender.com/api';
+    this.fallbackUrl = 'https://discordbackend-xggi.onrender.com/api';
   }
   
   async connect() {
@@ -40,7 +41,30 @@ class DiscordProxySocket {
       }
     } catch (error) {
       console.log('⚠️ Discord proxy connection failed:', error.message);
-      console.log('🔄 Retrying connection in 3 seconds...');
+      console.log('🔄 Trying direct backend connection...');
+      
+      // Try fallback to direct backend URL
+      try {
+        const fallbackResponse = await fetch(`${this.fallbackUrl}/health`, {
+          method: 'GET',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        
+        if (fallbackResponse.ok) {
+          console.log('✅ Direct backend connection successful!');
+          this.connected = true;
+          this.localMode = false;
+          this.serverUrl = this.fallbackUrl; // Switch to direct backend URL
+          return true;
+        }
+      } catch (fallbackError) {
+        console.log('⚠️ Direct backend connection also failed:', fallbackError.message);
+      }
+      
+      console.log('🔄 Retrying Discord proxy in 3 seconds...');
       
       // Retry once after a delay
       await new Promise(resolve => setTimeout(resolve, 3000));

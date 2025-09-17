@@ -37,8 +37,11 @@ import soundOffIcon from "./assets/notification_sound_off.png";
 // REVEAL SOUND (we'll decode and play via WebAudio)
 import revealSoundFile from "./assets/chatreceived.wav";
 
-// API configuration - use same base URL as socket
-const API_BASE_URL = '/api';
+// API configuration - temporarily use direct backend URL to test server fixes
+const getApiBaseUrl = () => {
+  // For testing: use direct backend URL to bypass Discord proxy issues
+  return 'https://discordbackend-xggi.onrender.com/api';
+};
 
 const MAX_TIME = 15;
 
