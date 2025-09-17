@@ -899,10 +899,24 @@ useEffect(() => {
         
         if (data.success && data.currentQuestion) {
           // Check if this is a different question than what we have
+          console.log('🔍 Sync check - Current question:', {
+            exists: !!currentQuestion,
+            isCard: currentQuestion?.isCard,
+            cardName: currentQuestion?.cardName,
+            questionText: currentQuestion?.question ? currentQuestion.question.substring(0, 30) + '...' : 'N/A'
+          });
+          console.log('🔍 Sync check - Server question:', {
+            isCard: data.currentQuestion.isCard,
+            cardName: data.currentQuestion.cardName,
+            questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 30) + '...' : 'N/A'
+          });
+          
           const isDifferentQuestion = !currentQuestion || 
             (currentQuestion.question !== data.currentQuestion.question && !data.currentQuestion.isCard) ||
             (currentQuestion.cardName !== data.currentQuestion.cardName && data.currentQuestion.isCard) ||
             (currentQuestion.isCard !== data.currentQuestion.isCard);
+          
+          console.log('🔍 Is different question?', isDifferentQuestion);
           
           if (isDifferentQuestion) {
             console.log("🔄 New question detected, syncing:", data.currentQuestion.isCard ? 'Card Question' : 'Regular Question');
