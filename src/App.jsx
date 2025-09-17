@@ -765,8 +765,7 @@ useEffect(() => {
     const index = Math.floor(Math.random() * availableQuestions.length);
     const q = availableQuestions[index];
     setAvailableQuestions((prev) => prev.filter((_, i) => i !== index));
-    // Ensure trivia questions have isCard: false for proper sync comparison
-    setCurrentQuestion({ ...q, isCard: false });
+    setCurrentQuestion(q);
     setSelections({});
     setMySelection(null); 
     currentSelectionRef.current = null; // Reset ref too
@@ -821,60 +820,86 @@ useEffect(() => {
             setIsTimerRunning(true);
           }
         } else {
-          console.log("No active question found - attempting to auto-start first question");
-          // Auto-start first question in multiplayer mode with retry logic for race conditions
-          if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
+          console.log("No active question found - checking if another player has started a question");
+          
+          // Wait a bit longer for potential sync from other players, then try auto-start
+          setTimeout(async () => {
             try {
-              const attemptAutoStart = async (retryCount = 0) => {
-                const response = await fetch(`${API_BASE_URL}/start_question`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    roomId: roomId,
-                    forceNew: false  // Auto-start doesn't need forceNew
-                  })
-                });
-                
-                const result = await response.json();
-                console.log('📡 Auto-start question response:', result);
-                
-                // If question generation is in progress (409), retry after a short delay
-                if (response.status === 409 && retryCount < 2) {
-                  console.log(`⏳ Auto-start: Question generation in progress, retrying in 300ms (attempt ${retryCount + 1}/2)`);
-                  await new Promise(resolve => setTimeout(resolve, 300));
-                  return attemptAutoStart(retryCount + 1);
-                }
-                
-                // If rate limited (429), wait longer and retry
-                if (response.status === 429 && retryCount < 1) {
-                  console.log(`🚫 Auto-start: Rate limited, retrying in 1000ms (attempt ${retryCount + 1}/1)`);
-                  await new Promise(resolve => setTimeout(resolve, 1000));
-                  return attemptAutoStart(retryCount + 1);
-                }
-                
-                return { response, result };
-              };
+              // Check one more time if another player started a question
+              const checkResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
+              const checkData = await checkResponse.json();
               
-              const { response, result } = await attemptAutoStart();
-              
-              if (result && result.success && result.question) {
-                const question = result.question;
-                setCurrentQuestion(question);
-                setShowResult(false);
+              if (checkData.success && checkData.currentQuestion) {
+                console.log("✅ Found question started by another player, syncing");
+                setCurrentQuestion(checkData.currentQuestion);
+                setShowResult(checkData.showResult);
                 setSelections({});
                 setMySelection(null);
                 currentSelectionRef.current = null;
-                setTimeLeft(result.timeLeft || MAX_TIME);
+                setTimeLeft(checkData.timeLeft);
                 answerTimesRef.current = {};
                 awardedDoneRef.current = false;
-                console.log('✅ Auto-started first question:', question.isCard ? 'Card Question' : 'Regular Question');
-              } else {
-                console.log('⚠️ Auto-start failed, will show Start Quiz button');
+                
+                if (checkData.gameState === 'playing' && !checkData.showResult && checkData.timeLeft > 0) {
+                  setIsTimerRunning(true);
+                }
+                return;
+              }
+              
+              // No question found after waiting - try to auto-start
+              console.log("No question found after waiting - attempting to auto-start first question");
+              if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
+                const attemptAutoStart = async (retryCount = 0) => {
+                  const response = await fetch(`${API_BASE_URL}/start_question`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      roomId: roomId,
+                      forceNew: false  // Auto-start doesn't need forceNew
+                    })
+                  });
+                  
+                  const result = await response.json();
+                  console.log('📡 Auto-start question response:', result);
+                  
+                  // If question generation is in progress (409), retry after a short delay
+                  if (response.status === 409 && retryCount < 2) {
+                    console.log(`⏳ Auto-start: Question generation in progress, retrying in 300ms (attempt ${retryCount + 1}/2)`);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    return attemptAutoStart(retryCount + 1);
+                  }
+                  
+                  // If rate limited (429), wait longer and retry
+                  if (response.status === 429 && retryCount < 1) {
+                    console.log(`🚫 Auto-start: Rate limited, retrying in 1000ms (attempt ${retryCount + 1}/1)`);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    return attemptAutoStart(retryCount + 1);
+                  }
+                  
+                  return { response, result };
+                };
+                
+                const { response, result } = await attemptAutoStart();
+                
+                if (result && result.success && result.question) {
+                  const question = result.question;
+                  setCurrentQuestion(question);
+                  setShowResult(false);
+                  setSelections({});
+                  setMySelection(null);
+                  currentSelectionRef.current = null;
+                  setTimeLeft(result.timeLeft || MAX_TIME);
+                  answerTimesRef.current = {};
+                  awardedDoneRef.current = false;
+                  console.log('✅ Auto-started first question:', question.isCard ? 'Card Question' : 'Regular Question');
+                } else {
+                  console.log('⚠️ Auto-start failed, will show Start Quiz button');
+                }
               }
             } catch (error) {
-              console.log('⚠️ Failed to auto-start question:', error);
+              console.log('⚠️ Failed to check/auto-start question:', error);
             }
-          }
+          }, 2000); // Wait 2 seconds to give other players a chance to start first
         }
       } catch (error) {
         console.log("Failed to check room state:", error);
@@ -882,7 +907,7 @@ useEffect(() => {
     };
     
     // Add a small delay to ensure socket is fully connected
-    const timeoutId = setTimeout(checkForExistingGame, 1000);
+    const timeoutId = setTimeout(checkForExistingGame, 500);
     return () => clearTimeout(timeoutId);
   }, [socket, isInVoiceChannel, roomId]);
 
@@ -968,7 +993,10 @@ useEffect(() => {
             // Update timer state
             setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
             
-            // Note: Removed recursive setTimeout sync call to prevent infinite loop
+            // Trigger additional syncs to ensure all players get the update
+            setTimeout(() => {
+              if (window.syncGameStateFunc) window.syncGameStateFunc();
+            }, 100);
           } else {
             // Same question, just sync timer and result state
             const timeDiff = Math.abs(timeLeft - data.timeLeft);
@@ -992,8 +1020,9 @@ useEffect(() => {
     // Expose syncGameState globally for immediate triggering
     window.syncGameStateFunc = syncGameState;
 
-    // Initial sync
+    // Initial sync - run immediately and then again after 1 second
     syncGameState();
+    setTimeout(() => syncGameState(), 1000);
     
     // Sync every 500ms for faster synchronization
     const syncInterval = setInterval(syncGameState, 500);
