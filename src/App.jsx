@@ -37,8 +37,8 @@ import soundOffIcon from "./assets/notification_sound_off.png";
 // REVEAL SOUND (we'll decode and play via WebAudio)
 import revealSoundFile from "./assets/chatreceived.wav";
 
-// API configuration - environment-aware
-const API_BASE_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+// API configuration - use same base URL as socket
+const API_BASE_URL = '/api';
 
 const MAX_TIME = 15;
 
