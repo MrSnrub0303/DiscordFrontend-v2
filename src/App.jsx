@@ -1570,7 +1570,39 @@ useEffect(() => {
               // reset per-question tracking
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
-              pickAndSetRandomQuestion();
+              
+              // In multiplayer mode, request new question from server
+              if (socket && !socket.localMode && socket.connected && isInVoiceChannel) {
+                console.log('🔄 Restarting quiz in multiplayer mode - requesting from server');
+                // Use auto-start logic to get first question from server
+                fetch(`${API_BASE_URL}/start_question`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    roomId: roomId,
+                    forceNew: false
+                  })
+                })
+                .then(response => response.json())
+                .then(result => {
+                  if (result && result.success && result.question) {
+                    setCurrentQuestion(result.question);
+                    setShowResult(false);
+                    setSelections({});
+                    setMySelection(null);
+                    currentSelectionRef.current = null;
+                    setTimeLeft(result.timeLeft || MAX_TIME);
+                    console.log('✅ Restart: Got question from server');
+                  }
+                })
+                .catch(error => {
+                  console.log('⚠️ Restart: Failed to get question from server:', error);
+                });
+              } else {
+                // Single player mode - use local generation
+                console.log('🏠 Restarting quiz in local mode');
+                pickAndSetRandomQuestion();
+              }
             }}
           >
             Restart Quiz
