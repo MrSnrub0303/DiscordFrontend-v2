@@ -258,6 +258,41 @@ export default function App() {
   // single fade timer for current audio
   const fadeTimerRef = useRef(null);
 
+  // Clean up timers when Discord Activity ready state changes (activity stop/start)
+  useEffect(() => {
+    // When Discord Activity is not ready (stopped), clean up all timers
+    if (!ready) {
+      // console.log('🧹 Discord Activity not ready - cleaning up timers');
+      
+      // Clear the main game timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      
+      // Clear fade timer
+      if (fadeTimerRef.current) {
+        clearInterval(fadeTimerRef.current);
+        fadeTimerRef.current = null;
+      }
+      
+      // Clear transition debounce
+      if (transitionDebounceRef.current) {
+        clearTimeout(transitionDebounceRef.current);
+        transitionDebounceRef.current = null;
+      }
+      
+      // Reset timer-related state
+      setIsTimerRunning(false);
+      setIsTransitioning(false);
+      
+      // Optional: Reset game state when activity stops
+      // setTimeLeft(MAX_TIME);
+      // setShowResult(false);
+      // setCurrentQuestion(null);
+    }
+  }, [ready]); // Trigger when Discord Activity ready state changes
+
   // Setup socket event listeners when socket is available
   useEffect(() => {
     if (!socket || !currentUser) return;
@@ -534,6 +569,26 @@ export default function App() {
       initSocket();
     }
   }, [currentUser, roomId, socket]);
+
+  // Component cleanup - ensure all timers are cleared when component unmounts
+  useEffect(() => {
+    return () => {
+      // console.log('🧹 Component unmounting - cleaning up all timers');
+      
+      // Clear all timer refs
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      
+      if (fadeTimerRef.current) {
+        clearInterval(fadeTimerRef.current);
+      }
+      
+      if (transitionDebounceRef.current) {
+        clearTimeout(transitionDebounceRef.current);
+      }
+    };
+  }, []); // Empty dependency array - only runs on unmount
 
   // Sync Discord participants with players state
   useEffect(() => {
@@ -1262,41 +1317,6 @@ useEffect(() => {
 
     return () => clearInterval(timerRef.current);
   }, [currentQuestion, showResult, socket, roomId]); // Removed isInVoiceChannel to prevent timer restarts
-
-  // Clean up timers and reset state when Discord activity becomes inactive
-  useEffect(() => {
-    // If Discord activity becomes inactive (ready=false), clean up all timers and reset state
-    if (ready === false) {
-      // console.log('🔄 Discord activity became inactive - cleaning up timers and resetting state');
-      
-      // Clear all client-side timers
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-      
-      // Reset all game state to fresh start
-      setCurrentQuestion(null);
-      setSelections({});
-      setMySelection(null);
-      currentSelectionRef.current = null;
-      setTimeLeft(MAX_TIME);
-      setShowResult(false);
-      setIsTimerRunning(false);
-      setIsTransitioning(false);
-      setIsLoading(false);
-      answerTimesRef.current = {};
-      awardedDoneRef.current = false;
-      
-      // Reset card mode state
-      setCardInput("");
-      setCardLastWrong(false);
-      setCardImageUrl(null);
-      
-      // Don't reset scores and player names - preserve across activity sessions
-      // This allows players to continue where they left off when restarting activity
-    }
-  }, [ready]); // Only depend on Discord ready state
 
   // Use current user ID if available, fallback to "player1"
   const myPlayerId = currentUser?.id || "player1";
