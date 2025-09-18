@@ -948,59 +948,18 @@ useEffect(() => {
             
             // Only show transition loading if we detect a real question change
             // Check if there's actually a new question from server vs current client state
-            const hasCurrentQuestion = currentQuestion && (currentQuestion.questionText || currentQuestion.cardName);
+            const hasCurrentQuestion = currentQuestion && (currentQuestion.question || currentQuestion.questionText || currentQuestion.cardName);
             const hasServerQuestion = data.currentQuestion && (data.currentQuestion.question || data.currentQuestion.cardName);
             
-            // More reliable check - compare actual question content
-            let isDifferentQuestion = false;
-            if (hasServerQuestion && hasCurrentQuestion) {
-              const serverQuestionText = data.currentQuestion.question || '';
-              const currentQuestionText = currentQuestion.questionText || '';
-              const serverCardName = data.currentQuestion.cardName || '';
-              const currentCardName = currentQuestion.cardName || '';
-              
-              isDifferentQuestion = (serverQuestionText !== currentQuestionText) || (serverCardName !== currentCardName);
-            } else if (hasServerQuestion && !hasCurrentQuestion) {
-              // Server has question but client doesn't - this is a new question
-              isDifferentQuestion = true;
-            }
-            
-            // Only skip during true initial app load (no previous question and first sync)
-            const isInitialLoad = !hasCurrentQuestion && isLoading && !participants.length;
-            const shouldShowTransition = isDifferentQuestion && !isInitialLoad;
-            
-            console.log('🔄 Transition check:', { 
+            console.log('🔄 Sync update:', { 
               hasCurrentQuestion, 
               hasServerQuestion,
-              isDifferentQuestion,
-              isLoading,
-              isInitialLoad,
-              shouldShowTransition,
-              currentlyTransitioning: isTransitioning
+              currentQuestionId: currentQuestion?.id,
+              serverQuestionId: data.currentQuestion?.id
             });
             
-            // Debounce transition changes to prevent rapid toggling
-            if (shouldShowTransition && !isTransitioning) {
-              // Clear any pending transition changes
-              if (transitionDebounceRef.current) {
-                clearTimeout(transitionDebounceRef.current);
-              }
-              
-              console.log('✨ Showing transition loader for question change');
-              setIsTransitioning(true);
-              
-              // Schedule transition hide with debounce
-              transitionDebounceRef.current = setTimeout(() => {
-                console.log('✨ Hiding transition loader (debounced)');
-                setIsTransitioning(false);
-                transitionDebounceRef.current = null;
-              }, 500);
-            } else {
-              console.log('⏭️ Skipping transition loader', 
-                isInitialLoad ? '(initial load)' : 
-                isTransitioning ? '(already transitioning)' :
-                '(no change)');
-            }
+            // Don't show transition loaders from sync - let user actions handle transitions
+            // Just update the question state without transitions
             
             // Batch all state updates together to prevent flickering
             setCurrentQuestion(data.currentQuestion);
@@ -1367,7 +1326,8 @@ useEffect(() => {
     setIsLoading(true);
     
     try {
-      // Let the sync function handle transitions - don't set it here to avoid conflicts
+      // Show transition only for the person who clicked Next Question
+      setIsTransitioning(true);
       const attemptStartQuestion = async (retryCount = 0) => {
         const response = await fetch(`${API_BASE_URL}/start_question`, {
           method: 'POST',
@@ -1410,7 +1370,7 @@ useEffect(() => {
         setTimeLeft(result.timeLeft || MAX_TIME);
         answerTimesRef.current = {};
         awardedDoneRef.current = false;
-        // Let sync function handle transition hiding - don't do it here to avoid conflicts
+        setIsTransitioning(false); // Hide transition for the person who clicked
         console.log('✅ Got next question from server:', question.isCard ? 'Card Question' : 'Regular Question');
         
         // Let regular sync polling handle updates - no need for manual trigger that causes double transitions
@@ -1422,7 +1382,7 @@ useEffect(() => {
       console.error('❌ Error getting next question:', error);
     } finally {
       setIsLoading(false);
-      // Let sync function handle transition hiding - don't do it here to avoid conflicts
+      setIsTransitioning(false); // Hide transition in case of error
     }
   };
   // Build a sorted leaderboard from scores
