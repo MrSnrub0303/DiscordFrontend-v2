@@ -843,12 +843,21 @@ useEffect(() => {
               const timeLeft = gameStateData.timeLeft;
               const showResult = gameStateData.showResult || timeLeft <= 0;
               
+              // Only reset selection if this is actually a different question
+              const isSameQuestion = currentQuestion && currentQuestion.id === question.id;
+              console.log('🔄 Initial question load:', { isSameQuestion, currentId: currentQuestion?.id, serverId: question.id });
+              
               setCurrentQuestion(question);
               setTimeLeft(timeLeft);
               setShowResult(showResult);
               setSelections({});
-              setMySelection(null);
-              currentSelectionRef.current = null;
+              if (!isSameQuestion) {
+                console.log('🗑️ Clearing selection due to different question in initial load');
+                setMySelection(null);
+                currentSelectionRef.current = null;
+              } else {
+                console.log('✅ Preserving selection - same question in initial load');
+              }
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
               setIsLoading(false);
@@ -966,12 +975,12 @@ useEffect(() => {
             questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 30) + '...' : 'N/A'
           });
           
-          const isDifferentQuestion = !currentQuestion || 
-            (currentQuestion.isCard !== data.currentQuestion.isCard) ||
-            (!currentQuestion.isCard && !data.currentQuestion.isCard && currentQuestion.question !== data.currentQuestion.question) ||
-            (currentQuestion.isCard && data.currentQuestion.isCard && currentQuestion.cardName !== data.currentQuestion.cardName);
+          // Use question ID for more reliable comparison
+          const currentQuestionId = currentQuestion?.id;
+          const serverQuestionId = data.currentQuestion?.id;
+          const isDifferentQuestion = !currentQuestion || currentQuestionId !== serverQuestionId;
           
-          console.log('🔍 Is different question?', isDifferentQuestion);
+          console.log('🔍 Is different question?', isDifferentQuestion, `(current: ${currentQuestionId}, server: ${serverQuestionId})`);
           
           if (isDifferentQuestion) {
             console.log("🔄 New question detected, syncing:", data.currentQuestion.isCard ? 'Card Question' : 'Regular Question');
@@ -1003,8 +1012,14 @@ useEffect(() => {
             // Always start with showResult: false for new questions to prevent revealed state
             setShowResult(false);
             setSelections({});
-            setMySelection(null);
-            currentSelectionRef.current = null;
+            // Only reset selection for truly new questions, not for initial sync of same question
+            if (currentQuestion && currentQuestionId !== serverQuestionId) {
+              console.log('🗑️ Clearing selection due to new question:', { from: currentQuestionId, to: serverQuestionId });
+              setMySelection(null);
+              currentSelectionRef.current = null;
+            } else {
+              console.log('✅ Preserving selection - same question or initial load');
+            }
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
             
