@@ -199,6 +199,9 @@ export default function App() {
   // Track whether awarding has been performed for the current question
   const awardedDoneRef = useRef(false);
   
+  // Debounce ref to prevent rapid transition toggling
+  const transitionDebounceRef = useRef(null);
+  
   // Store current selection in ref for persistence during reveals
   const currentSelectionRef = useRef(null);
 
@@ -975,9 +978,23 @@ useEffect(() => {
               shouldShowTransition,
               currentlyTransitioning: isTransitioning
             });
+            
+            // Debounce transition changes to prevent rapid toggling
             if (shouldShowTransition && !isTransitioning) {
+              // Clear any pending transition changes
+              if (transitionDebounceRef.current) {
+                clearTimeout(transitionDebounceRef.current);
+              }
+              
               console.log('✨ Showing transition loader for question change');
               setIsTransitioning(true);
+              
+              // Schedule transition hide with debounce
+              transitionDebounceRef.current = setTimeout(() => {
+                console.log('✨ Hiding transition loader (debounced)');
+                setIsTransitioning(false);
+                transitionDebounceRef.current = null;
+              }, 500);
             } else {
               console.log('⏭️ Skipping transition loader', 
                 isInitialLoad ? '(initial load)' : 
@@ -996,14 +1013,7 @@ useEffect(() => {
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
             
-            // Hide transition loading after question is loaded (only if it was shown)
-            if (shouldShowTransition) {
-              console.log('⏰ Scheduling transition hide in 500ms');
-              setTimeout(() => {
-                console.log('✨ Hiding transition loader');
-                setIsTransitioning(false);
-              }, 500);
-            }
+            // Transition hiding is now handled by debounce logic above
             
             // Update timer state - if time is already up, show result after a brief delay
             const shouldShowTimer = data.gameState === 'playing' && data.timeLeft > 0;
@@ -1058,7 +1068,7 @@ useEffect(() => {
       // Clean up global reference
       window.syncGameStateFunc = null;
     };
-  }, [socket, socket?.connected, socket?.localMode, currentUser, roomId, socketStateVersion]);
+  }, [socket, socket?.connected, socket?.localMode, currentUser, roomId]);
 
   // Remove the manual sync keyboard shortcut
   useEffect(() => {
