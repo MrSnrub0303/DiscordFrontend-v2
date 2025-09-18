@@ -271,74 +271,8 @@ export function ActivityProvider({ children }) {
   }
 
   if (!ready) {
-    return (
-      <div style={{ 
-        padding: '20px', 
-        color: '#495057', 
-        background: '#f8f9fa',
-        border: '1px solid #dee2e6',
-        borderRadius: '4px',
-        margin: '20px',
-        textAlign: 'center'
-      }}>
-        <h3>Loading Discord Activity...</h3>
-        <div style={{ 
-          width: '100%', 
-          height: '4px', 
-          background: '#e9ecef', 
-          borderRadius: '2px', 
-          margin: '20px 0',
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            height: '100%',
-            background: '#007bff',
-            borderRadius: '2px',
-            animation: 'loading 2s infinite ease-in-out',
-            width: '30%'
-          }} />
-        </div>
-        <div style={{ fontSize: '14px', marginTop: '10px' }}>
-          <strong>Status:</strong> {initializationStep.replace('_', ' ').toUpperCase()}
-        </div>
-        <div style={{ fontSize: '12px', marginTop: '5px', color: '#6c757d' }}>
-          SDK: {sdk ? 'Initialized' : 'Not Initialized'} | 
-          Ready: {ready ? 'Yes' : 'No'} | 
-          Token: {token ? 'Yes' : 'No'}
-        </div>
-        
-        {/* Debug logs */}
-        <div style={{ 
-          marginTop: '15px', 
-          textAlign: 'left', 
-          background: '#ffffff', 
-          border: '1px solid #dee2e6',
-          borderRadius: '4px',
-          padding: '10px',
-          maxHeight: '200px',
-          overflow: 'auto',
-          fontSize: '11px',
-          fontFamily: 'monospace'
-        }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>Debug Log:</div>
-          {debugLogs.length === 0 ? (
-            <div style={{ color: '#6c757d' }}>No logs yet...</div>
-          ) : (
-            debugLogs.map((log, index) => (
-              <div key={index} style={{ marginBottom: '2px' }}>{log}</div>
-            ))
-          )}
-        </div>
-        
-        <style>{`
-          @keyframes loading {
-            0% { transform: translateX(-100%); }
-            50% { transform: translateX(200%); }
-            100% { transform: translateX(300%); }
-          }
-        `}</style>
-      </div>
-    );
+    // Return children directly - let the main app handle loading state
+    return children;
   }
 
   return (
