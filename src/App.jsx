@@ -165,6 +165,12 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
   const [playerNames, setPlayerNames] = useState({}); // Player names from server
+  
+  // Leaderboard UI state
+  const [isLeaderboardCollapsed, setIsLeaderboardCollapsed] = useState(false);
+  const [leaderboardPosition, setLeaderboardPosition] = useState({ x: 20, y: 92 }); // Default position (right: 20px, top: 92px)
+  const [isDraggingLeaderboard, setIsDraggingLeaderboard] = useState(false);
+  
   const [isLoading, setIsLoading] = useState(true); // Loading state for server questions
   const [isTimerRunning, setIsTimerRunning] = useState(false); // Track timer state to prevent sync conflicts
   const [isTransitioning, setIsTransitioning] = useState(false); // Loading state for question transitions
@@ -1759,41 +1765,6 @@ useEffect(() => {
           boxSizing: "border-box",
         }}
       >
-        {/* Leaderboard sidebar (still visible on completion) */}
-        <aside className="leaderboard-container" aria-label="Leaderboard">
-          <div className="leaderboard-title">Leaderboard</div>
-          <ol className="leaderboard-list">
-            {sortedPlayers.map((p, idx) => {
-              const medal = getMedalForRank(idx);
-              return (
-                <li
-                  key={p.id}
-                  data-player-id={p.id}
-                  className={`leaderboard-item ${p.id === myPlayerId ? "you" : ""} rank-${idx + 1}`}
-                  aria-label={`${p.name} score ${p.score}`}
-                >
-                  {/* NEW: inner wrapper so FLIP's translate transforms on <li> do not override scale */}
-                  <div className="leaderboard-row">
-                    {medal ? (
-                      <img
-                        src={medal}
-                        alt={`#${idx + 1} medal`}
-                        // sizes controlled by CSS below to keep adjustments centralized
-                      />
-                    ) : (
-                      <span className="leaderboard-rank">{idx + 1}</span>
-                    )}
-                    <span className="leaderboard-name">{p.name}</span>
-                    <span className={`leaderboard-score ${scoreHighlight[p.id] ? "score-bump" : ""}`}>
-                      {formatNumber(displayScores[p.id] ?? 0)}
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </aside>
-
         <div
           className="wood-panel"
           style={{
@@ -1872,6 +1843,38 @@ useEffect(() => {
     );
   }
 
+  // Leaderboard drag handlers
+  const handleLeaderboardMouseDown = (e) => {
+    if (e.target.closest('.leaderboard-title button')) return; // Don't drag when clicking collapse button
+    setIsDraggingLeaderboard(true);
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    
+    const handleMouseMove = (e) => {
+      if (!isDraggingLeaderboard) return;
+      
+      const newX = Math.max(0, Math.min(window.innerWidth - 320, e.clientX - offsetX)); // 320px for wider leaderboard
+      const newY = Math.max(0, Math.min(window.innerHeight - 200, e.clientY - offsetY));
+      
+      setLeaderboardPosition({ x: newX, y: newY });
+    };
+    
+    const handleMouseUp = () => {
+      setIsDraggingLeaderboard(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const toggleLeaderboardCollapse = () => {
+    setIsLeaderboardCollapsed(!isLeaderboardCollapsed);
+  };
+
   // Main quiz UI
   return (
     <div
@@ -1892,38 +1895,64 @@ useEffect(() => {
       }}
     >
       {/* Leaderboard sidebar */}
-      <aside className="leaderboard-container" aria-label="Leaderboard">
-        <div className="leaderboard-title">Leaderboard</div>
-        <ol className="leaderboard-list">
-          {sortedPlayers.map((p, idx) => {
-            const medal = getMedalForRank(idx);
-            return (
-              <li
-                key={p.id}
-                data-player-id={p.id}
-                className={`leaderboard-item ${p.id === myPlayerId ? "you" : ""} rank-${idx + 1}`}
-                aria-label={`${p.name} score ${p.score}`}
-              >
-                {/* NEW: inner wrapper so FLIP's translate transforms on <li> do not override scale */}
-                <div className="leaderboard-row">
-                  {medal ? (
-                    <img
-                      src={medal}
-                      alt={`#${idx + 1} medal`}
-                      // sizes controlled by CSS below to keep adjustments centralized
-                    />
-                  ) : (
-                    <span className="leaderboard-rank">{idx + 1}</span>
-                  )}
-                  <span className="leaderboard-name">{p.name}</span>
-                  <span className={`leaderboard-score ${scoreHighlight[p.id] ? "score-bump" : ""}`}>
-                    {formatNumber(displayScores[p.id] ?? 0)}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+      <aside 
+        className={`leaderboard-container ${isLeaderboardCollapsed ? 'collapsed' : ''} ${isDraggingLeaderboard ? 'dragging' : ''}`}
+        aria-label="Leaderboard"
+        style={{
+          left: `${leaderboardPosition.x}px`,
+          top: `${leaderboardPosition.y}px`,
+          right: 'auto' // Override the CSS right property to use left positioning
+        }}
+        onMouseDown={handleLeaderboardMouseDown}
+      >
+        <div className="leaderboard-title">
+          <span>Leaderboard</span>
+          <button 
+            className="collapse-toggle"
+            onClick={toggleLeaderboardCollapse}
+            aria-label={isLeaderboardCollapsed ? "Expand leaderboard" : "Collapse leaderboard"}
+          >
+            {isLeaderboardCollapsed ? '▲' : '▼'}
+          </button>
+        </div>
+        {!isLeaderboardCollapsed && (
+          <ol className="leaderboard-list">
+            {sortedPlayers.map((p, idx) => {
+              const medal = getMedalForRank(idx);
+              return (
+                <li
+                  key={p.id}
+                  data-player-id={p.id}
+                  className={`leaderboard-item ${p.id === myPlayerId ? "you" : ""} rank-${idx + 1}`}
+                  aria-label={`${p.name} score ${p.score}`}
+                >
+                  {/* NEW: inner wrapper so FLIP's translate transforms on <li> do not override scale */}
+                  <div className="leaderboard-row">
+                    {medal ? (
+                      <img
+                        src={medal}
+                        alt={`#${idx + 1} medal`}
+                        // sizes controlled by CSS below to keep adjustments centralized
+                      />
+                    ) : (
+                      <span className="leaderboard-rank">{idx + 1}</span>
+                    )}
+                    <span 
+                      className="leaderboard-name"
+                      data-length={p.name.length > 18 ? "long" : "normal"}
+                      title={p.name.length > 18 ? p.name : undefined} // Show full name on hover for long names
+                    >
+                      {p.name}
+                    </span>
+                    <span className={`leaderboard-score ${scoreHighlight[p.id] ? "score-bump" : ""}`}>
+                      {formatNumber(displayScores[p.id] ?? 0)}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </aside>
 
       {/* Music toggle button (always visible) */}
@@ -2352,7 +2381,7 @@ useEffect(() => {
           position: fixed;
           right: 20px;
           top: 92px;
-          width: 220px;
+          width: 320px; /* Increased from 220px */
           background: linear-gradient(180deg, rgba(10,10,10,0.7), rgba(22,22,22,0.72));
           border-radius: 12px;
           padding: 12px;
@@ -2365,6 +2394,19 @@ useEffect(() => {
           display: flex;
           flex-direction: column;
           gap: 8px;
+          transition: all 0.3s ease;
+          cursor: move;
+          user-select: none;
+        }
+
+        .leaderboard-container.dragging {
+          z-index: 1000;
+          transform: scale(1.02);
+          box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+        }
+
+        .leaderboard-container.collapsed {
+          width: 160px; /* Narrower when collapsed */
         }
 
         .leaderboard-title {
@@ -2372,9 +2414,32 @@ useEffect(() => {
           font-size: 1.05rem;
           text-transform: uppercase;
           letter-spacing: 0.02em;
-          text-align: center;
           padding-bottom: 4px;
           border-bottom: 1px solid rgba(255,255,255,0.03);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          cursor: move;
+        }
+
+        .collapse-toggle {
+          background: rgba(255,255,255,0.1);
+          border: none;
+          color: white;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          cursor: pointer;
+          font-size: 0.8rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .collapse-toggle:hover {
+          background: rgba(255,255,255,0.2);
         }
 
         .leaderboard-list {
@@ -2384,6 +2449,8 @@ useEffect(() => {
           display: flex;
           flex-direction: column;
           gap: 8px;
+          max-height: 400px;
+          overflow-y: auto;
         }
 
         /* individual row */
@@ -2431,24 +2498,48 @@ useEffect(() => {
           object-fit: contain;
         }
 
-        /* name column */
+        /* Enhanced name column with improved wrapping */
         .leaderboard-name {
           font-family: "Trajan Pro Bold", serif;
-          font-size: 0.98rem;
+          font-size: 0.95rem;
+          line-height: 1.2;
+          word-wrap: break-word;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          hyphens: auto;
+          max-width: 100%;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
           overflow: hidden;
-          text-overflow: ellipsis;
+        }
+
+        /* Enhanced name truncation for very long names */
+        .leaderboard-name::after {
+          content: "";
+        }
+
+        /* Apply ellipsis only if name exceeds 18 characters */
+        .leaderboard-name[data-length="long"] {
           white-space: nowrap;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          -webkit-line-clamp: unset;
+          -webkit-box-orient: unset;
+          display: block;
         }
 
         /* score column */
         .leaderboard-score {
           font-weight: 800;
           font-size: 1rem;
-          min-width: 46px;
+          min-width: 50px;
           text-align: right;
           color: #ffd966; /* gold-ish for contrast */
           text-shadow: 0 1px 2px rgba(0,0,0,0.6);
           transform-origin: center;
+          flex-shrink: 0; /* Ensure score never gets pushed out */
+          justify-self: end;
         }
 
         /* highlight the current user */
