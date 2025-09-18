@@ -943,12 +943,22 @@ useEffect(() => {
               questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A'
             });
             
-            // Only show transition loading if we already have a question (not during initial load)
-            // For other players in multiplayer sync, show transition unless in main loading
-            const isInitialLoad = !currentQuestion && isLoading;
-            const shouldShowTransition = !isInitialLoad;
+            // Only show transition loading if we detect a real question change
+            // Check if there's actually a new question from server vs current client state
+            const hasCurrentQuestion = currentQuestion && (currentQuestion.questionText || currentQuestion.cardName);
+            const hasServerQuestion = data.currentQuestion && (data.currentQuestion.question || data.currentQuestion.cardName);
+            const isDifferentQuestion = hasServerQuestion && (!hasCurrentQuestion || 
+              (currentQuestion.questionText !== (data.currentQuestion.question || '').substring(0, 50) + '...' && 
+               currentQuestion.cardName !== data.currentQuestion.cardName));
+            
+            // Only skip during true initial app load, not during multiplayer sync
+            const isInitialLoad = !hasServerQuestion && isLoading;
+            const shouldShowTransition = isDifferentQuestion && !isInitialLoad;
+            
             console.log('🔄 Transition check:', { 
-              hasCurrentQuestion: !!currentQuestion, 
+              hasCurrentQuestion, 
+              hasServerQuestion,
+              isDifferentQuestion,
               isLoading,
               isInitialLoad,
               shouldShowTransition 
@@ -957,7 +967,7 @@ useEffect(() => {
               console.log('✨ Showing transition loader for question change');
               setIsTransitioning(true);
             } else {
-              console.log('⏭️ Skipping transition loader (initial load)');
+              console.log('⏭️ Skipping transition loader', isInitialLoad ? '(initial load)' : '(no change)');
             }
             
             // Batch all state updates together to prevent flickering - use setTimeout to avoid race conditions
