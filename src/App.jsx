@@ -321,6 +321,12 @@ export default function App() {
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
       console.log('🃏 Loading card image for:', currentQuestion.cardName);
+      // Clear previous card input and feedback when new card question arrives
+      setCardInput("");
+      setCardLastWrong(false);
+      // Clear previous card image immediately to prevent flash
+      setCardImageUrl(null);
+      
       getCardImageUrl(currentQuestion.cardName)
         .then((imageUrl) => {
           console.log('🃏 Card image loaded:', imageUrl);
@@ -331,8 +337,10 @@ export default function App() {
           setCardImageUrl(null);
         });
     } else {
-      // Not a card question, clear the image URL
+      // Not a card question, clear all card-related state
       setCardImageUrl(null);
+      setCardInput("");
+      setCardLastWrong(false);
     }
   }, [currentQuestion]);
 
