@@ -1095,7 +1095,7 @@ useEffect(() => {
             
             // Always sync showResult when server says it should be shown (critical for badge display)
             if (data.showResult !== showResult) {
-              // console.log(`🎯 Syncing result state: ${showResult} → ${data.showResult}`);
+              console.log(`🎯 Syncing result state: ${showResult} → ${data.showResult}`);
               setShowResult(data.showResult);
               setIsTimerRunning(false);
             }
@@ -1113,10 +1113,11 @@ useEffect(() => {
             
             // Always sync selections and playerNames for same question (needed for reveal badges)
             if (data.selections) {
+              console.log('📊 [Polling] Updating selections:', data.selections);
               setSelections(data.selections);
             }
             if (data.playerNames) {
-              // console.log('📝 [Sync] Updating player names (same question):', data.playerNames);
+              console.log('📝 [Sync] Updating player names (same question):', data.playerNames);
               setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
             }
             if (data.scores) {
@@ -2249,8 +2250,10 @@ useEffect(() => {
                       const playersForOption = Object.entries(selections)
                         .filter(([playerId, optionIndex]) => optionIndex === i);
                       
-                      // console.log(`🔍 Option ${i} players:`, playersForOption);
-                      // console.log(`🔍 Current playerNames state:`, playerNames);
+                      console.log(`🔍 Option ${i} players:`, playersForOption);
+                      console.log(`🔍 Current playerNames state:`, playerNames);
+                      console.log(`🔍 Current selections state:`, selections);
+                      console.log(`🔍 Reveal state:`, reveal);
                       
                       // Only render badge if there are players for this option
                       if (playersForOption.length === 0) {
@@ -2261,25 +2264,25 @@ useEffect(() => {
                         .map(([playerId]) => {
                           // Try multiple sources for player name
                           let playerName = playerNames[playerId]; // From server
-                          // console.log(`🔍 Server name for ${playerId}:`, playerName);
+                          console.log(`🔍 Server name for ${playerId}:`, playerName);
                           
                           if (!playerName) {
                             // Fallback to local players array
                             const player = players.find(p => p.id === playerId);
                             playerName = player?.name;
-                            // console.log(`🔍 Local player found for ${playerId}:`, player);
-                            // console.log(`🔍 Local name for ${playerId}:`, playerName);
+                            console.log(`🔍 Local player found for ${playerId}:`, player);
+                            console.log(`🔍 Local name for ${playerId}:`, playerName);
                           }
                           
                           if (!playerName && playerId === currentUser?.id) {
                             // Fallback to current user info
                             playerName = currentUser?.username || currentUser?.global_name;
-                            // console.log(`🔍 Current user fallback for ${playerId}:`, playerName);
+                            console.log(`🔍 Current user fallback for ${playerId}:`, playerName);
                           }
                           
                           // Final fallback
                           const finalName = playerName || `Player ${playerId.slice(-4)}`;
-                          // console.log(`🏷️ Final name for ${playerId}: "${finalName}"`);
+                          console.log(`🏷️ Final name for ${playerId}: "${finalName}"`);
                           return finalName;
                         })
                         .join(", ");
