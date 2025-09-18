@@ -165,6 +165,7 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
   const [playerNames, setPlayerNames] = useState({}); // Player names from server
+  const [isFirstLoad, setIsFirstLoad] = useState(true); // Track if this is the first load
   
   // Leaderboard UI state
   const [isLeaderboardCollapsed, setIsLeaderboardCollapsed] = useState(false);
@@ -878,8 +879,15 @@ useEffect(() => {
           // console.log('🌐 Getting question from server for room:', roomId);
           
           try {
+            // Reset room state on first load to ensure fresh start
+            const resetParam = isFirstLoad ? '?reset=true' : '';
+            if (isFirstLoad) {
+              setIsFirstLoad(false); // Mark that we've done the initial reset
+              // console.log('🔄 Resetting room state for fresh start');
+            }
+            
             // Check if room already has an active question FIRST
-            const gameStateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
+            const gameStateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}${resetParam}`);
             const gameStateData = await gameStateResponse.json();
             
             if (gameStateData.success && gameStateData.currentQuestion) {
