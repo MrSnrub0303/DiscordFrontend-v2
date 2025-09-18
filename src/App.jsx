@@ -344,6 +344,11 @@ export default function App() {
     }
   }, [currentQuestion]);
 
+  // Debug mySelection changes
+  useEffect(() => {
+    console.log(`🎯 MySelection changed to:`, mySelection);
+  }, [mySelection]);
+
   // For animation (FLIP) of leaderboard
   // We store the previous bounding rects so we can compute deltas when order changes
   const prevRectsRef = useRef({});
@@ -2031,6 +2036,8 @@ useEffect(() => {
               {currentQuestion.options.map((opt, i) => {
                 const reveal = showResult;
                 const isMySelected = i === mySelection; // Use state mySelection, not selections[myPlayerId]
+                // Also check if server has my selection for this option (backup check)
+                const isMySelectionOnServer = selections[myPlayerId] === i;
 
                 let backgroundImage = `url(${btnNormal})`;
                 let boxShadow = "none";
@@ -2067,10 +2074,13 @@ useEffect(() => {
                     <span className="option-text">{opt}</span>
                     
                     {/* Show my name on my selected option (even before reveal) */}
-                    {!reveal && i === mySelection && (
-                      <span className="option-badge my-selection">
-                        {currentUser?.username || currentUser?.global_name || "You"}
-                      </span>
+                    {!reveal && (isMySelected || isMySelectionOnServer) && (
+                      <>
+                        {console.log(`🟢 Rendering green badge for option ${i}, reveal: ${reveal}, mySelection: ${mySelection}, serverSelection: ${selections[myPlayerId]}`)}
+                        <span className="option-badge my-selection">
+                          {currentUser?.username || currentUser?.global_name || "You"}
+                        </span>
+                      </>
                     )}
                     
                     {/* Show all player names after reveal */}
