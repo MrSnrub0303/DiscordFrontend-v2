@@ -1070,6 +1070,14 @@ useEffect(() => {
             // Don't sync timer/results during active gameplay (when timer > 10s) to prevent mid-game disruption
             // BUT always allow new questions to sync through
             const isActiveGameplay = timeLeft > 10 && !showResult;
+            
+            // Always sync showResult when server says it should be shown (critical for badge display)
+            if (data.showResult !== showResult) {
+              // console.log(`🎯 Syncing result state: ${showResult} → ${data.showResult}`);
+              setShowResult(data.showResult);
+              setIsTimerRunning(false);
+            }
+            
             if (!isActiveGameplay) {
               const timeDiff = Math.abs(timeLeft - data.timeLeft);
               if (timeDiff > 3) { // Increased threshold to prevent flickering
@@ -1077,13 +1085,8 @@ useEffect(() => {
                 setTimeLeft(data.timeLeft);
                 setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
               }
-              if (data.showResult !== showResult) {
-                // console.log(`🎯 Syncing result state: ${showResult} → ${data.showResult}`);
-                setShowResult(data.showResult);
-                setIsTimerRunning(false);
-              }
             } else {
-              // console.log('⏸️ Skipping timer/result sync - active gameplay in progress');
+              // console.log('⏸️ Skipping timer sync - active gameplay in progress');
             }
             
             // Always sync selections and playerNames for same question (needed for reveal badges)
