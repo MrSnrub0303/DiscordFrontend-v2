@@ -355,6 +355,14 @@ export default function App() {
     }
 
     return () => {
+      // Clear room state when leaving the activity
+      if (roomId) {
+        // Call reset endpoint to clear server state immediately
+        fetch(`${API_BASE_URL}/game-state/${roomId}?reset=true`).catch(() => {
+          // Ignore errors - just attempt cleanup
+        });
+      }
+      
       if (socket) {
         socket.disconnect();
       }
