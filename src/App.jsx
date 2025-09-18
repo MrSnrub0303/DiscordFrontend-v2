@@ -125,7 +125,8 @@ export default function App() {
     instanceId,
     channelId,
     isHost,
-    isInVoiceChannel
+    isInVoiceChannel,
+    ready
   } = useDiscordActivity();
 
   // Use Discord channel ID as room ID so all players in same voice channel join same game
@@ -165,7 +166,6 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
   const [playerNames, setPlayerNames] = useState({}); // Player names from server
-  const [isFirstLoad, setIsFirstLoad] = useState(true); // Track if this is the first load
   
   // Leaderboard UI state
   const [isLeaderboardCollapsed, setIsLeaderboardCollapsed] = useState(false);
@@ -355,14 +355,6 @@ export default function App() {
     }
 
     return () => {
-      // Clear room state when leaving the activity
-      if (roomId) {
-        // Call reset endpoint to clear server state immediately
-        fetch(`${API_BASE_URL}/game-state/${roomId}?reset=true`).catch(() => {
-          // Ignore errors - just attempt cleanup
-        });
-      }
-      
       if (socket) {
         socket.disconnect();
       }
@@ -887,15 +879,8 @@ useEffect(() => {
           // console.log('🌐 Getting question from server for room:', roomId);
           
           try {
-            // Reset room state on first load to ensure fresh start
-            const resetParam = isFirstLoad ? '?reset=true' : '';
-            if (isFirstLoad) {
-              setIsFirstLoad(false); // Mark that we've done the initial reset
-              // console.log('🔄 Resetting room state for fresh start');
-            }
-            
             // Check if room already has an active question FIRST
-            const gameStateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}${resetParam}`);
+            const gameStateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
             const gameStateData = await gameStateResponse.json();
             
             if (gameStateData.success && gameStateData.currentQuestion) {
@@ -1277,6 +1262,41 @@ useEffect(() => {
 
     return () => clearInterval(timerRef.current);
   }, [currentQuestion, showResult, socket, roomId]); // Removed isInVoiceChannel to prevent timer restarts
+
+  // Clean up timers and reset state when Discord activity becomes inactive
+  useEffect(() => {
+    // If Discord activity becomes inactive (ready=false), clean up all timers and reset state
+    if (ready === false) {
+      // console.log('🔄 Discord activity became inactive - cleaning up timers and resetting state');
+      
+      // Clear all client-side timers
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      
+      // Reset all game state to fresh start
+      setCurrentQuestion(null);
+      setSelections({});
+      setMySelection(null);
+      currentSelectionRef.current = null;
+      setTimeLeft(MAX_TIME);
+      setShowResult(false);
+      setIsTimerRunning(false);
+      setIsTransitioning(false);
+      setIsLoading(false);
+      answerTimesRef.current = {};
+      awardedDoneRef.current = false;
+      
+      // Reset card mode state
+      setCardInput("");
+      setCardLastWrong(false);
+      setCardImageUrl(null);
+      
+      // Don't reset scores and player names - preserve across activity sessions
+      // This allows players to continue where they left off when restarting activity
+    }
+  }, [ready]); // Only depend on Discord ready state
 
   // Use current user ID if available, fallback to "player1"
   const myPlayerId = currentUser?.id || "player1";
