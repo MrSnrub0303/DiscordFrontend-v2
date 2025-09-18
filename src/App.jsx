@@ -4,6 +4,7 @@ import "./App.css";
 import questions from "./questions.json";
 import { useDiscordActivity } from './discord/useDiscordActivity';
 import { DiscordProxySocket } from './socket';
+import { logger, safeLog } from './utils/logger';
 
 import marbleBg from "./assets/marblebg2.png";
 import woodPanelBg from "./assets/sendresource_bg.png";
@@ -146,13 +147,13 @@ export default function App() {
     roomId = "fallback-quiz-room";
   }
   
-  console.log('🏠 Using room ID:', roomId, '(channelId:', channelId, 'instanceId:', instanceId, ')');
-  console.log('🔍 Discord Activity Values:', { 
-    channelId, 
-    instanceId, 
+  safeLog.room('🏠 Using room ID:', roomId);
+  logger.debug('🔍 Discord Activity Values (partial):', { 
+    hasChannelId: !!channelId, 
+    hasInstanceId: !!instanceId,
     isInVoiceChannel, 
     participantCount: participants?.length || 0,
-    finalRoomId: roomId 
+    finalRoomId: roomId ? 'room_***' : null
   });
 
   const [availableQuestions, setAvailableQuestions] = useState([...questions]); // Not used anymore but keep for compatibility
@@ -190,7 +191,7 @@ export default function App() {
   useEffect(() => {
     if (isTransitioning) {
       const timeout = setTimeout(() => {
-        console.log('⚠️ Transition timeout - resetting isTransitioning state');
+        // console.log('⚠️ Transition timeout - resetting isTransitioning state');
         setIsTransitioning(false);
       }, 5000); // 5 second safety timeout
       
@@ -240,7 +241,7 @@ export default function App() {
     
     // Set up socket event listeners
     socket.on('gameState', (gameState) => {
-      console.log('📡 Received gameState:', gameState);
+      // console.log('📡 Received gameState:', gameState);
       
       // Check if this is a new question - if so, clear selections
       const isNewQuestion = currentQuestion?.id !== gameState.currentQuestion?.id;
@@ -249,7 +250,7 @@ export default function App() {
       
       // Only set selections if not a new question, otherwise clear them
       if (isNewQuestion) {
-        console.log('🗑️ New question detected in gameState - clearing selections');
+        // console.log('🗑️ New question detected in gameState - clearing selections');
         setSelections({});
         setMySelection(null);
         currentSelectionRef.current = null;
@@ -264,7 +265,7 @@ export default function App() {
 
     // Listen for server responses to multiplayer events
     socket.on('question_started', (data) => {
-      console.log('📡 Received question_started from server:', data);
+      // console.log('📡 Received question_started from server:', data);
       if (data.question) {
         setCurrentQuestion(data.question);
         setShowResult(false);
@@ -280,7 +281,7 @@ export default function App() {
 
     // Listen for round completion and reveal phase
     socket.on('round_complete', (data) => {
-      console.log('📡 Round complete - revealing all selections:', data);
+      // console.log('📡 Round complete - revealing all selections:', data);
       if (data.selections) {
         setSelections(data.selections);
         setShowResult(true);
@@ -290,20 +291,20 @@ export default function App() {
         }
         // Update player names if provided  
         if (data.playerNames) {
-          console.log('📝 Updating player names from round_complete:', data.playerNames);
+          // console.log('📝 Updating player names from round_complete:', data.playerNames);
           setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
         }
       }
     });
 
     socket.on('player_selected', (data) => {
-      console.log('📡 Player made selection (hidden until reveal):', data.playerId);
+      // console.log('📡 Player made selection (hidden until reveal):', data.playerId);
       // Don't show the actual selection - just acknowledge someone selected
       // This could be used for "Player X has answered" indicators
     });
 
     socket.on('playerJoined', (player) => {
-      console.log('📡 Player joined via socket:', player);
+      // console.log('📡 Player joined via socket:', player);
       setPlayers(prev => {
         // Avoid duplicates
         if (prev.find(p => p.id === player.id)) {
@@ -317,7 +318,7 @@ export default function App() {
     // The participants useEffect will handle both multiplayer and single player setup
 
     socket.on('playerLeft', (playerId) => {
-      console.log('📡 Player left via socket:', playerId);
+      // console.log('📡 Player left via socket:', playerId);
       setPlayers(prev => prev.filter(p => p.id !== playerId));
     });
 
@@ -340,7 +341,7 @@ export default function App() {
   // Load card image when currentQuestion is a card
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
-      console.log('🃏 Loading card image for:', currentQuestion.cardName);
+      // console.log('🃏 Loading card image for:', currentQuestion.cardName);
       // Clear previous card input and feedback when new card question arrives
       setCardInput("");
       setCardLastWrong(false);
@@ -349,11 +350,11 @@ export default function App() {
       
       getCardImageUrl(currentQuestion.cardName)
         .then((imageUrl) => {
-          console.log('🃏 Card image loaded:', imageUrl);
+          // console.log('🃏 Card image loaded:', imageUrl);
           setCardImageUrl(imageUrl);
         })
         .catch((error) => {
-          console.error('🃏 Failed to load card image:', error);
+          // console.error('🃏 Failed to load card image:', error);
           setCardImageUrl(null);
         });
     } else {
@@ -366,7 +367,7 @@ export default function App() {
 
   // Debug mySelection changes
   useEffect(() => {
-    console.log(`🎯 MySelection changed to:`, mySelection);
+    // console.log(`🎯 MySelection changed to:`, mySelection);
   }, [mySelection]);
 
   // For animation (FLIP) of leaderboard
@@ -448,7 +449,7 @@ export default function App() {
     const p = current.play();
     if (p && typeof p.catch === "function") {
       p.catch((err) => {
-        console.warn("playTrackAt play() rejected:", err);
+        // console.warn("playTrackAt play() rejected:", err);
       });
     }
   };
@@ -456,7 +457,7 @@ export default function App() {
     // Initialize socket connection when Discord user info is available
   useEffect(() => {
     if (currentUser?.username && !socket) {
-      console.log('🎮 Initializing multiplayer socket for:', currentUser.username);
+      // console.log('🎮 Initializing multiplayer socket for:', currentUser.username);
       
       const initSocket = async () => {
         try {
@@ -470,7 +471,7 @@ export default function App() {
           const connected = await newSocket.connect();
           
           if (connected && !newSocket.localMode) {
-            console.log('🌐 Successfully connected to multiplayer mode');
+            // console.log('🌐 Successfully connected to multiplayer mode');
             
             // Join shared room with retry logic
             let joinAttempts = 0;
@@ -482,28 +483,28 @@ export default function App() {
                   room: roomId, 
                   username: currentUser.username 
                 });
-                console.log(`🏠 Joined room: ${roomId} as ${currentUser.username}`);
+                // console.log(`🏠 Joined room: ${roomId} as ${currentUser.username}`);
               } catch (error) {
                 joinAttempts++;
-                console.log(`⚠️ Join room attempt ${joinAttempts} failed:`, error.message);
+                // console.log(`⚠️ Join room attempt ${joinAttempts} failed:`, error.message);
                 
                 if (joinAttempts < maxAttempts) {
-                  console.log(`🔄 Retrying join room in 2 seconds...`);
+                  // console.log(`🔄 Retrying join room in 2 seconds...`);
                   setTimeout(joinRoom, 2000);
                 } else {
-                  console.log('❌ Failed to join room after max attempts');
+                  // console.log('❌ Failed to join room after max attempts');
                 }
               }
             };
             
             await joinRoom();
           } else {
-            console.log('🏠 Using local single-player mode');
+            // console.log('🏠 Using local single-player mode');
           }
           
           setSocket(newSocket);
         } catch (error) {
-          console.error('❌ Socket initialization failed:', error);
+          // console.error('❌ Socket initialization failed:', error);
         }
       };
       
@@ -514,7 +515,7 @@ export default function App() {
   // Sync Discord participants with players state
   useEffect(() => {
     if (participants && participants.length > 0 && currentUser) {
-      console.log('🎮 Syncing Discord participants to players:', participants);
+      // console.log('🎮 Syncing Discord participants to players:', participants);
       
       // Convert Discord participants to player objects using Discord's proper format
       const discordPlayers = participants.map(participant => {
@@ -566,7 +567,7 @@ export default function App() {
       });
       setScores(initialScores);
       
-      console.log('✅ Players synced with Discord instance:', discordPlayers);
+      // console.log('✅ Players synced with Discord instance:', discordPlayers);
     } else if (!participants || participants.length === 0) {
       // Fallback to single player mode with current user
       if (currentUser) {
@@ -586,7 +587,7 @@ export default function App() {
         };
         setPlayers([singlePlayer]);
         setScores({[singlePlayer.id]: 0});
-        console.log('🏠 Fallback to single player mode:', singlePlayer);
+        // console.log('🏠 Fallback to single player mode:', singlePlayer);
       }
     }
   }, [participants, currentUser]);
@@ -620,7 +621,7 @@ useEffect(() => {
 
       bg.current.tracks = created;
     } catch (err) {
-      console.error("Error creating playlist audios:", err);
+      // console.error("Error creating playlist audios:", err);
     }
 
     // create audio context and decode reveal sound
@@ -636,11 +637,11 @@ useEffect(() => {
           const decoded = await audioCtxRef.current.decodeAudioData(arrayBuffer);
           revealBufferRef.current = decoded;
         } catch (err) {
-          console.warn("Failed to load/decode reveal sound:", err);
+          // console.warn("Failed to load/decode reveal sound:", err);
         }
       })();
     } catch (e) {
-      console.warn("WebAudio not available:", e);
+      // console.warn("WebAudio not available:", e);
     }
 
     // cleanup on unmount: remove listeners, pause and free
@@ -712,7 +713,7 @@ useEffect(() => {
       src.start(0);
       // no need to keep a reference — it will close after playback
     } catch (e) {
-      console.warn("Failed to play reveal buffer:", e);
+      // console.warn("Failed to play reveal buffer:", e);
     }
   };
 
@@ -721,7 +722,7 @@ useEffect(() => {
     if (!musicEnabled) return;
     const tracks = bg.current.tracks;
     if (!tracks || tracks.length === 0) {
-      console.warn("Playlist not ready yet.");
+      // console.warn("Playlist not ready yet.");
       return;
     }
 
@@ -732,9 +733,9 @@ useEffect(() => {
     const indexToPlay = currentIndexRef.current || 0;
     try {
       playTrackAt(indexToPlay);
-      console.log("Background playlist started at index", indexToPlay);
+      // console.log("Background playlist started at index", indexToPlay);
     } catch (err) {
-      console.warn("startBackgroundMusic: play failed:", err);
+      // console.warn("startBackgroundMusic: play failed:", err);
     }
   };
 
@@ -832,7 +833,7 @@ useEffect(() => {
       const getQuestionFromServer = async () => {
         // Prevent duplicate question fetches
         if (questionFetchInProgressRef.current) {
-          console.log('⚠️ Question fetch already in progress, skipping duplicate');
+          // console.log('⚠️ Question fetch already in progress, skipping duplicate');
           return;
         }
         
@@ -842,14 +843,14 @@ useEffect(() => {
         try {
           // Simplified check - just ensure we have basic requirements
           if (!roomId) {
-            console.log('❌ No room ID available, cannot proceed');
+            // console.log('❌ No room ID available, cannot proceed');
             setIsLoading(false);
             questionFetchInProgressRef.current = false;
             return;
           }
 
           // Skip the Discord user wait - we'll proceed with what we have
-          console.log('🌐 Getting question from server for room:', roomId);
+          // console.log('🌐 Getting question from server for room:', roomId);
           
           try {
             // Check if room already has an active question FIRST
@@ -857,7 +858,7 @@ useEffect(() => {
             const gameStateData = await gameStateResponse.json();
             
             if (gameStateData.success && gameStateData.currentQuestion) {
-              console.log('✅ Found existing question in room - timer at:', gameStateData.timeLeft);
+              // console.log('✅ Found existing question in room - timer at:', gameStateData.timeLeft);
               // Batch all state updates to prevent flickering
               const question = gameStateData.currentQuestion;
               const timeLeft = gameStateData.timeLeft;
@@ -865,18 +866,18 @@ useEffect(() => {
               
               // Only reset selection if this is actually a different question
               const isSameQuestion = currentQuestion && currentQuestion.id === question.id;
-              console.log('🔄 Initial question load:', { isSameQuestion, currentId: currentQuestion?.id, serverId: question.id });
+              // console.log('🔄 Initial question load:', { isSameQuestion, currentId: currentQuestion?.id, serverId: question.id });
               
               setCurrentQuestion(question);
               setTimeLeft(timeLeft);
               setShowResult(showResult);
               setSelections({});
               if (!isSameQuestion) {
-                console.log('🗑️ Clearing selection due to different question in initial load');
+                // console.log('🗑️ Clearing selection due to different question in initial load');
                 setMySelection(null);
                 currentSelectionRef.current = null;
               } else {
-                console.log('✅ Preserving selection - same question in initial load');
+                // console.log('✅ Preserving selection - same question in initial load');
               }
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
@@ -886,7 +887,7 @@ useEffect(() => {
             }
 
             // No active question, start a new one
-            console.log('🆕 Starting new question from server');
+            // console.log('🆕 Starting new question from server');
             const startResponse = await fetch(`${API_BASE_URL}/start_question`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -899,7 +900,7 @@ useEffect(() => {
             const startData = await startResponse.json();
             
             if (startData.success && startData.question) {
-              console.log('✅ Got new question from server - timer at:', startData.timeLeft || MAX_TIME);
+              // console.log('✅ Got new question from server - timer at:', startData.timeLeft || MAX_TIME);
               // Batch state updates to prevent visual glitches
               const question = startData.question;
               const timeLeft = startData.timeLeft || MAX_TIME;
@@ -913,11 +914,11 @@ useEffect(() => {
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
             } else {
-              console.log('⚠️ Failed to get question from server:', startData);
+              // console.log('⚠️ Failed to get question from server:', startData);
             }
             
           } catch (error) {
-            console.error('❌ Error getting question from server:', error);
+            // console.error('❌ Error getting question from server:', error);
           }
         } finally {
           setIsLoading(false);
@@ -934,94 +935,94 @@ useEffect(() => {
     initializeQuestion();
   }, [roomId]); // Only depend on roomId, let Discord integration settle naturally
 
-  console.log('🔍 DEBUG: Top level component state:', {
-    socket: !!socket,
-    socketConnected: socket?.connected,
-    socketLocalMode: socket?.localMode,
-    currentUser: !!currentUser,
-    roomId,
-    currentQuestion: !!currentQuestion
-  });
+  // console.log('🔍 DEBUG: Top level component state:', {
+    // socket: !!socket,
+    // socketConnected: socket?.connected,
+    // socketLocalMode: socket?.localMode,
+    // currentUser: !!currentUser,
+    // roomId,
+    // currentQuestion: !!currentQuestion
+  // });
 
   // Continuous synchronization for multiplayer
   useEffect(() => {
-    console.log('🔧 SYNC USEEFFECT TRIGGERED! Checking conditions...');
-    console.log('🔧 Sync useEffect triggered with conditions:', {
-      socket: !!socket,
-      localMode: socket?.localMode,
-      connected: socket?.connected,
-      currentUser: !!currentUser,
-      roomId,
-      shouldSync: !(!socket || socket.localMode || !socket.connected || !currentUser || !roomId)
-    });
+    // console.log('🔧 SYNC USEEFFECT TRIGGERED! Checking conditions...');
+    // console.log('🔧 Sync useEffect triggered with conditions:', {
+      // socket: !!socket,
+      // localMode: socket?.localMode,
+      // connected: socket?.connected,
+      // currentUser: !!currentUser,
+      // roomId,
+      // shouldSync: !(!socket || socket.localMode || !socket.connected || !currentUser || !roomId)
+    // });
     
     if (!socket || socket.localMode || !socket.connected || !currentUser || !roomId) {
-      console.log('❌ Sync disabled - conditions not met. Details:', {
-        noSocket: !socket,
-        localMode: socket?.localMode,
-        notConnected: !socket?.connected,
-        noCurrentUser: !currentUser,
-        noRoomId: !roomId
-      });
+      // console.log('❌ Sync disabled - conditions not met. Details:', {
+        // noSocket: !socket,
+        // localMode: socket?.localMode,
+        // notConnected: !socket?.connected,
+        // noCurrentUser: !currentUser,
+        // noRoomId: !roomId
+      // });
       return;
     }
 
-    console.log('✅ Starting sync for multiplayer mode');
+    // console.log('✅ Starting sync for multiplayer mode');
     const syncGameState = async () => {
       // Don't sync if question fetch is in progress to prevent conflicts
       if (questionFetchInProgressRef.current) {
-        console.log('⚠️ Skipping sync - question fetch in progress');
+        // console.log('⚠️ Skipping sync - question fetch in progress');
         return;
       }
       
-      console.log('🔄 Sync executing for room:', roomId);
+      // console.log('🔄 Sync executing for room:', roomId);
       try {
         // Use game-state endpoint to sync without generating new questions
         const response = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const data = await response.json();
-        console.log('📡 Sync response:', { success: data.success, hasQuestion: !!data.currentQuestion });
+        // console.log('📡 Sync response:', { success: data.success, hasQuestion: !!data.currentQuestion });
         
         if (data.success && data.currentQuestion) {
           // Check if this is a different question than what we have
-          console.log('🔍 Sync check - Current question:', {
-            exists: !!currentQuestion,
-            isCard: currentQuestion?.isCard,
-            cardName: currentQuestion?.cardName,
-            questionText: currentQuestion?.question ? currentQuestion.question.substring(0, 30) + '...' : 'N/A'
-          });
-          console.log('🔍 Sync check - Server question:', {
-            isCard: data.currentQuestion.isCard,
-            cardName: data.currentQuestion.cardName,
-            questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 30) + '...' : 'N/A'
-          });
+          // console.log('🔍 Sync check - Current question:', {
+            // exists: !!currentQuestion,
+            // isCard: currentQuestion?.isCard,
+            // cardName: currentQuestion?.cardName,
+            // questionText: currentQuestion?.question ? currentQuestion.question.substring(0, 30) + '...' : 'N/A'
+          // });
+          // console.log('🔍 Sync check - Server question:', {
+            // isCard: data.currentQuestion.isCard,
+            // cardName: data.currentQuestion.cardName,
+            // questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 30) + '...' : 'N/A'
+          // });
           
           // Use question ID for more reliable comparison
           const currentQuestionId = currentQuestion?.id;
           const serverQuestionId = data.currentQuestion?.id;
           const isDifferentQuestion = !currentQuestion || currentQuestionId !== serverQuestionId;
           
-          console.log('🔍 Is different question?', isDifferentQuestion, `(current: ${currentQuestionId}, server: ${serverQuestionId})`);
+          // console.log('🔍 Is different question?', isDifferentQuestion, `(current: ${currentQuestionId}, server: ${serverQuestionId})`);
           
           if (isDifferentQuestion) {
-            console.log("🔄 New question detected, syncing:", data.currentQuestion.isCard ? 'Card Question' : 'Regular Question');
-            console.log('📄 Client received question details:', {
-              isCard: data.currentQuestion.isCard,
-              cardName: data.currentQuestion.cardName,
-              cardUrl: data.currentQuestion.cardUrl,
-              questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A'
-            });
+            // console.log("🔄 New question detected, syncing:", data.currentQuestion.isCard ? 'Card Question' : 'Regular Question');
+            // console.log('📄 Client received question details:', {
+              // isCard: data.currentQuestion.isCard,
+              // cardName: data.currentQuestion.cardName,
+              // cardUrl: data.currentQuestion.cardUrl,
+              // questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A'
+            // });
             
             // Only show transition loading if we detect a real question change
             // Check if there's actually a new question from server vs current client state
             const hasCurrentQuestion = currentQuestion && (currentQuestion.question || currentQuestion.questionText || currentQuestion.cardName);
             const hasServerQuestion = data.currentQuestion && (data.currentQuestion.question || data.currentQuestion.cardName);
             
-            console.log('🔄 Sync update:', { 
-              hasCurrentQuestion, 
-              hasServerQuestion,
-              currentQuestionId: currentQuestion?.id,
-              serverQuestionId: data.currentQuestion?.id
-            });
+            // console.log('🔄 Sync update:', { 
+              // hasCurrentQuestion, 
+              // hasServerQuestion,
+              // currentQuestionId: currentQuestion?.id,
+              // serverQuestionId: data.currentQuestion?.id
+            // });
             
             // Don't show transition loaders from sync - let user actions handle transitions
             // Just update the question state without transitions
@@ -1037,16 +1038,16 @@ useEffect(() => {
               setScores(data.scores);
             }
             if (data.playerNames) {
-              console.log('📝 [Sync] Updating player names from server:', data.playerNames);
+              // console.log('📝 [Sync] Updating player names from server:', data.playerNames);
               setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
             }
             // Only reset selection for truly new questions, not for initial sync of same question
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
-              console.log('🗑️ Clearing selection due to new question:', { from: currentQuestionId, to: serverQuestionId });
+              // console.log('🗑️ Clearing selection due to new question:', { from: currentQuestionId, to: serverQuestionId });
               setMySelection(null);
               currentSelectionRef.current = null;
             } else {
-              console.log('✅ Preserving selection - same question or initial load');
+              // console.log('✅ Preserving selection - same question or initial load');
             }
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
@@ -1072,27 +1073,39 @@ useEffect(() => {
             if (!isActiveGameplay) {
               const timeDiff = Math.abs(timeLeft - data.timeLeft);
               if (timeDiff > 3) { // Increased threshold to prevent flickering
-                console.log(`🕒 Syncing timer: ${timeLeft}s → ${data.timeLeft}s`);
+                // console.log(`🕒 Syncing timer: ${timeLeft}s → ${data.timeLeft}s`);
                 setTimeLeft(data.timeLeft);
                 setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
               }
               if (data.showResult !== showResult) {
-                console.log(`🎯 Syncing result state: ${showResult} → ${data.showResult}`);
+                // console.log(`🎯 Syncing result state: ${showResult} → ${data.showResult}`);
                 setShowResult(data.showResult);
                 setIsTimerRunning(false);
               }
             } else {
-              console.log('⏸️ Skipping timer/result sync - active gameplay in progress');
+              // console.log('⏸️ Skipping timer/result sync - active gameplay in progress');
+            }
+            
+            // Always sync selections and playerNames for same question (needed for reveal badges)
+            if (data.selections) {
+              setSelections(data.selections);
+            }
+            if (data.playerNames) {
+              // console.log('📝 [Sync] Updating player names (same question):', data.playerNames);
+              setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
+            }
+            if (data.scores) {
+              setScores(data.scores);
             }
           }
         } else {
           // No current question - sync persisted data (scores, playerNames)
-          console.log('📋 [Sync] No current question, updating persisted data');
+          // console.log('📋 [Sync] No current question, updating persisted data');
           if (data.scores) {
             setScores(data.scores);
           }
           if (data.playerNames) {
-            console.log('📝 [Sync] Updating player names (no question):', data.playerNames);
+            // console.log('📝 [Sync] Updating player names (no question):', data.playerNames);
             setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
           }
           if (data.selections) {
@@ -1101,7 +1114,7 @@ useEffect(() => {
         }
       } catch (error) {
         // Silently handle sync errors to prevent noise
-        console.log('⚠️ Sync error (non-critical):', error.message);
+        // console.log('⚠️ Sync error (non-critical):', error.message);
       }
     };
     
@@ -1137,7 +1150,7 @@ useEffect(() => {
           
           // In multiplayer mode, request round completion from server
           if (socket && !socket.localMode) {
-            console.log('⏰ Time up! Requesting round completion from server...');
+            // console.log('⏰ Time up! Requesting round completion from server...');
             
             const endRoundRequest = async () => {
               try {
@@ -1154,36 +1167,36 @@ useEffect(() => {
                 
                 if (response.ok) {
                   const result = await response.json();
-                  console.log('📡 Round completion response:', result);
+                  // console.log('📡 Round completion response:', result);
                   if (result && result.data && result.data.selections) {
-                    console.log('📊 Server scores:', result.data.scores);
-                    console.log('📊 Server selections:', result.data.selections);
+                    // console.log('📊 Server scores:', result.data.scores);
+                    // console.log('📊 Server selections:', result.data.selections);
                     setSelections(result.data.selections || {});
                     if (result.data.playerNames) {
                       setPlayerNames(result.data.playerNames);
-                      console.log('👥 Player names from server:', result.data.playerNames);
+                      // console.log('👥 Player names from server:', result.data.playerNames);
                     }
                     if (result.data.scores) {
                       setScores(result.data.scores);
                       setServerScoredThisRound(true); // Flag that server provided scores
-                      console.log('✅ Scores updated from server:', result.data.scores);
+                      // console.log('✅ Scores updated from server:', result.data.scores);
                     }
                     setShowResult(true);
                   } else {
                     // Fallback to local reveal with current user's selection
-                    console.log('⚠️ No server response, falling back to local reveal');
-                    console.log('🔧 Using local mySelection:', mySelection);
-                    console.log('🔧 Using ref selection:', currentSelectionRef.current);
-                    console.log('🔧 Current user ID:', currentUser?.id);
+                    // console.log('⚠️ No server response, falling back to local reveal');
+                    // console.log('🔧 Using local mySelection:', mySelection);
+                    // console.log('🔧 Using ref selection:', currentSelectionRef.current);
+                    // console.log('🔧 Current user ID:', currentUser?.id);
                     
                     // Create selections object from local data - try both state and ref
                     const localSelections = {};
                     const selectionToUse = mySelection !== null ? mySelection : currentSelectionRef.current;
                     if (selectionToUse !== null && currentUser?.id) {
                       localSelections[currentUser.id] = selectionToUse;
-                      console.log('🔧 Created local selections:', localSelections);
+                      // console.log('🔧 Created local selections:', localSelections);
                     } else {
-                      console.log('🚨 No selection found in state or ref!');
+                      // console.log('🚨 No selection found in state or ref!');
                     }
                     setSelections(localSelections);
                     setShowResult(true);
@@ -1192,7 +1205,7 @@ useEffect(() => {
                   throw new Error(`Server responded with status: ${response.status}`);
                 }
               } catch (error) {
-                console.log('⚠️ Failed to end round via server:', error);
+                // console.log('⚠️ Failed to end round via server:', error);
                 // Fallback to local reveal
                 const localSelections = {};
                 const selectionToUse = mySelection !== null ? mySelection : currentSelectionRef.current;
@@ -1207,7 +1220,7 @@ useEffect(() => {
             endRoundRequest();
           } else {
             // Local mode - just show result
-            console.log('🏠 Local mode - no server scoring');
+            // console.log('🏠 Local mode - no server scoring');
             setShowResult(true);
           }
           
@@ -1235,20 +1248,20 @@ useEffect(() => {
     if (showResult) return; // Can't select after results are shown
     // Remove the restriction that prevents changing selection
     
-    console.log(`🎯 Attempting to select option ${optionIndex}`, {
-      showResult,
-      currentSelection: mySelection,
-      isInVoiceChannel,
-      voiceChannel: !!voiceChannel,
-      playerId,
-      socket: !!socket
-    });
+    // console.log(`🎯 Attempting to select option ${optionIndex}`, {
+      // showResult,
+      // currentSelection: mySelection,
+      // isInVoiceChannel,
+      // voiceChannel: !!voiceChannel,
+      // playerId,
+      // socket: !!socket
+    // });
 
     // Allow changing selection - update to new choice
     setMySelection(optionIndex);
     currentSelectionRef.current = optionIndex; // Store in ref for persistence
-    console.log(`🎯 You selected option ${optionIndex} (${mySelection !== null ? 'changed from ' + mySelection : 'new selection'})`);
-    console.log(`🔧 Stored selection in ref:`, optionIndex);
+    // console.log(`🎯 You selected option ${optionIndex} (${mySelection !== null ? 'changed from ' + mySelection : 'new selection'})`);
+    // console.log(`🔧 Stored selection in ref:`, optionIndex);
 
     // Emit selection to server with retry logic
     const submitSelection = async () => {
@@ -1274,26 +1287,26 @@ useEffect(() => {
             });
             
             if (response.ok) {
-              console.log('📤 Option selection submitted successfully');
+              // console.log('📤 Option selection submitted successfully');
             } else {
               throw new Error(`Server responded with status: ${response.status}`);
             }
           } catch (error) {
             attempts++;
-            console.log(`⚠️ Selection submit attempt ${attempts} failed:`, error.message);
+            // console.log(`⚠️ Selection submit attempt ${attempts} failed:`, error.message);
             
             if (attempts < maxAttempts) {
-              console.log(`🔄 Retrying selection submission in 1 second...`);
+              // console.log(`🔄 Retrying selection submission in 1 second...`);
               setTimeout(trySubmit, 1000);
             } else {
-              console.log('❌ Failed to submit selection after max attempts');
+              // console.log('❌ Failed to submit selection after max attempts');
             }
           }
         };
         
         await trySubmit();
       } else {
-        console.log('🏠 Local mode - selection recorded locally');
+        // console.log('🏠 Local mode - selection recorded locally');
         // In local mode, immediately show result
         setTimeout(() => {
           setSelections({ [playerId]: optionIndex });
@@ -1364,12 +1377,12 @@ useEffect(() => {
         });
         
         if (response.ok) {
-          console.log('📤 Card answer submitted successfully:', attempt);
+          // console.log('📤 Card answer submitted successfully:', attempt);
         } else {
-          console.error('❌ Failed to submit card answer to server');
+          // console.error('❌ Failed to submit card answer to server');
         }
       } catch (error) {
-        console.error('❌ Error submitting card answer:', error);
+        // console.error('❌ Error submitting card answer:', error);
       }
 
       // If every player has now answered (unlikely for multi players in card-mode), reveal
@@ -1391,12 +1404,12 @@ useEffect(() => {
     if (!showResult) return;
     if (awardedDoneRef.current) return; // guard — only award once per question
     if (serverScoredThisRound) {
-      console.log('🔒 Skipping client scoring - server already provided scores');
+      // console.log('🔒 Skipping client scoring - server already provided scores');
       awardedDoneRef.current = true;
       return;
     }
 
-    console.log('🎯 Running client-side scoring calculation');
+    // console.log('🎯 Running client-side scoring calculation');
     // calculate and award points
     setScores((prevScores) => {
       const newScores = { ...prevScores };
@@ -1438,7 +1451,7 @@ useEffect(() => {
   }, [showResult]);
 
   const onNextQuestion = async () => {
-    console.log('� Starting next question from server');
+    // console.log('� Starting next question from server');
     setIsLoading(true);
     
     try {
@@ -1455,18 +1468,18 @@ useEffect(() => {
         });
         
         const result = await response.json();
-        console.log('📡 Next question response:', result);
+        // console.log('📡 Next question response:', result);
         
         // If question generation is in progress (409), retry after a short delay
         if (response.status === 409 && retryCount < 2) {
-          console.log(`⏳ Next: Question generation in progress, retrying in 300ms (attempt ${retryCount + 1}/2)`);
+          // console.log(`⏳ Next: Question generation in progress, retrying in 300ms (attempt ${retryCount + 1}/2)`);
           await new Promise(resolve => setTimeout(resolve, 300));
           return attemptStartQuestion(retryCount + 1);
         }
         
         // If rate limited (429), wait longer and retry
         if (response.status === 429 && retryCount < 1) {
-          console.log(`🚫 Next: Rate limited, retrying in 1000ms (attempt ${retryCount + 1}/1)`);
+          // console.log(`🚫 Next: Rate limited, retrying in 1000ms (attempt ${retryCount + 1}/1)`);
           await new Promise(resolve => setTimeout(resolve, 1000));
           return attemptStartQuestion(retryCount + 1);
         }
@@ -1487,15 +1500,15 @@ useEffect(() => {
         answerTimesRef.current = {};
         awardedDoneRef.current = false;
         setIsTransitioning(false); // Hide transition for the person who clicked
-        console.log('✅ Got next question from server:', question.isCard ? 'Card Question' : 'Regular Question');
+        // console.log('✅ Got next question from server:', question.isCard ? 'Card Question' : 'Regular Question');
         
         // Let regular sync polling handle updates - no need for manual trigger that causes double transitions
       } else {
-        console.log('⚠️ Failed to get next question from server');
+        // console.log('⚠️ Failed to get next question from server');
       }
       
     } catch (error) {
-      console.error('❌ Error getting next question:', error);
+      // console.error('❌ Error getting next question:', error);
     } finally {
       setIsLoading(false);
       setIsTransitioning(false); // Hide transition in case of error
@@ -1838,12 +1851,12 @@ useEffect(() => {
                   setSelections({});
                   setMySelection(null);
                   currentSelectionRef.current = null;
-                  console.log('✅ Restarted with new question from server');
+                  // console.log('✅ Restarted with new question from server');
                   
                   // Let regular sync polling handle updates - no need for manual trigger
                 }
               } catch (error) {
-                console.error('❌ Error restarting quiz:', error);
+                // console.error('❌ Error restarting quiz:', error);
               } finally {
                 setIsLoading(false);
               }
@@ -2141,13 +2154,13 @@ useEffect(() => {
                     style={{ backgroundImage, boxShadow }}
                     onMouseEnter={playHoverSound}
                     onClick={() => {
-                      console.log(`🔥 Button ${i} clicked!`, {
-                        reveal,
-                        mySelection,
-                        disabled: reveal,
-                        myPlayerId,
-                        showResult
-                      });
+                      // console.log(`🔥 Button ${i} clicked!`, {
+                        // reveal,
+                        // mySelection,
+                        // disabled: reveal,
+                        // myPlayerId,
+                        // showResult
+                      // });
                       onSelectOption(myPlayerId, i);
                     }}
                   >
@@ -2156,7 +2169,7 @@ useEffect(() => {
                     {/* Show my name on my selected option (even before reveal) */}
                     {!reveal && (isMySelected || isMySelectionOnServer) && (
                       <>
-                        {console.log(`🟢 Rendering green badge for option ${i}, reveal: ${reveal}, mySelection: ${mySelection}, serverSelection: ${selections[myPlayerId]}`)}
+                        {/* console.log(`🟢 Rendering green badge for option ${i}, reveal: ${reveal}, mySelection: ${mySelection}, serverSelection: ${selections[myPlayerId]}`) */}
                         <span className="option-badge my-selection">
                           {currentUser?.username || currentUser?.global_name || "You"}
                         </span>
@@ -2168,8 +2181,8 @@ useEffect(() => {
                       const playersForOption = Object.entries(selections)
                         .filter(([playerId, optionIndex]) => optionIndex === i);
                       
-                      console.log(`🔍 Option ${i} players:`, playersForOption);
-                      console.log(`🔍 Current playerNames state:`, playerNames);
+                      // console.log(`🔍 Option ${i} players:`, playersForOption);
+                      // console.log(`🔍 Current playerNames state:`, playerNames);
                       
                       // Only render badge if there are players for this option
                       if (playersForOption.length === 0) {
@@ -2180,25 +2193,25 @@ useEffect(() => {
                         .map(([playerId]) => {
                           // Try multiple sources for player name
                           let playerName = playerNames[playerId]; // From server
-                          console.log(`🔍 Server name for ${playerId}:`, playerName);
+                          // console.log(`🔍 Server name for ${playerId}:`, playerName);
                           
                           if (!playerName) {
                             // Fallback to local players array
                             const player = players.find(p => p.id === playerId);
                             playerName = player?.name;
-                            console.log(`🔍 Local player found for ${playerId}:`, player);
-                            console.log(`🔍 Local name for ${playerId}:`, playerName);
+                            // console.log(`🔍 Local player found for ${playerId}:`, player);
+                            // console.log(`🔍 Local name for ${playerId}:`, playerName);
                           }
                           
                           if (!playerName && playerId === currentUser?.id) {
                             // Fallback to current user info
                             playerName = currentUser?.username || currentUser?.global_name;
-                            console.log(`🔍 Current user fallback for ${playerId}:`, playerName);
+                            // console.log(`🔍 Current user fallback for ${playerId}:`, playerName);
                           }
                           
                           // Final fallback
                           const finalName = playerName || `Player ${playerId.slice(-4)}`;
-                          console.log(`🏷️ Final name for ${playerId}: "${finalName}"`);
+                          // console.log(`🏷️ Final name for ${playerId}: "${finalName}"`);
                           return finalName;
                         })
                         .join(", ");
@@ -2246,7 +2259,7 @@ useEffect(() => {
                   onMouseEnter={() => playHoverSound()}
                   onClick={async () => {
                     playClickSound();
-                    console.log('🎮 Starting first question in multiplayer mode');
+                    // console.log('🎮 Starting first question in multiplayer mode');
                     // Use the same HTTP endpoint as onNextQuestion for consistency
                     try {
                       const response = await fetch(`${API_BASE_URL}/start_question`, {
@@ -2259,7 +2272,7 @@ useEffect(() => {
                       });
                       
                       const result = await response.json();
-                      console.log('📡 Start question response:', result);
+                      // console.log('📡 Start question response:', result);
                       
                       if (result && result.success && result.question) {
                         const question = result.question;
@@ -2271,13 +2284,13 @@ useEffect(() => {
                         setTimeLeft(result.timeLeft || MAX_TIME);
                         answerTimesRef.current = {};
                         awardedDoneRef.current = false;
-                        console.log('✅ First question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
+                        // console.log('✅ First question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
                       } else {
-                        console.log('⚠️ No question in server response - staying in waiting state');
+                        // console.log('⚠️ No question in server response - staying in waiting state');
                         // In multiplayer mode, do NOT fall back to local generation
                       }
                     } catch (error) {
-                      console.log('⚠️ Failed to get question from server:', error);
+                      // console.log('⚠️ Failed to get question from server:', error);
                       // In multiplayer mode, do NOT fall back to local generation
                     }
                   }}

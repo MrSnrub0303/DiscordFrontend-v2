@@ -21,13 +21,13 @@ class DiscordProxySocket {
     if (this.stateChangeCallback) {
       this.stateChangeCallback();
     }
-    console.log('🔧 Socket state changed:', { connected: this.connected, localMode: this.localMode });
+    // console.log('🔧 Socket state changed:', { connected: this.connected, localMode: this.localMode });
   }
   
   async connect() {
     try {
-      console.log('🔍 Testing Discord proxy connection to backend...');
-      console.log('🔗 Trying URL:', `${this.serverUrl}/health`);
+      // console.log('🔍 Testing Discord proxy connection to backend...');
+      // console.log('🔗 Trying URL:', `${this.serverUrl}/health`);
       
       const response = await fetch(`${this.serverUrl}/health`, {
         method: 'GET',
@@ -38,15 +38,15 @@ class DiscordProxySocket {
         timeout: 10000 // 10 second timeout
       });
       
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+      // console.log('📡 Response status:', response.status);
+      // console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
       
       if (response.ok) {
         const data = await response.text();
-        console.log('📡 Response data:', data);
+        // console.log('📡 Response data:', data);
         this.connected = true;
         this.localMode = false;
-        console.log('🌐 Multiplayer mode enabled via Discord proxy!');
+        // console.log('🌐 Multiplayer mode enabled via Discord proxy!');
         this._notifyStateChange();
         return true;
       } else {
@@ -54,8 +54,8 @@ class DiscordProxySocket {
         throw new Error(`Server responded with status: ${response.status}, body: ${errorText}`);
       }
     } catch (error) {
-      console.log('⚠️ Discord proxy connection failed:', error.message);
-      console.log('🔄 Retrying connection in 3 seconds...');
+      // console.log('⚠️ Discord proxy connection failed:', error.message);
+      // console.log('🔄 Retrying connection in 3 seconds...');
       
       // Retry once after a delay
       await new Promise(resolve => setTimeout(resolve, 3000));
@@ -70,17 +70,17 @@ class DiscordProxySocket {
         });
         
         if (retryResponse.ok) {
-          console.log('✅ Retry successful - multiplayer mode enabled!');
+          // console.log('✅ Retry successful - multiplayer mode enabled!');
           this.connected = true;
           this.localMode = false;
           this._notifyStateChange();
           return true;
         }
       } catch (retryError) {
-        console.log('⚠️ Retry also failed:', retryError.message);
+        // console.log('⚠️ Retry also failed:', retryError.message);
       }
       
-      console.log('🏠 Falling back to local single-player mode');
+      // console.log('🏠 Falling back to local single-player mode');
       this.localMode = true;
       this.connected = true;
       this._notifyStateChange();
@@ -102,7 +102,7 @@ class DiscordProxySocket {
         });
         
         if (response.ok) {
-          console.log(`📡 Sent ${event} to server via Discord proxy`);
+          // console.log(`📡 Sent ${event} to server via Discord proxy`);
           
           // Handle response data for actions like start_question
           const responseData = await response.json();
@@ -119,8 +119,8 @@ class DiscordProxySocket {
           throw new Error(`Server error: ${response.status}`);
         }
       } catch (error) {
-        console.log('📡 Failed to send to server:', error.message);
-        console.log('🏠 Switching to local mode');
+        // console.log('📡 Failed to send to server:', error.message);
+        // console.log('🏠 Switching to local mode');
         this.localMode = true;
         this.handleLocalEvent(event, data);
         return null;
@@ -151,7 +151,7 @@ class DiscordProxySocket {
         break;
         
       case 'select_option':
-        console.log('🎯 Local answer recorded');
+        // console.log('🎯 Local answer recorded');
         break;
     }
   }

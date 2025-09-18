@@ -11,12 +11,12 @@ export function useErrorRecovery(voiceChannel, currentUser, isConnected) {
 
   const attemptReconnect = useCallback(() => {
     if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
-      // console.error('Max reconnection attempts reached');
+      console.error('Max reconnection attempts reached');
       return;
     }
 
     if (!voiceChannel?.id || !currentUser?.accessToken) {
-      // console.error('Missing required data for reconnection');
+      console.error('Missing required data for reconnection');
       return;
     }
 
@@ -37,7 +37,7 @@ export function useErrorRecovery(voiceChannel, currentUser, isConnected) {
   // Handle disconnection
   useEffect(() => {
     if (!isConnected && voiceChannel && currentUser) {
-      // console.log('Connection lost, scheduling reconnect attempt...');
+      console.log('Connection lost, scheduling reconnect attempt...');
       
       // Clear any existing timeout
       if (reconnectTimeoutRef.current) {
@@ -65,12 +65,12 @@ export function useErrorRecovery(voiceChannel, currentUser, isConnected) {
   // Handle socket errors
   useEffect(() => {
     const handleError = (error) => {
-      // console.error('Socket error:', error);
+      console.error('Socket error:', error);
       // Could dispatch to error tracking service here
     };
 
     const handleReconnectFailed = () => {
-      // console.error('Reconnection failed');
+      console.error('Reconnection failed');
       // Could show UI error message here
     };
 

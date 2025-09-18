@@ -19,7 +19,7 @@ export function ActivityProvider({ children }) {
 
   const mockToken = 'mock-token';
 
-  console.log('🎮 Using mock Discord SDK (OAuth bypassed)');
+  // console.log('🎮 Using mock Discord SDK (OAuth bypassed)');
 
   return (
     <ActivityContext.Provider value={{ 

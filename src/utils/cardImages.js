@@ -30,7 +30,7 @@ export async function getCardImageUrl(cardName) {
     cardImageCache.set(cardName, imageUrl);
     return imageUrl;
   } catch (error) {
-    console.warn(`Failed to load card image: ${cardName}`, error);
+    // console.warn(`Failed to load card image: ${cardName}`, error);
     
     // Cache the error to avoid repeated attempts
     cardImageCache.set(cardName, null);

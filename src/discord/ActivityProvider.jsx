@@ -17,17 +17,17 @@ export function ActivityProvider({ children }) {
   const addDebugLog = (message) => {
     const timestamp = new Date().toLocaleTimeString();
     setDebugLogs(prev => [...prev.slice(-4), `[${timestamp}] ${message}`]);
-    console.log(message);
+    // console.log(message);
   };
 
   // Debug logging
-  console.log('ActivityProvider state:', { 
-    sdkInitialized: !!sdk, 
-    error, 
-    ready, 
-    hasToken: !!token,
-    step: initializationStep
-  });
+  // console.log('ActivityProvider state:', { 
+    // sdkInitialized: !!sdk, 
+    // error, 
+    // ready, 
+    // hasToken: !!token,
+    // step: initializationStep
+  // });
 
   useEffect(() => {
     const initializeSDK = async () => {
@@ -140,7 +140,7 @@ export function ActivityProvider({ children }) {
         
       } catch (error) {
         addDebugLog(`ERROR: ${error.message}`);
-        console.error('Error initializing Discord SDK:', error);
+        // console.error('Error initializing Discord SDK:', error);
         
         // Enhanced error details
         let errorDetails = {
@@ -154,17 +154,17 @@ export function ActivityProvider({ children }) {
           url: window.location.href
         };
         
-        console.log('Detailed error information:', errorDetails);
+        // console.log('Detailed error information:', errorDetails);
         
         // Check for specific error types
         if (error.name === 'ActivityRejectedError') {
-          console.log('Activity was rejected by Discord');
+          // console.log('Activity was rejected by Discord');
           errorDetails.suggestion = 'Make sure your activity is approved and running in Discord';
         } else if (error.name === 'AuthorizationError') {
-          console.log('Authorization failed - check client ID and scopes');
+          // console.log('Authorization failed - check client ID and scopes');
           errorDetails.suggestion = 'Verify your Discord Client ID and application settings';
         } else if (error.code === 4002 || error.message.includes('Already authing')) {
-          console.log('Multiple authentication attempts detected');
+          // console.log('Multiple authentication attempts detected');
           errorDetails.suggestion = 'Another authentication is in progress. Please wait or refresh the activity.';
           // Reset initialization flag to allow retry after a delay
           setTimeout(() => {
@@ -200,7 +200,7 @@ export function ActivityProvider({ children }) {
     addDebugLog('Starting initialization...');
     
     initializeSDK().catch((err) => {
-      console.error('SDK initialization failed:', err);
+      // console.error('SDK initialization failed:', err);
       initializationRef.current = false; // Reset on error to allow retry
     });
 
@@ -208,7 +208,7 @@ export function ActivityProvider({ children }) {
     return () => {
       if (sdk) {
         // Perform any necessary cleanup
-        console.log('Cleaning up Discord SDK');
+        // console.log('Cleaning up Discord SDK');
       }
     };
   }, []); // Empty dependency array to run only once
@@ -222,7 +222,7 @@ export function ActivityProvider({ children }) {
         addDebugLog('Activity lifecycle: starting...');
         // Basic activity initialization without invalid event listeners
       } catch (err) {
-        console.error('Error during activity start:', err);
+        // console.error('Error during activity start:', err);
       }
     };
 
