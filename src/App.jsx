@@ -2248,7 +2248,11 @@ useEffect(() => {
                     {/* Show all player names after reveal */}
                     {reveal && (() => {
                       const playersForOption = Object.entries(selections)
-                        .filter(([playerId, optionIndex]) => optionIndex === i);
+                        .filter(([playerId, optionIndex]) => {
+                          const isMatch = optionIndex === i;
+                          console.log(`🔍 Player ${playerId} selected option ${optionIndex}, checking option ${i}: ${isMatch}`);
+                          return isMatch;
+                        });
                       
                       console.log(`🔍 Option ${i} players:`, playersForOption);
                       console.log(`🔍 Current playerNames state:`, playerNames);
@@ -2257,8 +2261,11 @@ useEffect(() => {
                       
                       // Only render badge if there are players for this option
                       if (playersForOption.length === 0) {
+                        console.log(`❌ No players for option ${i}, not rendering badge`);
                         return null; // Don't render anything
                       }
+                      
+                      console.log(`✅ Found ${playersForOption.length} players for option ${i}, rendering badge`);
                       
                       const playerNames_display = playersForOption
                         .map(([playerId]) => {
