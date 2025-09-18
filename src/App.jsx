@@ -961,13 +961,17 @@ useEffect(() => {
               isDifferentQuestion,
               isLoading,
               isInitialLoad,
-              shouldShowTransition 
+              shouldShowTransition,
+              currentlyTransitioning: isTransitioning
             });
-            if (shouldShowTransition) {
+            if (shouldShowTransition && !isTransitioning) {
               console.log('✨ Showing transition loader for question change');
               setIsTransitioning(true);
             } else {
-              console.log('⏭️ Skipping transition loader', isInitialLoad ? '(initial load)' : '(no change)');
+              console.log('⏭️ Skipping transition loader', 
+                isInitialLoad ? '(initial load)' : 
+                isTransitioning ? '(already transitioning)' :
+                '(no change)');
             }
             
             // Batch all state updates together to prevent flickering - use setTimeout to avoid race conditions
