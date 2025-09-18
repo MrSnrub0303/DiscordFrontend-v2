@@ -947,12 +947,23 @@ useEffect(() => {
             // Check if there's actually a new question from server vs current client state
             const hasCurrentQuestion = currentQuestion && (currentQuestion.questionText || currentQuestion.cardName);
             const hasServerQuestion = data.currentQuestion && (data.currentQuestion.question || data.currentQuestion.cardName);
-            const isDifferentQuestion = hasServerQuestion && (!hasCurrentQuestion || 
-              (currentQuestion.questionText !== (data.currentQuestion.question || '').substring(0, 50) + '...' && 
-               currentQuestion.cardName !== data.currentQuestion.cardName));
             
-            // Only skip during true initial app load, not during multiplayer sync
-            const isInitialLoad = !hasServerQuestion && isLoading;
+            // More reliable check - compare actual question content
+            let isDifferentQuestion = false;
+            if (hasServerQuestion && hasCurrentQuestion) {
+              const serverQuestionText = data.currentQuestion.question || '';
+              const currentQuestionText = currentQuestion.questionText || '';
+              const serverCardName = data.currentQuestion.cardName || '';
+              const currentCardName = currentQuestion.cardName || '';
+              
+              isDifferentQuestion = (serverQuestionText !== currentQuestionText) || (serverCardName !== currentCardName);
+            } else if (hasServerQuestion && !hasCurrentQuestion) {
+              // Server has question but client doesn't - this is a new question
+              isDifferentQuestion = true;
+            }
+            
+            // Only skip during true initial app load (no previous question and first sync)
+            const isInitialLoad = !hasCurrentQuestion && isLoading && !participants.length;
             const shouldShowTransition = isDifferentQuestion && !isInitialLoad;
             
             console.log('🔄 Transition check:', { 
@@ -1348,7 +1359,7 @@ useEffect(() => {
     setIsLoading(true);
     
     try {
-      setIsTransitioning(true); // Show transition for the person who clicked
+      // Let the sync function handle transitions - don't set it here to avoid conflicts
       const attemptStartQuestion = async (retryCount = 0) => {
         const response = await fetch(`${API_BASE_URL}/start_question`, {
           method: 'POST',
@@ -1391,7 +1402,7 @@ useEffect(() => {
         setTimeLeft(result.timeLeft || MAX_TIME);
         answerTimesRef.current = {};
         awardedDoneRef.current = false;
-        setIsTransitioning(false); // Hide transition loader once question is loaded
+        // Let sync function handle transition hiding - don't do it here to avoid conflicts
         console.log('✅ Got next question from server:', question.isCard ? 'Card Question' : 'Regular Question');
         
         // Trigger immediate sync for other users to pick up the new question
@@ -1407,7 +1418,7 @@ useEffect(() => {
       console.error('❌ Error getting next question:', error);
     } finally {
       setIsLoading(false);
-      setIsTransitioning(false); // Hide transition loader
+      // Let sync function handle transition hiding - don't do it here to avoid conflicts
     }
   };
   // Build a sorted leaderboard from scores
