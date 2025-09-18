@@ -2288,6 +2288,8 @@ useEffect(() => {
         )}
         </>
         ) : (
+          /* Debug content commented out - using custom loader instead */
+          /*
           <div style={{ textAlign: "center", color: "#ccc", padding: "40px" }}>
             {socket && !socket.localMode && socket.connected && isInVoiceChannel ? (
               <div>
@@ -2317,7 +2319,6 @@ useEffect(() => {
                   onMouseEnter={() => playHoverSound()}
                   onClick={async () => {
                     playClickSound();
-                    // console.log('🎮 Starting first question in multiplayer mode');
                     // Use the same HTTP endpoint as onNextQuestion for consistency
                     try {
                       const response = await fetch(`${API_BASE_URL}/start_question`, {
@@ -2330,7 +2331,6 @@ useEffect(() => {
                       });
                       
                       const result = await response.json();
-                      // console.log('📡 Start question response:', result);
                       
                       if (result && result.success && result.question) {
                         const question = result.question;
@@ -2342,14 +2342,9 @@ useEffect(() => {
                         setTimeLeft(result.timeLeft || MAX_TIME);
                         answerTimesRef.current = {};
                         awardedDoneRef.current = false;
-                        // console.log('✅ First question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
-                      } else {
-                        // console.log('⚠️ No question in server response - staying in waiting state');
-                        // In multiplayer mode, do NOT fall back to local generation
                       }
                     } catch (error) {
-                      // console.log('⚠️ Failed to get question from server:', error);
-                      // In multiplayer mode, do NOT fall back to local generation
+                      // Error handling
                     }
                   }}
                 >
@@ -2359,6 +2354,66 @@ useEffect(() => {
             ) : (
               <p>No question loaded. Wait for the host to start the quiz.</p>
             )}
+          </div>
+          */
+          
+          // Use custom loader instead
+          <div
+            className="wood-panel"
+            style={{
+              backgroundImage: `url(${woodPanelBg})`,
+              backgroundSize: "contain",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              padding: 60,
+              boxSizing: "border-box",
+              width: 600,
+              maxWidth: "95vw",
+              minHeight: 400,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              color: "white",
+              textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+            }}
+          >
+            <h1 style={{ 
+              fontSize: 48, 
+              fontWeight: "bold", 
+              marginBottom: 30,
+              textAlign: "center",
+              color: "#FFE4B5"
+            }}>
+              Age of Empires III Quiz
+            </h1>
+            
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 20
+            }}>
+              {/* Animated loading spinner */}
+              <div style={{
+                width: 60,
+                height: 60,
+                border: "4px solid rgba(255, 228, 181, 0.3)",
+                borderTop: "4px solid #FFE4B5",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite"
+              }}></div>
+              
+              <p style={{
+                fontSize: 20,
+                textAlign: "center",
+                color: "#FFE4B5",
+                margin: 0
+              }}>
+                Preparing your Age of Empires III challenge
+              </p>
+            </div>
           </div>
         )}
       </div>
