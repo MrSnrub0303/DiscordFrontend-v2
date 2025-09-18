@@ -1276,7 +1276,7 @@ useEffect(() => {
   };
 
   // New: submit typed answer for card questions (player can keep trying until time runs out)
-  const onSubmitCardAnswer = (playerId, text) => {
+  const onSubmitCardAnswer = async (playerId, text) => {
     if (showResult) return;
     if (!isCardMode) return;
     if (selections[playerId] !== undefined) return; // already answered correctly
@@ -1304,8 +1304,32 @@ useEffect(() => {
       // play click to reward the user feel
       playClickSound();
 
-      // Optionally clear input or keep it; we'll keep it for context and disable further typing
-      // setCardInput(attempt);
+      // Send correct card answer to server
+      try {
+        const response = await fetch(`${API_BASE_URL}/game-event`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'select_option',
+            data: {
+              roomId: roomId,
+              playerId: playerId,
+              playerName: currentUser?.global_name || currentUser?.username || 'Unknown Player',
+              cardAnswer: attempt, // Send the text answer for card questions
+              isCorrect: true, // Mark as correct since we validated it client-side
+              timeTaken: MAX_TIME - timeLeft
+            }
+          })
+        });
+        
+        if (response.ok) {
+          console.log('📤 Card answer submitted successfully:', attempt);
+        } else {
+          console.error('❌ Failed to submit card answer to server');
+        }
+      } catch (error) {
+        console.error('❌ Error submitting card answer:', error);
+      }
 
       // If every player has now answered (unlikely for multi players in card-mode), reveal
       const answeredCount = Object.keys({ ...selections, [playerId]: true }).length;
