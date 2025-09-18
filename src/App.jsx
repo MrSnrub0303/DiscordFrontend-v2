@@ -342,7 +342,7 @@ export default function App() {
       setCardInput("");
       setCardLastWrong(false);
     }
-  }, [currentQuestion]);
+  }, [currentQuestion?.id, currentQuestion?.isCard, currentQuestion?.cardName]); // Only trigger on actual question changes
 
   // Debug mySelection changes
   useEffect(() => {
