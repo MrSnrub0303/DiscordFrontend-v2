@@ -240,8 +240,23 @@ export default function App() {
     
     // Set up socket event listeners
     socket.on('gameState', (gameState) => {
+      console.log('📡 Received gameState:', gameState);
+      
+      // Check if this is a new question - if so, clear selections
+      const isNewQuestion = currentQuestion?.id !== gameState.currentQuestion?.id;
+      
       setCurrentQuestion(gameState.currentQuestion);
-      setSelections(gameState.selections);
+      
+      // Only set selections if not a new question, otherwise clear them
+      if (isNewQuestion) {
+        console.log('🗑️ New question detected in gameState - clearing selections');
+        setSelections({});
+        setMySelection(null);
+        currentSelectionRef.current = null;
+      } else {
+        setSelections(gameState.selections || {});
+      }
+      
       setShowResult(gameState.showResult); 
       setTimeLeft(gameState.timeLeft);
       setScores(gameState.scores);
@@ -272,6 +287,11 @@ export default function App() {
         // Update scores if provided
         if (data.scores) {
           setScores(data.scores);
+        }
+        // Update player names if provided  
+        if (data.playerNames) {
+          console.log('📝 Updating player names from round_complete:', data.playerNames);
+          setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
         }
       }
     });
@@ -2128,6 +2148,7 @@ useEffect(() => {
                         .filter(([playerId, optionIndex]) => optionIndex === i);
                       
                       console.log(`🔍 Option ${i} players:`, playersForOption);
+                      console.log(`🔍 Current playerNames state:`, playerNames);
                       
                       // Only render badge if there are players for this option
                       if (playersForOption.length === 0) {
