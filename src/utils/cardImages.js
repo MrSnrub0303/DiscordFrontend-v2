@@ -19,8 +19,11 @@ export async function getCardImageUrl(cardName) {
   }
 
   try {
+    // Transform card name to match file naming convention (spaces to underscores, remove special chars)
+    const fileName = cardName.replace(/\s+/g, '_').replace(/[:/]/g, '');
+    
     // Dynamic import for Vite
-    const imageModule = await import(`../assets/cards/${cardName}.png`);
+    const imageModule = await import(`../assets/cards/${fileName}.png`);
     const imageUrl = imageModule.default;
     
     // Cache the result
