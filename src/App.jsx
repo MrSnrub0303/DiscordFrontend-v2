@@ -1870,16 +1870,35 @@ useEffect(() => {
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
     
+    let animationFrame = null;
+    let lastX = null;
+    let lastY = null;
+    
     const handleMouseMove = (moveEvent) => {
-      // Removed the isDraggingLeaderboard check that was preventing dragging
-      const newX = Math.max(0, Math.min(window.innerWidth - 280, moveEvent.clientX - offsetX)); // Updated for 280px width
+      const newX = Math.max(0, Math.min(window.innerWidth - 280, moveEvent.clientX - offsetX));
       const newY = Math.max(0, Math.min(window.innerHeight - 200, moveEvent.clientY - offsetY));
       
-      setLeaderboardPosition({ x: newX, y: newY });
+      // Only update if position actually changed (reduce unnecessary renders)
+      if (newX !== lastX || newY !== lastY) {
+        lastX = newX;
+        lastY = newY;
+        
+        // Use requestAnimationFrame for smoother updates
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
+        }
+        
+        animationFrame = requestAnimationFrame(() => {
+          setLeaderboardPosition({ x: newX, y: newY });
+        });
+      }
     };
     
     const handleMouseUp = () => {
       setIsDraggingLeaderboard(false);
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -2410,7 +2429,8 @@ useEffect(() => {
           display: flex;
           flex-direction: column;
           gap: 8px;
-          transition: all 0.3s ease;
+          /* Remove transition during dragging for smoother movement */
+          transition: box-shadow 0.3s ease;
           cursor: move;
           user-select: none;
         }
@@ -2419,6 +2439,8 @@ useEffect(() => {
           z-index: 1000;
           transform: scale(1.02);
           box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+          /* Disable all transitions during dragging for immediate response */
+          transition: none !important;
         }
 
         .leaderboard-container.collapsed {
