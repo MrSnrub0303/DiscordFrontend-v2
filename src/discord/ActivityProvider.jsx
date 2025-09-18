@@ -270,11 +270,7 @@ export function ActivityProvider({ children }) {
     );
   }
 
-  if (!ready) {
-    // Return children directly - let the main app handle loading state
-    return children;
-  }
-
+  // Always provide the context, whether ready or not
   return (
     <ActivityContext.Provider value={{ sdk, token, ready }}>
       {children}
