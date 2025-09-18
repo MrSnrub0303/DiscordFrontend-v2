@@ -2266,57 +2266,132 @@ useEffect(() => {
 
       {/* Small inline style to improve animation smoothness for leaderboard items and score bump */}
       <style>{`
-        /* Leaderboard — compact spacing while preserving top-3 emphasis */
-        .leaderboard-list { padding: 0; margin: 0; list-style: none; }
+        .leaderboard-container {
+          position: fixed;
+          right: 20px;
+          top: 92px;
+          width: 220px;
+          background: linear-gradient(180deg, rgba(10,10,10,0.7), rgba(22,22,22,0.72));
+          border-radius: 12px;
+          padding: 12px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+          z-index: 995;
+          color: white;
+          backdrop-filter: blur(6px) saturate(120%);
+          -webkit-backdrop-filter: blur(6px) saturate(120%);
+          border: 1px solid rgba(255,255,255,0.04);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
 
-        .leaderboard-item { /* li element */
+        .leaderboard-title {
+          font-family: "Trajan Pro Bold", serif;
+          font-size: 1.05rem;
+          text-transform: uppercase;
+          letter-spacing: 0.02em;
+          text-align: center;
+          padding-bottom: 4px;
+          border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .leaderboard-list {
+          list-style: none;
+          margin: 0;
+          padding: 8px 4px 4px 4px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        /* individual row */
+        .leaderboard-item {
           display: block;
-          margin: 2px 0;               /* tightened vertical spacing (was 6px) */
           border-radius: 8px;
           overflow: visible;
         }
 
-        /* inner row: reduced padding and gap so rows are closer */
+        /* Apply grid to the inner row instead to preserve FLIP animations */
         .leaderboard-row {
-          display: flex;
+          display: grid;
+          grid-template-columns: 28px 1fr auto;
           align-items: center;
-          gap: 6px;                    /* slightly tighter horizontal gap (was 8px) */
-          padding: 4px 8px;            /* reduced padding (was 6px 8px) */
+          gap: 8px;
+          padding: 8px;
           border-radius: 8px;
-          transition: transform 220ms ease, box-shadow 220ms ease;
+          transition: background 160ms, transform 160ms;
           transform-origin: left center;
           background: transparent;
         }
 
-        /* default small medal size (reduced from 36 -> 32) */
-        .leaderboard-row img { width: 32px; height: 32px; margin-right: 8px; object-fit: contain; }
+        .leaderboard-item:hover .leaderboard-row {
+          transform: translateY(-2px);
+          background: rgba(255,255,255,0.02);
+        }
 
-        /* keep top-3 larger but balanced for the tighter layout */
-        .leaderboard-item.rank-3 .leaderboard-row { transform: scale(1.03); }
-        .leaderboard-item.rank-3 .leaderboard-row img { width: 34px; height: 34px; }
-        .leaderboard-item.rank-3 .leaderboard-name { font-size: 0.98rem; }
+        /* rank badge - applies to both medal images and text ranks */
+        .leaderboard-rank {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.06);
+          font-weight: 700;
+          font-size: 0.9rem;
+        }
 
-        .leaderboard-item.rank-2 .leaderboard-row { transform: scale(1.05); }
-        .leaderboard-item.rank-2 .leaderboard-row img { width: 36px; height: 36px; }
-        .leaderboard-item.rank-2 .leaderboard-name { font-size: 1.00rem; font-weight: 600; }
+        /* Medal images sizing */
+        .leaderboard-row img {
+          width: 28px;
+          height: 28px;
+          object-fit: contain;
+        }
 
-        .leaderboard-item.rank-1 .leaderboard-row { transform: scale(1.08); }
-        .leaderboard-item.rank-1 .leaderboard-row img { width: 38px; height: 38px; }
-        .leaderboard-item.rank-1 .leaderboard-name { font-size: 1.03rem; font-weight: 700; }
+        /* name column */
+        .leaderboard-name {
+          font-family: "Trajan Pro Bold", serif;
+          font-size: 0.98rem;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
 
-        /* subtle highlight for "you" */
-        .leaderboard-item.you .leaderboard-row { background: rgba(255,255,255,0.025); }
+        /* score column */
+        .leaderboard-score {
+          font-weight: 800;
+          font-size: 1rem;
+          min-width: 46px;
+          text-align: right;
+          color: #ffd966; /* gold-ish for contrast */
+          text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+          transform-origin: center;
+        }
 
-        .leaderboard-name { flex: 1; min-width: 120px; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .leaderboard-score { min-width: 48px; text-align: right; display: inline-block; transform-origin: center; }
+        /* highlight the current user */
+        .leaderboard-item.you .leaderboard-row {
+          background: linear-gradient(90deg, rgba(100,108,255,0.10), rgba(100,108,255,0.03));
+          box-shadow: 0 6px 18px rgba(100,108,255,0.06);
+        }
 
         /* keep score bump animation unchanged */
-        .score-bump { animation: bump 680ms cubic-bezier(.2,.9,.3,1); color: gold; }
+        .score-bump { 
+          animation: bump 680ms cubic-bezier(.2,.9,.3,1); 
+          color: #ffd966 !important; /* override to maintain gold color during animation */
+        }
         @keyframes bump {
           0% { transform: scale(1); }
           25% { transform: scale(1.35); }
           60% { transform: scale(0.98); }
           100% { transform: scale(1); }
+        }
+
+        /* hide the leaderboard on very small screens to keep UI uncluttered */
+        @media (max-width: 900px) {
+          .leaderboard-container {
+            display: none;
+          }
         }
 
         /* Card input customizations */
