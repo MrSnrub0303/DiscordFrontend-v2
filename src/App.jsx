@@ -985,27 +985,25 @@ useEffect(() => {
                 '(no change)');
             }
             
-            // Batch all state updates together to prevent flickering - use setTimeout to avoid race conditions
-            setTimeout(() => {
-              setCurrentQuestion(data.currentQuestion);
-              setTimeLeft(data.timeLeft);
-              // Always start with showResult: false for new questions to prevent revealed state
-              setShowResult(false);
-              setSelections({});
-              setMySelection(null);
-              currentSelectionRef.current = null;
-              answerTimesRef.current = {};
-              awardedDoneRef.current = false;
-              
-              // Hide transition loading after question is loaded (only if it was shown)
-              if (shouldShowTransition) {
-                console.log('⏰ Scheduling transition hide in 500ms');
-                setTimeout(() => {
-                  console.log('✨ Hiding transition loader');
-                  setIsTransitioning(false);
-                }, 500); // Increased delay to ensure other players see the loader
-              }
-            }, 0);
+            // Batch all state updates together to prevent flickering
+            setCurrentQuestion(data.currentQuestion);
+            setTimeLeft(data.timeLeft);
+            // Always start with showResult: false for new questions to prevent revealed state
+            setShowResult(false);
+            setSelections({});
+            setMySelection(null);
+            currentSelectionRef.current = null;
+            answerTimesRef.current = {};
+            awardedDoneRef.current = false;
+            
+            // Hide transition loading after question is loaded (only if it was shown)
+            if (shouldShowTransition) {
+              console.log('⏰ Scheduling transition hide in 500ms');
+              setTimeout(() => {
+                console.log('✨ Hiding transition loader');
+                setIsTransitioning(false);
+              }, 500);
+            }
             
             // Update timer state - if time is already up, show result after a brief delay
             const shouldShowTimer = data.gameState === 'playing' && data.timeLeft > 0;
@@ -1405,11 +1403,7 @@ useEffect(() => {
         // Let sync function handle transition hiding - don't do it here to avoid conflicts
         console.log('✅ Got next question from server:', question.isCard ? 'Card Question' : 'Regular Question');
         
-        // Trigger immediate sync for other users to pick up the new question
-        if (window.syncGameStateFunc) {
-          console.log('🔄 Triggering immediate sync for other users...');
-          setTimeout(() => window.syncGameStateFunc(), 800); // Increased delay to give time for transition
-        }
+        // Let regular sync polling handle updates - no need for manual trigger that causes double transitions
       } else {
         console.log('⚠️ Failed to get next question from server');
       }
@@ -1760,11 +1754,7 @@ useEffect(() => {
                   currentSelectionRef.current = null;
                   console.log('✅ Restarted with new question from server');
                   
-                  // Trigger immediate sync for other users to pick up the restart
-                  if (window.syncGameStateFunc) {
-                    console.log('🔄 Triggering immediate sync after restart...');
-                    setTimeout(() => window.syncGameStateFunc(), 800); // Consistent timing with Next Question
-                  }
+                  // Let regular sync polling handle updates - no need for manual trigger
                 }
               } catch (error) {
                 console.error('❌ Error restarting quiz:', error);
