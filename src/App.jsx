@@ -37,6 +37,9 @@ import soundOffIcon from "./assets/notification_sound_off.png";
 // REVEAL SOUND (we'll decode and play via WebAudio)
 import revealSoundFile from "./assets/chatreceived.wav";
 
+// Card image utility
+import { getCardImageUrl } from './utils/cardImages';
+
 // API configuration - use same base URL as socket
 const API_BASE_URL = '/api';
 
@@ -168,6 +171,7 @@ export default function App() {
   // For card-mode: input state and last attempt feedback
   const [cardInput, setCardInput] = useState("");
   const [cardLastWrong, setCardLastWrong] = useState(false);
+  const [cardImageUrl, setCardImageUrl] = useState(null); // Dynamically loaded card image URL
 
   // Animated display scores (counts up when underlying `scores` changes)
   const [displayScores, setDisplayScores] = useState({});
@@ -312,6 +316,25 @@ export default function App() {
       }
     };
   }, [socket, currentUser, isHost]);
+
+  // Load card image when currentQuestion is a card
+  useEffect(() => {
+    if (currentQuestion?.isCard && currentQuestion?.cardName) {
+      console.log('🃏 Loading card image for:', currentQuestion.cardName);
+      getCardImageUrl(currentQuestion.cardName)
+        .then((imageUrl) => {
+          console.log('🃏 Card image loaded:', imageUrl);
+          setCardImageUrl(imageUrl);
+        })
+        .catch((error) => {
+          console.error('🃏 Failed to load card image:', error);
+          setCardImageUrl(null);
+        });
+    } else {
+      // Not a card question, clear the image URL
+      setCardImageUrl(null);
+    }
+  }, [currentQuestion]);
 
   // For animation (FLIP) of leaderboard
   // We store the previous bounding rects so we can compute deltas when order changes
@@ -1869,11 +1892,32 @@ useEffect(() => {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
               {/* image wrapper (position:relative) so overlay can be placed over the image */}
               <div style={{ position: "relative", width: 160, height: 160 }}>
-                <img
-                  src={currentQuestion.cardUrl}
-                  alt="HC card"
-                  style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: 8, boxShadow: "0 6px 18px rgba(0,0,0,0.6)" }}
-                />
+                {cardImageUrl ? (
+                  <img
+                    src={cardImageUrl}
+                    alt="HC card"
+                    style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: 8, boxShadow: "0 6px 18px rgba(0,0,0,0.6)" }}
+                  />
+                ) : (
+                  <div 
+                    style={{ 
+                      width: "100%", 
+                      height: "100%", 
+                      borderRadius: 8, 
+                      boxShadow: "0 6px 18px rgba(0,0,0,0.6)",
+                      background: "linear-gradient(135deg, #2c1810 0%, #4a3222 100%)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#d4b887",
+                      fontSize: "14px",
+                      textAlign: "center",
+                      border: "2px solid #8b6914"
+                    }}
+                  >
+                    Loading card...
+                  </div>
+                )}
 
                 {/* Overlayed correct answer (center bottom) — slightly transparent background for legibility */}
                 {showResult && (
