@@ -168,9 +168,25 @@ export default function App() {
   
   // Leaderboard UI state
   const [isLeaderboardCollapsed, setIsLeaderboardCollapsed] = useState(false);
-  const [leaderboardPosition, setLeaderboardPosition] = useState({ x: 20, y: 92 }); // Default position (right: 20px, top: 92px)
+  const [leaderboardPosition, setLeaderboardPosition] = useState({ x: 0, y: 92 }); 
   const [isDraggingLeaderboard, setIsDraggingLeaderboard] = useState(false);
   
+  // Set initial leaderboard position from the right edge
+  useEffect(() => {
+    const setInitialPosition = () => {
+      setLeaderboardPosition({ 
+        x: window.innerWidth - 340, // 320px width + 20px margin from right
+        y: 92 
+      });
+    };
+    
+    // Set position immediately and on window resize
+    setInitialPosition();
+    window.addEventListener('resize', setInitialPosition);
+    
+    return () => window.removeEventListener('resize', setInitialPosition);
+  }, []);
+
   const [isLoading, setIsLoading] = useState(true); // Loading state for server questions
   const [isTimerRunning, setIsTimerRunning] = useState(false); // Track timer state to prevent sync conflicts
   const [isTransitioning, setIsTransitioning] = useState(false); // Loading state for question transitions
