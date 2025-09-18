@@ -1032,6 +1032,14 @@ useEffect(() => {
             // Always start with showResult: false for new questions to prevent revealed state
             setShowResult(false);
             setSelections({});
+            // Update scores and player names if provided from server
+            if (data.scores) {
+              setScores(data.scores);
+            }
+            if (data.playerNames) {
+              console.log('📝 [Sync] Updating player names from server:', data.playerNames);
+              setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
+            }
             // Only reset selection for truly new questions, not for initial sync of same question
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
               console.log('🗑️ Clearing selection due to new question:', { from: currentQuestionId, to: serverQuestionId });
@@ -1076,6 +1084,19 @@ useEffect(() => {
             } else {
               console.log('⏸️ Skipping timer/result sync - active gameplay in progress');
             }
+          }
+        } else {
+          // No current question - sync persisted data (scores, playerNames)
+          console.log('📋 [Sync] No current question, updating persisted data');
+          if (data.scores) {
+            setScores(data.scores);
+          }
+          if (data.playerNames) {
+            console.log('📝 [Sync] Updating player names (no question):', data.playerNames);
+            setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
+          }
+          if (data.selections) {
+            setSelections(data.selections);
           }
         }
       } catch (error) {
