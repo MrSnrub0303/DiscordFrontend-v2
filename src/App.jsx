@@ -175,7 +175,7 @@ export default function App() {
   useEffect(() => {
     const setInitialPosition = () => {
       setLeaderboardPosition({ 
-        x: window.innerWidth - 340, // 320px width + 20px margin from right
+        x: window.innerWidth - 300, // 280px width + 20px margin from right
         y: 92 
       });
     };
@@ -1862,17 +1862,18 @@ useEffect(() => {
   // Leaderboard drag handlers
   const handleLeaderboardMouseDown = (e) => {
     if (e.target.closest('.leaderboard-title button')) return; // Don't drag when clicking collapse button
+    
+    e.preventDefault(); // Prevent text selection during drag
     setIsDraggingLeaderboard(true);
     
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
     
-    const handleMouseMove = (e) => {
-      if (!isDraggingLeaderboard) return;
-      
-      const newX = Math.max(0, Math.min(window.innerWidth - 320, e.clientX - offsetX)); // 320px for wider leaderboard
-      const newY = Math.max(0, Math.min(window.innerHeight - 200, e.clientY - offsetY));
+    const handleMouseMove = (moveEvent) => {
+      // Removed the isDraggingLeaderboard check that was preventing dragging
+      const newX = Math.max(0, Math.min(window.innerWidth - 280, moveEvent.clientX - offsetX)); // Updated for 280px width
+      const newY = Math.max(0, Math.min(window.innerHeight - 200, moveEvent.clientY - offsetY));
       
       setLeaderboardPosition({ x: newX, y: newY });
     };
@@ -1917,7 +1918,6 @@ useEffect(() => {
         style={{
           left: `${leaderboardPosition.x}px`,
           top: `${leaderboardPosition.y}px`,
-          right: 'auto' // Override the CSS right property to use left positioning
         }}
         onMouseDown={handleLeaderboardMouseDown}
       >
@@ -1926,6 +1926,7 @@ useEffect(() => {
           <button 
             className="collapse-toggle"
             onClick={toggleLeaderboardCollapse}
+            onMouseDown={(e) => e.stopPropagation()} // Prevent dragging when clicking button
             aria-label={isLeaderboardCollapsed ? "Expand leaderboard" : "Collapse leaderboard"}
           >
             {isLeaderboardCollapsed ? '▲' : '▼'}
@@ -2395,9 +2396,8 @@ useEffect(() => {
       <style>{`
         .leaderboard-container {
           position: fixed;
-          right: 20px;
-          top: 92px;
-          width: 320px; /* Increased from 220px */
+          /* right and top will be set via inline styles for dragging */
+          width: 280px; /* Reduced from 320px for better size */
           background: linear-gradient(180deg, rgba(10,10,10,0.7), rgba(22,22,22,0.72));
           border-radius: 12px;
           padding: 12px;
