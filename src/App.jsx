@@ -319,8 +319,20 @@ export default function App() {
       if (isNewQuestion) {
         // Only clear when safe - never during active gameplay
         console.log('� Socket detected question change:', { from: currentQuestion?.id, to: gameState.currentQuestion?.id });
-        // TEMP FIX: Never clear selections via socket - preserve user choices
-        console.log('🛡️ Socket protecting selections - no clearing on question change');
+        // Smart clearing: Check if it's truly a different question by comparing content
+        const isRealQuestionChange = 
+          currentQuestion.isCard !== gameState.currentQuestion.isCard ||
+          (currentQuestion.isCard && currentQuestion.cardName !== gameState.currentQuestion.cardName) ||
+          (!currentQuestion.isCard && currentQuestion.question !== gameState.currentQuestion.question);
+        
+        if (isRealQuestionChange) {
+          console.log('🆕 Socket: Real question change - clearing selections');
+          setSelections({});
+          setMySelection(null);
+          currentSelectionRef.current = null;
+        } else {
+          console.log('🎯 Socket: Same question content - preserving selections');
+        }
       } else {
         // Preserve local selection when syncing with server gameState
         const currentLocalSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
@@ -1154,9 +1166,20 @@ useEffect(() => {
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
               // Only clear selections when showing results or timer expired - never during active gameplay
               console.log('� Question ID changed:', { from: currentQuestionId, to: serverQuestionId });
-              // TEMP FIX: Never clear selections during sync - preserve user choices
-              console.log('🛡️ Protecting selections - no clearing on question ID change');
-              // Don't clear mySelection to prevent green badge disappearing
+              // Smart clearing: Check if it's truly a different question by comparing content
+              const isRealQuestionChange = 
+                currentQuestion.isCard !== data.currentQuestion.isCard ||
+                (currentQuestion.isCard && currentQuestion.cardName !== data.currentQuestion.cardName) ||
+                (!currentQuestion.isCard && currentQuestion.question !== data.currentQuestion.question);
+              
+              if (isRealQuestionChange) {
+                console.log('🆕 Real question change detected - clearing selections for fresh start');
+                setSelections({});
+                setMySelection(null);
+                currentSelectionRef.current = null;
+              } else {
+                console.log('🎯 Same question content, different ID - preserving selections');
+              }
             } else {
               // console.log('✅ Preserving selection - same question or initial load');
               // For same question, sync server selections but preserve local selection
