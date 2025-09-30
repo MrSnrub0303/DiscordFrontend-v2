@@ -1401,6 +1401,9 @@ useEffect(() => {
               })
             });
             
+
+
+            
             if (response.ok) {
               // console.log('📤 Option selection submitted successfully');
             } else {
