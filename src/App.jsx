@@ -160,7 +160,17 @@ export default function App() {
   const [availableQuestions, setAvailableQuestions] = useState([...questions]); // Not used anymore but keep for compatibility
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [selections, setSelections] = useState({}); // Final revealed selections
-  const [mySelection, setMySelection] = useState(null); // Only my selection (for immediate feedback)
+  const [mySelection, setMySelectionState] = useState(null); // Only my selection (for immediate feedback)
+  
+  // Debug wrapper to track when mySelection is cleared
+  const setMySelection = (value) => {
+    if (value === null) {
+      console.log('🚨 CLEARING mySelection! Stack trace:', new Error().stack);
+    } else {
+      console.log('✅ Setting mySelection to:', value);
+    }
+    setMySelectionState(value);
+  };
   const [timeLeft, setTimeLeft] = useState(MAX_TIME);
   const [showResult, setShowResult] = useState(false);
   const [scores, setScores] = useState({});
@@ -313,7 +323,21 @@ export default function App() {
         setMySelection(null);
         currentSelectionRef.current = null;
       } else {
-        setSelections(gameState.selections || {});
+        // Preserve local selection when syncing with server gameState
+        const currentLocalSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
+        if (currentLocalSelection !== null && playerName) {
+          console.log('🔄 [GameState] Preserving local selection:', { 
+            playerName, 
+            localSelection: currentLocalSelection,
+            serverSelections: gameState.selections 
+          });
+          setSelections({
+            ...(gameState.selections || {}),
+            [playerName]: currentLocalSelection
+          });
+        } else {
+          setSelections(gameState.selections || {});
+        }
       }
       
       setShowResult(gameState.showResult); 
@@ -325,15 +349,25 @@ export default function App() {
     socket.on('question_started', (data) => {
       // console.log('📡 Received question_started from server:', data);
       if (data.question) {
+        const isNewQuestion = !currentQuestion || currentQuestion.id !== data.question.id;
+        
         setCurrentQuestion(data.question);
         setShowResult(false);
-        setSelections({});
-        setMySelection(null); // Reset my selection for new question
-        currentSelectionRef.current = null; // Reset ref too
+        
+        if (isNewQuestion) {
+          // Only reset selections for truly new questions
+          console.log('🆕 New question detected, clearing selections:', data.question.id);
+          setSelections({});
+          setMySelection(null);
+          currentSelectionRef.current = null;
+          // Reset per-question tracking
+          answerTimesRef.current = {};
+          awardedDoneRef.current = false;
+        } else {
+          console.log('🔄 Same question in question_started, preserving selection');
+        }
+        
         setTimeLeft(data.timeLeft || MAX_TIME);
-        // Reset per-question tracking
-        answerTimesRef.current = {};
-        awardedDoneRef.current = false;
       }
     });
 
@@ -1363,20 +1397,20 @@ useEffect(() => {
     if (showResult) return; // Can't select after results are shown
     // Remove the restriction that prevents changing selection
     
-    // console.log(`🎯 Attempting to select option ${optionIndex}`, {
-      // showResult,
-      // currentSelection: mySelection,
-      // isInVoiceChannel,
-      // voiceChannel: !!voiceChannel,
-      // playerId,
-      // socket: !!socket
-    // });
+    console.log(`🎯 Attempting to select option ${optionIndex}`, {
+      showResult,
+      currentSelection: mySelection,
+      isInVoiceChannel,
+      voiceChannel: !!voiceChannel,
+      playerId,
+      socket: !!socket
+    });
 
     // Allow changing selection - update to new choice
     setMySelection(optionIndex);
     currentSelectionRef.current = optionIndex; // Store in ref for persistence
-    // console.log(`🎯 You selected option ${optionIndex} (${mySelection !== null ? 'changed from ' + mySelection : 'new selection'})`);
-    // console.log(`🔧 Stored selection in ref:`, optionIndex);
+    console.log(`🎯 You selected option ${optionIndex} (${mySelection !== null ? 'changed from ' + mySelection : 'new selection'})`);
+    console.log(`🔧 Stored selection in ref:`, optionIndex);
 
     // Emit selection to server with retry logic
     const submitSelection = async () => {
@@ -1403,7 +1437,7 @@ useEffect(() => {
             
 
 
-            
+
             if (response.ok) {
               // console.log('📤 Option selection submitted successfully');
             } else {
