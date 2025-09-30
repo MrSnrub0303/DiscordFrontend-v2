@@ -319,14 +319,8 @@ export default function App() {
       if (isNewQuestion) {
         // Only clear when safe - never during active gameplay
         console.log('� Socket detected question change:', { from: currentQuestion?.id, to: gameState.currentQuestion?.id });
-        if (showResult || timeLeft <= 1) {
-          console.log('🗑️ Safe to clear via socket - results showing or timer expired');
-          setSelections({});
-          setMySelection(null);
-          currentSelectionRef.current = null;
-        } else {
-          console.log('⚠️ Skipping socket clear - question is active, preserving selection');
-        }
+        // TEMP FIX: Never clear selections via socket - preserve user choices
+        console.log('🛡️ Socket protecting selections - no clearing on question change');
       } else {
         // Preserve local selection when syncing with server gameState
         const currentLocalSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
@@ -1160,15 +1154,9 @@ useEffect(() => {
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
               // Only clear selections when showing results or timer expired - never during active gameplay
               console.log('� Question ID changed:', { from: currentQuestionId, to: serverQuestionId });
-              if (showResult || timeLeft <= 1) {
-                console.log('🗑️ Safe to clear - results showing or timer expired');
-                setSelections({});
-                setMySelection(null);
-                currentSelectionRef.current = null;
-              } else {
-                console.log('⚠️ Skipping clear - question is active, preserving selection');
-                // Don't clear anything during active gameplay, just update the question
-              }
+              // TEMP FIX: Never clear selections during sync - preserve user choices
+              console.log('🛡️ Protecting selections - no clearing on question ID change');
+              // Don't clear mySelection to prevent green badge disappearing
             } else {
               // console.log('✅ Preserving selection - same question or initial load');
               // For same question, sync server selections but preserve local selection
