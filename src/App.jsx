@@ -1116,7 +1116,35 @@ useEffect(() => {
             setTimeLeft(data.timeLeft);
             // Always start with showResult: false for new questions to prevent revealed state
             setShowResult(false);
-            setSelections({});
+            
+            // Only reset selections for truly new questions, preserve for same question
+            if (currentQuestion && currentQuestionId !== serverQuestionId) {
+              // console.log('�️ Clearing all data due to new question:', { from: currentQuestionId, to: serverQuestionId });
+              setSelections({});
+              setMySelection(null);
+              currentSelectionRef.current = null;
+            } else {
+              // console.log('✅ Preserving selection - same question or initial load');
+              // For same question, sync server selections but preserve local selection
+              if (data.selections) {
+                const currentLocalSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
+                if (currentLocalSelection !== null && playerName) {
+                  // Merge server selections with local selection to prevent overwriting
+                  console.log('🔄 [Sync] Preserving local selection:', { 
+                    playerName, 
+                    localSelection: currentLocalSelection,
+                    serverSelections: data.selections 
+                  });
+                  setSelections({
+                    ...data.selections,
+                    [playerName]: currentLocalSelection
+                  });
+                } else {
+                  setSelections(data.selections);
+                }
+              }
+            }
+            
             // Update scores and player names if provided from server
             if (data.scores) {
               setScores(data.scores);
@@ -1124,14 +1152,6 @@ useEffect(() => {
             if (data.playerNames) {
               // console.log('📝 [Sync] Updating player names from server:', data.playerNames);
               setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
-            }
-            // Only reset selection for truly new questions, not for initial sync of same question
-            if (currentQuestion && currentQuestionId !== serverQuestionId) {
-              // console.log('🗑️ Clearing selection due to new question:', { from: currentQuestionId, to: serverQuestionId });
-              setMySelection(null);
-              currentSelectionRef.current = null;
-            } else {
-              // console.log('✅ Preserving selection - same question or initial load');
             }
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
@@ -1173,8 +1193,18 @@ useEffect(() => {
             }
             
             // Always sync selections and playerNames for same question (needed for reveal badges)
+            // But be careful not to overwrite local selection during active gameplay
             if (data.selections) {
-              setSelections(data.selections);
+              // During active gameplay, merge server selections with local selection
+              if (isActiveGameplay && mySelection !== null && currentUser?.id) {
+                // Preserve local selection during sync to prevent feedback disappearing
+                const mergedSelections = { ...data.selections };
+                mergedSelections[currentUser.id] = mySelection;
+                setSelections(mergedSelections);
+              } else {
+                // Safe to sync normally when not in active gameplay
+                setSelections(data.selections);
+              }
             }
             if (data.playerNames) {
               setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
