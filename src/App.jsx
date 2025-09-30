@@ -162,11 +162,10 @@ export default function App() {
   const [selections, setSelections] = useState({}); // Final revealed selections
   const [mySelection, setMySelectionState] = useState(null); // Only my selection (for immediate feedback)
   
-  // Debug wrapper to track when mySelection is cleared
+  // Wrapper for mySelection state management
   const setMySelection = (value) => {
-    if (value === null) {
-      console.log('🚨 CLEARING mySelection! Stack trace:', new Error().stack);
-    } else {
+    // Only log when actually setting a selection (not clearing)
+    if (value !== null) {
       console.log('✅ Setting mySelection to:', value);
     }
     setMySelectionState(value);
@@ -320,8 +319,11 @@ export default function App() {
       if (isNewQuestion) {
         // console.log('🗑️ New question detected in gameState - clearing selections');
         setSelections({});
-        setMySelection(null);
-        currentSelectionRef.current = null;
+        // Don't clear mySelection during active gameplay - let it persist
+        if (showResult || timeLeft <= 1) {
+          setMySelection(null);
+          currentSelectionRef.current = null;
+        }
       } else {
         // Preserve local selection when syncing with server gameState
         const currentLocalSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
@@ -1153,10 +1155,14 @@ useEffect(() => {
             
             // Only reset selections for truly new questions, preserve for same question
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
-              // console.log('�️ Clearing all data due to new question:', { from: currentQuestionId, to: serverQuestionId });
+              // More conservative clearing - only clear if definitely a new question and not during active selection
+              console.log('🗑️ New question detected, clearing selections:', { from: currentQuestionId, to: serverQuestionId });
               setSelections({});
-              setMySelection(null);
-              currentSelectionRef.current = null;
+              // Don't clear mySelection during active gameplay - let it persist until timer expires
+              if (showResult || timeLeft <= 1) {
+                setMySelection(null);
+                currentSelectionRef.current = null;
+              }
             } else {
               // console.log('✅ Preserving selection - same question or initial load');
               // For same question, sync server selections but preserve local selection
