@@ -325,11 +325,17 @@ export default function App() {
           (currentQuestion.isCard && currentQuestion.cardName !== gameState.currentQuestion.cardName) ||
           (!currentQuestion.isCard && currentQuestion.question !== gameState.currentQuestion.question);
         
-        if (isRealQuestionChange) {
+        // Time-based protection for socket events too
+        const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
+        const recentlySelected = timeSinceLastSelection < 2000; // 2 seconds protection
+        
+        if (isRealQuestionChange && !recentlySelected) {
           console.log('🆕 Socket: Real question change - clearing selections');
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
+        } else if (recentlySelected) {
+          console.log('🛡️ Socket: Recently selected - protecting user choice');
         } else {
           console.log('🎯 Socket: Same question content - preserving selections');
         }
@@ -1166,17 +1172,31 @@ useEffect(() => {
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
               // Only clear selections when showing results or timer expired - never during active gameplay
               console.log('� Question ID changed:', { from: currentQuestionId, to: serverQuestionId });
-              // Smart clearing: Check if it's truly a different question by comparing content
+              // Add time-based protection and detailed content logging
               const isRealQuestionChange = 
                 currentQuestion.isCard !== data.currentQuestion.isCard ||
                 (currentQuestion.isCard && currentQuestion.cardName !== data.currentQuestion.cardName) ||
                 (!currentQuestion.isCard && currentQuestion.question !== data.currentQuestion.question);
               
-              if (isRealQuestionChange) {
+              // Log what's actually different
+              console.log('🔍 Content comparison:', {
+                typeMatch: currentQuestion.isCard === data.currentQuestion.isCard,
+                cardNameMatch: currentQuestion.cardName === data.currentQuestion.cardName,  
+                questionMatch: currentQuestion.question === data.currentQuestion.question,
+                isRealChange: isRealQuestionChange
+              });
+              
+              // Time-based protection: Don't clear selections if recently selected (within 2 seconds)
+              const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
+              const recentlySelected = timeSinceLastSelection < 2000; // 2 seconds protection
+              
+              if (isRealQuestionChange && !recentlySelected) {
                 console.log('🆕 Real question change detected - clearing selections for fresh start');
                 setSelections({});
                 setMySelection(null);
                 currentSelectionRef.current = null;
+              } else if (recentlySelected) {
+                console.log('🛡️ Recently selected - protecting user choice from clearing');
               } else {
                 console.log('🎯 Same question content, different ID - preserving selections');
               }
@@ -1432,6 +1452,10 @@ useEffect(() => {
     // Allow changing selection - update to new choice
     setMySelection(optionIndex);
     currentSelectionRef.current = optionIndex; // Store in ref for persistence
+    
+    // Track selection time for clearing protection
+    window.lastSelectionTime = Date.now();
+    
     console.log(`🎯 You selected option ${optionIndex} (${mySelection !== null ? 'changed from ' + mySelection : 'new selection'})`);
     console.log(`🔧 Stored selection in ref:`, optionIndex);
 
