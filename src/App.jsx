@@ -317,15 +317,12 @@ export default function App() {
       
       // Only set selections if not a new question, otherwise clear them
       if (isNewQuestion) {
-        // MINIMAL clearing - only clear when results are showing or timer expired
-        if (showResult || timeLeft <= 0) {
-          // console.log('🗑️ New question detected in gameState - clearing selections');
-          setSelections({});
+        // console.log('🗑️ New question detected in gameState - clearing selections');
+        setSelections({});
+        // Don't clear mySelection during active gameplay - let it persist
+        if (showResult || timeLeft <= 1) {
           setMySelection(null);
           currentSelectionRef.current = null;
-        } else {
-          // During active gameplay, ignore question changes to prevent clearing
-          console.log('⚠️ Ignoring socket question ID change during active gameplay');
         }
       } else {
         // Preserve local selection when syncing with server gameState
@@ -1098,12 +1095,6 @@ useEffect(() => {
         return;
       }
       
-      // Don't sync during active gameplay to prevent selection clearing
-      if (!showResult && timeLeft > 2 && (mySelection !== null || currentSelectionRef.current !== null)) {
-        // console.log('⚠️ Skipping sync - user has selection and game is active');
-        return;
-      }
-      
       // console.log('🔄 Sync executing for room:', roomId);
       try {
         // Use game-state endpoint to sync without generating new questions
@@ -1164,23 +1155,13 @@ useEffect(() => {
             
             // Only reset selections for truly new questions, preserve for same question
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
-              // MINIMAL clearing - only clear if results are being shown or timer has expired
-              // This prevents clearing during active gameplay regardless of question ID changes
-              if (showResult || timeLeft <= 0) {
-                console.log('🗑️ New question detected, clearing selections:', { from: currentQuestionId, to: serverQuestionId });
-                setSelections({});
+              // More conservative clearing - only clear if definitely a new question and not during active selection
+              console.log('🗑️ New question detected, clearing selections:', { from: currentQuestionId, to: serverQuestionId });
+              setSelections({});
+              // Don't clear mySelection during active gameplay - let it persist until timer expires
+              if (showResult || timeLeft <= 1) {
                 setMySelection(null);
                 currentSelectionRef.current = null;
-              } else {
-                // During active gameplay, never clear selections due to sync issues
-                console.log('⚠️ Ignoring question ID change during active gameplay:', { 
-                  from: currentQuestionId, 
-                  to: serverQuestionId, 
-                  timeLeft,
-                  showResult
-                });
-                // Just update the question but preserve selections
-                setCurrentQuestion(data.currentQuestion);
               }
             } else {
               // console.log('✅ Preserving selection - same question or initial load');
