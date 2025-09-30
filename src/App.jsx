@@ -4,7 +4,7 @@ import "./App.css";
 import questions from "./questions.json";
 import { useDiscordActivity } from './discord/useDiscordActivity';
 import { DiscordProxySocket } from './socket';
-import { logger, safeLog } from './utils/logger';
+import {  safeLog } from './utils/logger';
 
 import marbleBg from "./assets/marblebg2.png";
 import woodPanelBg from "./assets/sendresource_bg.png";
