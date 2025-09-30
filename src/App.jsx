@@ -317,12 +317,15 @@ export default function App() {
       
       // Only set selections if not a new question, otherwise clear them
       if (isNewQuestion) {
-        // console.log('🗑️ New question detected in gameState - clearing selections');
-        setSelections({});
-        // Don't clear mySelection during active gameplay - let it persist
+        // Only clear when safe - never during active gameplay
+        console.log('� Socket detected question change:', { from: currentQuestion?.id, to: gameState.currentQuestion?.id });
         if (showResult || timeLeft <= 1) {
+          console.log('🗑️ Safe to clear via socket - results showing or timer expired');
+          setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
+        } else {
+          console.log('⚠️ Skipping socket clear - question is active, preserving selection');
         }
       } else {
         // Preserve local selection when syncing with server gameState
@@ -1155,13 +1158,16 @@ useEffect(() => {
             
             // Only reset selections for truly new questions, preserve for same question
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
-              // More conservative clearing - only clear if definitely a new question and not during active selection
-              console.log('🗑️ New question detected, clearing selections:', { from: currentQuestionId, to: serverQuestionId });
-              setSelections({});
-              // Don't clear mySelection during active gameplay - let it persist until timer expires
+              // Only clear selections when showing results or timer expired - never during active gameplay
+              console.log('� Question ID changed:', { from: currentQuestionId, to: serverQuestionId });
               if (showResult || timeLeft <= 1) {
+                console.log('🗑️ Safe to clear - results showing or timer expired');
+                setSelections({});
                 setMySelection(null);
                 currentSelectionRef.current = null;
+              } else {
+                console.log('⚠️ Skipping clear - question is active, preserving selection');
+                // Don't clear anything during active gameplay, just update the question
               }
             } else {
               // console.log('✅ Preserving selection - same question or initial load');
@@ -1279,8 +1285,8 @@ useEffect(() => {
     // Initial sync - wait longer to avoid conflict with main question fetch
     setTimeout(syncGameState, 3000);
     
-    // Sync every 1000ms for better responsiveness in multiplayer
-    const syncInterval = setInterval(syncGameState, 1000);
+    // Sync every 3000ms to reduce polling frequency and prevent constant question changes  
+    const syncInterval = setInterval(syncGameState, 3000);
 
     return () => {
       clearInterval(syncInterval);
