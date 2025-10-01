@@ -1165,8 +1165,8 @@ useEffect(() => {
             // Batch all state updates together to prevent flickering
             setCurrentQuestion(data.currentQuestion);
             setTimeLeft(data.timeLeft);
-            // Always start with showResult: false for new questions to prevent revealed state
-            setShowResult(false);
+            // Use server's showResult state - don't override during grace period
+            setShowResult(data.showResult);
             
             // Only reset selections for truly new questions, preserve for same question
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
