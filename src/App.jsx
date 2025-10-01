@@ -327,7 +327,7 @@ export default function App() {
         
         // Time-based protection for socket events too
         const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
-        const recentlySelected = timeSinceLastSelection < 2000; // 2 seconds protection
+        const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
         
         if (isRealQuestionChange && !recentlySelected) {
           console.log('🆕 Socket: Real question change - clearing selections');
@@ -1186,9 +1186,9 @@ useEffect(() => {
                 isRealChange: isRealQuestionChange
               });
               
-              // Time-based protection: Don't clear selections if recently selected (within 2 seconds)
+              // Time-based protection: Don't clear selections if recently selected (within 10 seconds)
               const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
-              const recentlySelected = timeSinceLastSelection < 2000; // 2 seconds protection
+              const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
               
               if (isRealQuestionChange && !recentlySelected) {
                 console.log('🆕 Real question change detected - clearing selections for fresh start');
