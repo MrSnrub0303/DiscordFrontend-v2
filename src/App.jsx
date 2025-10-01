@@ -1248,9 +1248,10 @@ useEffect(() => {
             }
           } else {
             // Same question, just sync timer and result state - but only if significantly different
-            // Don't sync timer/results during active gameplay (when timer > 10s) to prevent mid-game disruption
+            // Don't sync timer/results during active gameplay to prevent mid-game disruption
             // BUT always allow new questions to sync through
-            const isActiveGameplay = timeLeft > 10 && !showResult;
+            // IMPORTANT: Protect user selection until results are actually shown to prevent badge clearing
+            const isActiveGameplay = !showResult;
             
             // Always sync showResult when server says it should be shown (critical for badge display)
             if (data.showResult !== showResult) {
@@ -1366,7 +1367,9 @@ useEffect(() => {
                     setSelections(result.data.selections || {});
                     if (result.data.playerNames) {
                       setPlayerNames(result.data.playerNames);
-                      // console.log('👥 Player names from server:', result.data.playerNames);
+                      console.log('👥 Player names from server:', result.data.playerNames);
+                    } else {
+                      console.log('⚠️ No playerNames received from server in end_round response');
                     }
                     if (result.data.scores) {
                       setScores(result.data.scores);
