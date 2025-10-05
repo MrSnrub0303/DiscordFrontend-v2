@@ -295,12 +295,22 @@ export default function App() {
       setIsTimerRunning(false);
       setIsTransitioning(false);
       
-      // Optional: Reset game state when activity stops
-      // setTimeLeft(MAX_TIME);
-      // setShowResult(false);
-      // setCurrentQuestion(null);
+      // Notify server that activity is ending (trigger room cleanup)
+      if (socket && roomId) {
+        socket.emit('activity_ended', { roomId });
+        console.log('📴 Notified server of activity end for room:', roomId);
+      }
+      
+      // Reset game state when activity stops for fresh start on next launch
+      setTimeLeft(MAX_TIME);
+      setShowResult(false);
+      setCurrentQuestion(null);
+      setSelections({});
+      setMySelection(null);
+      currentSelectionRef.current = null;
+      console.log('🔄 Game state reset for fresh start');
     }
-  }, [ready]); // Trigger when Discord Activity ready state changes
+  }, [ready, socket, roomId]); // Trigger when Discord Activity ready state changes
 
   // Setup socket event listeners when socket is available
   useEffect(() => {
@@ -329,13 +339,16 @@ export default function App() {
         const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
         const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
         
-        if (isRealQuestionChange && !recentlySelected) {
+        // NEVER clear selections during reveal phase to preserve badges
+        if (isRealQuestionChange && !recentlySelected && !showResult) {
           console.log('🆕 Socket: Real question change - clearing selections');
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
         } else if (recentlySelected) {
           console.log('🛡️ Socket: Recently selected - protecting user choice');
+        } else if (showResult) {
+          console.log('🏆 Socket: Preserving selections - results are being revealed');
         } else {
           console.log('🎯 Socket: Same question content - preserving selections');
         }
@@ -386,6 +399,7 @@ export default function App() {
         
         setTimeLeft(data.timeLeft || MAX_TIME);
       }
+      
     });
 
     // Listen for round completion and reveal phase
@@ -1190,13 +1204,16 @@ useEffect(() => {
               const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
               const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
               
-              if (isRealQuestionChange && !recentlySelected) {
+              // NEVER clear selections during reveal phase (showResult = true) to preserve badges
+              if (isRealQuestionChange && !recentlySelected && !showResult) {
                 console.log('🆕 Real question change detected - clearing selections for fresh start');
                 setSelections({});
                 setMySelection(null);
                 currentSelectionRef.current = null;
               } else if (recentlySelected) {
                 console.log('🛡️ Recently selected - protecting user choice from clearing');
+              } else if (showResult) {
+                console.log('🏆 Preserving selections - results are being revealed');
               } else {
                 console.log('🎯 Same question content, different ID - preserving selections');
               }
