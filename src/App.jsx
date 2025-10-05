@@ -339,11 +339,11 @@ export default function App() {
         const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
         const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
         
-        // NEVER clear selections during reveal phase - check BOTH current state AND incoming gameState
+        // ONLY preserve selections during active reveal phase (when showResult is true)
+        // If we're moving to a new question and NOT showing results, clear selections
         const isInRevealPhase = showResult || gameState.showResult;
-        const hasActiveSelections = Object.keys(selections).length > 0 || mySelection !== null;
         
-        if (isRealQuestionChange && !recentlySelected && !isInRevealPhase && !hasActiveSelections) {
+        if (isRealQuestionChange && !recentlySelected && !isInRevealPhase) {
           console.log('🆕 Socket: Real question change - clearing selections');
           setSelections({});
           setMySelection(null);
@@ -352,8 +352,6 @@ export default function App() {
           console.log('🛡️ Socket: Recently selected - protecting user choice');
         } else if (isInRevealPhase) {
           console.log('🏆 Socket: Preserving selections - results are being/were revealed');
-        } else if (hasActiveSelections) {
-          console.log('🎮 Socket: Preserving selections - active gameplay in progress');
         } else {
           console.log('🎯 Socket: Same question content - preserving selections');
         }
@@ -1209,11 +1207,11 @@ useEffect(() => {
               const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
               const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
               
-              // NEVER clear selections during reveal phase - check BOTH current state AND server state
+              // ONLY preserve selections during active reveal phase (when showResult is true)
+              // If we're moving to a new question and NOT showing results, clear selections
               const isInRevealPhase = showResult || data.showResult;
-              const hasActiveSelections = Object.keys(selections).length > 0 || mySelection !== null;
               
-              if (isRealQuestionChange && !recentlySelected && !isInRevealPhase && !hasActiveSelections) {
+              if (isRealQuestionChange && !recentlySelected && !isInRevealPhase) {
                 console.log('🆕 Real question change detected - clearing selections for fresh start');
                 setSelections({});
                 setMySelection(null);
@@ -1222,8 +1220,6 @@ useEffect(() => {
                 console.log('🛡️ Recently selected - protecting user choice from clearing');
               } else if (isInRevealPhase) {
                 console.log('🏆 Preserving selections - results are being/were revealed');
-              } else if (hasActiveSelections) {
-                console.log('🎮 Preserving selections - active gameplay in progress');
               } else {
                 console.log('🎯 Same question content, different ID - preserving selections');
               }
