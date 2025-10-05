@@ -339,16 +339,21 @@ export default function App() {
         const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
         const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
         
-        // NEVER clear selections during reveal phase to preserve badges
-        if (isRealQuestionChange && !recentlySelected && !showResult) {
+        // NEVER clear selections during reveal phase - check BOTH current state AND incoming gameState
+        const isInRevealPhase = showResult || gameState.showResult;
+        const hasActiveSelections = Object.keys(selections).length > 0 || mySelection !== null;
+        
+        if (isRealQuestionChange && !recentlySelected && !isInRevealPhase && !hasActiveSelections) {
           console.log('🆕 Socket: Real question change - clearing selections');
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
         } else if (recentlySelected) {
           console.log('🛡️ Socket: Recently selected - protecting user choice');
-        } else if (showResult) {
-          console.log('🏆 Socket: Preserving selections - results are being revealed');
+        } else if (isInRevealPhase) {
+          console.log('🏆 Socket: Preserving selections - results are being/were revealed');
+        } else if (hasActiveSelections) {
+          console.log('🎮 Socket: Preserving selections - active gameplay in progress');
         } else {
           console.log('🎯 Socket: Same question content - preserving selections');
         }
@@ -1204,16 +1209,21 @@ useEffect(() => {
               const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
               const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
               
-              // NEVER clear selections during reveal phase (showResult = true) to preserve badges
-              if (isRealQuestionChange && !recentlySelected && !showResult) {
+              // NEVER clear selections during reveal phase - check BOTH current state AND server state
+              const isInRevealPhase = showResult || data.showResult;
+              const hasActiveSelections = Object.keys(selections).length > 0 || mySelection !== null;
+              
+              if (isRealQuestionChange && !recentlySelected && !isInRevealPhase && !hasActiveSelections) {
                 console.log('🆕 Real question change detected - clearing selections for fresh start');
                 setSelections({});
                 setMySelection(null);
                 currentSelectionRef.current = null;
               } else if (recentlySelected) {
                 console.log('🛡️ Recently selected - protecting user choice from clearing');
-              } else if (showResult) {
-                console.log('🏆 Preserving selections - results are being revealed');
+              } else if (isInRevealPhase) {
+                console.log('🏆 Preserving selections - results are being/were revealed');
+              } else if (hasActiveSelections) {
+                console.log('🎮 Preserving selections - active gameplay in progress');
               } else {
                 console.log('🎯 Same question content, different ID - preserving selections');
               }
