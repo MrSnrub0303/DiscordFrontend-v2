@@ -1610,12 +1610,8 @@ useEffect(() => {
         // console.error('❌ Error submitting card answer:', error);
       }
 
-      // If every player has now answered (unlikely for multi players in card-mode), reveal
-      const answeredCount = Object.keys({ ...selections, [playerId]: true }).length;
-      if (answeredCount === players.length) {
-        clearInterval(timerRef.current);
-        setShowResult(true);
-      }
+      // Don't reveal immediately - wait for timer to reach 0 just like trivia questions
+      // The timer logic will handle revealing when timeLeft reaches 0
     } else {
       // wrong — allow keep trying until timer runs out
       setCardLastWrong(true);
@@ -2331,7 +2327,7 @@ useEffect(() => {
                       onSubmitCardAnswer(myPlayerId, e.target.value);
                     }
                   }}
-                  disabled={showResult || selections[myPlayerId] !== undefined}
+                  disabled={showResult}
                   placeholder="Type the card name here..."
                   style={{
                     width: 420,
@@ -2344,8 +2340,8 @@ useEffect(() => {
                     fontFamily: `"Trajan Pro White", "Trajan Pro", serif`,
                     color: "#ffffff",
                     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
-                    // background image switches to "over" when locked (submitted or timer ran out)
-                    backgroundImage: `url(${(showResult || selections[myPlayerId] !== undefined) ? nicknameBgOver : nicknameBg})`,
+                    // background image switches to "over" when timer ends (showResult)
+                    backgroundImage: `url(${showResult ? nicknameBgOver : nicknameBg})`,
                     backgroundSize: "contain",
                     backgroundRepeat: "no-repeat",
                     backgroundPosition: "center",
@@ -2359,13 +2355,13 @@ useEffect(() => {
                 <button
                   onClick={() => onSubmitCardAnswer(myPlayerId, cardInput)}
                   onMouseEnter={playHoverSound}
-                  disabled={showResult || selections[myPlayerId] !== undefined}
+                  disabled={showResult}
                   style={{
                     height: 48,
                     padding: "8px 16px",
                     borderRadius: 8,
                     border: "none",
-                    cursor: selections[myPlayerId] !== undefined || showResult ? "default" : "pointer",
+                    cursor: showResult ? "default" : "pointer",
                     backgroundImage: `url(${btnNormal})`,
                     backgroundSize: "contain",
                     backgroundRepeat: "no-repeat",
