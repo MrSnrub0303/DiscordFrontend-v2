@@ -1203,9 +1203,13 @@ useEffect(() => {
                 isRealChange: isRealQuestionChange
               });
               
-              // Time-based protection: Don't clear selections if recently selected (within 10 seconds)
+              // Time-based protection: Don't clear selections during active gameplay
               const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
               const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
+              
+              // CRITICAL: Protect selections during active gameplay
+              // If user has made a selection (mySelection or ref has value), never clear until reveal
+              const hasActiveSelection = mySelection !== null || currentSelectionRef.current !== null;
               
               // CRITICAL: Never clear selections during reveal phase
               // This prevents badges from disappearing for ALL players (host and friends)
@@ -1215,7 +1219,8 @@ useEffect(() => {
               // In local mode, don't clear selections automatically - let the game flow handle it
               const isLocalMode = socket?.localMode === true;
               
-              if (isRealQuestionChange && !recentlySelected && !isInRevealPhase && !isLocalMode) {
+              // Only clear if: real change AND no active selection AND not in reveal AND not local mode
+              if (isRealQuestionChange && !recentlySelected && !hasActiveSelection && !isInRevealPhase && !isLocalMode) {
                 console.log('🆕 Real question change detected - clearing selections for fresh start');
                 setSelections({});
                 setMySelection(null);
@@ -1224,6 +1229,8 @@ useEffect(() => {
                 console.log('🏠 Local mode - skipping auto-clear, letting game flow manage selections');
               } else if (recentlySelected) {
                 console.log('🛡️ Recently selected - protecting user choice from clearing');
+              } else if (hasActiveSelection) {
+                console.log('🎯 Active selection detected - protecting green badge from clearing');
               } else if (isInRevealPhase) {
                 console.log('🏆 Protecting reveal phase - NEVER clear selections during reveal');
               } else {
@@ -1304,25 +1311,24 @@ useEffect(() => {
             // AND protect selections during reveal phase until server confirms them
             if (data.selections) {
               const isInRevealPhase = showResult || data.showResult;
+              const hasLocalSelection = mySelection !== null || currentSelectionRef.current !== null;
               
-              // During active gameplay OR reveal phase, protect local selections
-              if ((isActiveGameplay && mySelection !== null && currentUser?.id) || 
-                  (isInRevealPhase && Object.keys(selections).length > 0 && Object.keys(data.selections).length === 0)) {
-                // Preserve local selection during sync to prevent feedback disappearing
-                // Also prevent clearing selections during reveal if server hasn't sent them yet
+              // During active gameplay: Always preserve local selection
+              if (isActiveGameplay && hasLocalSelection && currentUser?.id) {
                 const mergedSelections = { ...data.selections };
-                if (mySelection !== null && currentUser?.id) {
-                  mergedSelections[currentUser.id] = mySelection;
-                }
-                // Keep existing selections if server sent empty during reveal
-                if (isInRevealPhase && Object.keys(data.selections).length === 0) {
-                  // console.log('🛡️ Protecting selections during reveal - server sent empty');
-                  setSelections(selections); // Keep current selections
-                } else {
-                  setSelections(mergedSelections);
-                }
-              } else {
-                // Safe to sync normally when not in active gameplay and server has data
+                const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
+                mergedSelections[currentUser.id] = localSelection;
+                setSelections(mergedSelections);
+                console.log('🔄 [Sync] Merged local selection during active gameplay');
+              }
+              // During reveal phase: NEVER accept empty selections from server
+              else if (isInRevealPhase && Object.keys(data.selections).length === 0) {
+                // Keep existing selections - server hasn't sent reveal data yet
+                console.log('🛡️ [Sync] Protecting reveal - server sent empty, keeping current selections');
+                // Don't update selections at all - keep what we have
+              }
+              // Safe to sync when not in active gameplay and server has data
+              else {
                 setSelections(data.selections);
               }
             }
