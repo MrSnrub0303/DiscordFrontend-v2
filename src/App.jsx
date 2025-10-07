@@ -1300,15 +1300,28 @@ useEffect(() => {
             
             // Always sync selections and playerNames for same question (needed for reveal badges)
             // But be careful not to overwrite local selection during active gameplay
+            // AND protect selections during reveal phase until server confirms them
             if (data.selections) {
-              // During active gameplay, merge server selections with local selection
-              if (isActiveGameplay && mySelection !== null && currentUser?.id) {
+              const isInRevealPhase = showResult || data.showResult;
+              
+              // During active gameplay OR reveal phase, protect local selections
+              if ((isActiveGameplay && mySelection !== null && currentUser?.id) || 
+                  (isInRevealPhase && Object.keys(selections).length > 0 && Object.keys(data.selections).length === 0)) {
                 // Preserve local selection during sync to prevent feedback disappearing
+                // Also prevent clearing selections during reveal if server hasn't sent them yet
                 const mergedSelections = { ...data.selections };
-                mergedSelections[currentUser.id] = mySelection;
-                setSelections(mergedSelections);
+                if (mySelection !== null && currentUser?.id) {
+                  mergedSelections[currentUser.id] = mySelection;
+                }
+                // Keep existing selections if server sent empty during reveal
+                if (isInRevealPhase && Object.keys(data.selections).length === 0) {
+                  // console.log('🛡️ Protecting selections during reveal - server sent empty');
+                  setSelections(selections); // Keep current selections
+                } else {
+                  setSelections(mergedSelections);
+                }
               } else {
-                // Safe to sync normally when not in active gameplay
+                // Safe to sync normally when not in active gameplay and server has data
                 setSelections(data.selections);
               }
             }
