@@ -1207,16 +1207,15 @@ useEffect(() => {
               const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
               const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
               
-              // CRITICAL: Check if we're CURRENTLY in reveal phase with visible selections
-              // This prevents clearing badges that are being displayed during reveal
+              // CRITICAL: Never clear selections during reveal phase
+              // This prevents badges from disappearing for ALL players (host and friends)
+              // The server will send proper selection data in the reveal response
               const isInRevealPhase = showResult || data.showResult;
-              const hasVisibleSelections = Object.keys(selections).length > 0;
-              const shouldProtectRevealBadges = isInRevealPhase && hasVisibleSelections;
               
               // In local mode, don't clear selections automatically - let the game flow handle it
               const isLocalMode = socket?.localMode === true;
               
-              if (isRealQuestionChange && !recentlySelected && !shouldProtectRevealBadges && !isLocalMode) {
+              if (isRealQuestionChange && !recentlySelected && !isInRevealPhase && !isLocalMode) {
                 console.log('🆕 Real question change detected - clearing selections for fresh start');
                 setSelections({});
                 setMySelection(null);
@@ -1225,8 +1224,8 @@ useEffect(() => {
                 console.log('🏠 Local mode - skipping auto-clear, letting game flow manage selections');
               } else if (recentlySelected) {
                 console.log('🛡️ Recently selected - protecting user choice from clearing');
-              } else if (shouldProtectRevealBadges) {
-                console.log('🏆 Protecting reveal badges - selections visible during reveal phase');
+              } else if (isInRevealPhase) {
+                console.log('🏆 Protecting reveal phase - NEVER clear selections during reveal');
               } else {
                 console.log('🎯 Same question content, different ID - preserving selections');
               }
@@ -1668,14 +1667,20 @@ useEffect(() => {
       };
 
       if (isCardMode) {
-        // award points to any player who answered correctly (selections[playerId] === true)
-        players.forEach(({ id }) => {
-          if (selections[id] === true) {
-            const timeAtAnswer = answerTimesRef.current[id];
-            const points = timeAtAnswer ? computePointsFromTime(timeAtAnswer) : 0;
-            newScores[id] = (newScores[id] || 0) + points;
-          }
-        });
+        // In multiplayer, server handles card scoring (it validates correct answers)
+        // In local mode, award points client-side for correct answers
+        if (socket?.localMode) {
+          players.forEach(({ id }) => {
+            if (selections[id] === true) {
+              const timeAtAnswer = answerTimesRef.current[id];
+              const points = timeAtAnswer ? computePointsFromTime(timeAtAnswer) : 0;
+              newScores[id] = (newScores[id] || 0) + points;
+            }
+          });
+        } else {
+          // Multiplayer: Server already calculated scores, don't override
+          console.log('🔒 Card mode in multiplayer - server handles scoring');
+        }
       } else {
         // trivia mode (existing logic)
         players.forEach(({ id }) => {
