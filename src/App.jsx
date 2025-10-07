@@ -1464,7 +1464,6 @@ useEffect(() => {
   // Updated: Emit answer through socket with competitive flow
   const onSelectOption = (playerId, optionIndex) => {
     if (showResult) return; // Can't select after results are shown
-    // Remove the restriction that prevents changing selection
     
     console.log(`🎯 Attempting to select option ${optionIndex}`, {
       showResult,
@@ -1542,11 +1541,17 @@ useEffect(() => {
     
     submitSelection();
 
-    // Record timing for scoring
-    answerTimesRef.current = {
-      ...answerTimesRef.current,
-      [playerId]: timeLeft,
-    };
+    // Record timing for scoring - ONLY on first answer to prevent point farming
+    // Players can change their selection, but the points are based on first answer time
+    if (answerTimesRef.current[playerId] === undefined) {
+      answerTimesRef.current = {
+        ...answerTimesRef.current,
+        [playerId]: timeLeft,
+      };
+      console.log(`⏱️ Locked answer time for player ${playerId}: ${timeLeft}s remaining`);
+    } else {
+      console.log(`🔒 Answer time already locked at ${answerTimesRef.current[playerId]}s - ignoring new time`);
+    }
 
     // unlock audio context & maybe start music because this was a user gesture
     if (musicEnabled) startBackgroundMusic();
@@ -2327,7 +2332,7 @@ useEffect(() => {
                       onSubmitCardAnswer(myPlayerId, e.target.value);
                     }
                   }}
-                  disabled={showResult}
+                  disabled={showResult || selections[myPlayerId] !== undefined}
                   placeholder="Type the card name here..."
                   style={{
                     width: 420,
@@ -2340,8 +2345,8 @@ useEffect(() => {
                     fontFamily: `"Trajan Pro White", "Trajan Pro", serif`,
                     color: "#ffffff",
                     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
-                    // background image switches to "over" when timer ends (showResult)
-                    backgroundImage: `url(${showResult ? nicknameBgOver : nicknameBg})`,
+                    // background image switches to "over" when timer ends OR correct answer entered
+                    backgroundImage: `url(${(showResult || selections[myPlayerId] !== undefined) ? nicknameBgOver : nicknameBg})`,
                     backgroundSize: "contain",
                     backgroundRepeat: "no-repeat",
                     backgroundPosition: "center",
@@ -2355,13 +2360,13 @@ useEffect(() => {
                 <button
                   onClick={() => onSubmitCardAnswer(myPlayerId, cardInput)}
                   onMouseEnter={playHoverSound}
-                  disabled={showResult}
+                  disabled={showResult || selections[myPlayerId] !== undefined}
                   style={{
                     height: 48,
                     padding: "8px 16px",
                     borderRadius: 8,
                     border: "none",
-                    cursor: showResult ? "default" : "pointer",
+                    cursor: (showResult || selections[myPlayerId] !== undefined) ? "default" : "pointer",
                     backgroundImage: `url(${btnNormal})`,
                     backgroundSize: "contain",
                     backgroundRepeat: "no-repeat",
