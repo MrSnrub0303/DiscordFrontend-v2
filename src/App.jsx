@@ -1211,11 +1211,16 @@ useEffect(() => {
               // If we're moving to a new question and NOT showing results, clear selections
               const isInRevealPhase = showResult || data.showResult;
               
-              if (isRealQuestionChange && !recentlySelected && !isInRevealPhase) {
+              // In local mode, don't clear selections automatically - let the game flow handle it
+              const isLocalMode = socket?.localMode === true;
+              
+              if (isRealQuestionChange && !recentlySelected && !isInRevealPhase && !isLocalMode) {
                 console.log('🆕 Real question change detected - clearing selections for fresh start');
                 setSelections({});
                 setMySelection(null);
                 currentSelectionRef.current = null;
+              } else if (isLocalMode) {
+                console.log('🏠 Local mode - skipping auto-clear, letting game flow manage selections');
               } else if (recentlySelected) {
                 console.log('🛡️ Recently selected - protecting user choice from clearing');
               } else if (isInRevealPhase) {
