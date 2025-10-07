@@ -1207,14 +1207,16 @@ useEffect(() => {
               const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
               const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
               
-              // ONLY preserve selections during active reveal phase (when showResult is true)
-              // If we're moving to a new question and NOT showing results, clear selections
+              // CRITICAL: Check if we're CURRENTLY in reveal phase with visible selections
+              // This prevents clearing badges that are being displayed during reveal
               const isInRevealPhase = showResult || data.showResult;
+              const hasVisibleSelections = Object.keys(selections).length > 0;
+              const shouldProtectRevealBadges = isInRevealPhase && hasVisibleSelections;
               
               // In local mode, don't clear selections automatically - let the game flow handle it
               const isLocalMode = socket?.localMode === true;
               
-              if (isRealQuestionChange && !recentlySelected && !isInRevealPhase && !isLocalMode) {
+              if (isRealQuestionChange && !recentlySelected && !shouldProtectRevealBadges && !isLocalMode) {
                 console.log('🆕 Real question change detected - clearing selections for fresh start');
                 setSelections({});
                 setMySelection(null);
@@ -1223,8 +1225,8 @@ useEffect(() => {
                 console.log('🏠 Local mode - skipping auto-clear, letting game flow manage selections');
               } else if (recentlySelected) {
                 console.log('🛡️ Recently selected - protecting user choice from clearing');
-              } else if (isInRevealPhase) {
-                console.log('🏆 Preserving selections - results are being/were revealed');
+              } else if (shouldProtectRevealBadges) {
+                console.log('🏆 Protecting reveal badges - selections visible during reveal phase');
               } else {
                 console.log('🎯 Same question content, different ID - preserving selections');
               }
