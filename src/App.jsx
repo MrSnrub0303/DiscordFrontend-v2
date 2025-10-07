@@ -1225,6 +1225,7 @@ useEffect(() => {
                 setSelections({});
                 setMySelection(null);
                 currentSelectionRef.current = null;
+                window.lastSelectionTime = null; // Clear selection timestamp
               } else if (isLocalMode) {
                 console.log('🏠 Local mode - skipping auto-clear, letting game flow manage selections');
               } else if (recentlySelected) {
@@ -1241,7 +1242,16 @@ useEffect(() => {
               // For same question, sync server selections but preserve local selection
               if (data.selections) {
                 const currentLocalSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
-                if (currentLocalSelection !== null && playerName) {
+                
+                // CRITICAL: Only preserve local selection if it was made for THIS question
+                // Check that we're not accidentally preserving an old selection from previous question
+                const localSelectionBelongsToThisQuestion = 
+                  currentLocalSelection !== null && 
+                  playerName && 
+                  window.lastSelectionTime && 
+                  (Date.now() - window.lastSelectionTime < MAX_TIME * 1000); // Within current question timeframe
+                
+                if (localSelectionBelongsToThisQuestion) {
                   // Merge server selections with local selection to prevent overwriting
                   console.log('🔄 [Sync] Preserving local selection:', { 
                     playerName, 
@@ -1313,8 +1323,15 @@ useEffect(() => {
               const isInRevealPhase = showResult || data.showResult;
               const hasLocalSelection = mySelection !== null || currentSelectionRef.current !== null;
               
-              // During active gameplay: Always preserve local selection
-              if (isActiveGameplay && hasLocalSelection && currentUser?.id) {
+              // CRITICAL: Only preserve local selection if it was made for THIS question
+              // Prevent old selections from previous questions being merged in
+              const localSelectionBelongsToThisQuestion = 
+                hasLocalSelection && 
+                window.lastSelectionTime && 
+                (Date.now() - window.lastSelectionTime < MAX_TIME * 1000); // Within current question timeframe
+              
+              // During active gameplay: Preserve local selection ONLY if it belongs to this question
+              if (isActiveGameplay && localSelectionBelongsToThisQuestion && currentUser?.id) {
                 const mergedSelections = { ...data.selections };
                 const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
                 mergedSelections[currentUser.id] = localSelection;
@@ -1753,6 +1770,7 @@ useEffect(() => {
         setSelections({});
         setMySelection(null);
         currentSelectionRef.current = null;
+        window.lastSelectionTime = null; // Clear selection timestamp for new question
         setTimeLeft(result.timeLeft || MAX_TIME);
         answerTimesRef.current = {};
         awardedDoneRef.current = false;
