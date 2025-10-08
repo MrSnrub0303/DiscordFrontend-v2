@@ -1236,20 +1236,13 @@ useEffect(() => {
               if (data.selections) {
                 const currentLocalSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
                 
-                // CRITICAL: Only preserve local selection if it was made for THIS question
-                // Check timestamp AND question ID to prevent old selections from persisting
-                const selectionQuestionId = window.lastSelectionQuestionId;
-                const currentQuestionId = data.currentQuestion?.id;
-                const localSelectionBelongsToThisQuestion = 
-                  currentLocalSelection !== null && 
-                  playerName && 
-                  window.lastSelectionTime && 
-                  selectionQuestionId === currentQuestionId &&
-                  (Date.now() - window.lastSelectionTime < MAX_TIME * 1000); // Within current question timeframe
+                // CRITICAL: During reveal phase, ALWAYS preserve local selection
+                // Never discard selections based on question ID during reveal
+                const isInRevealPhase = showResult || data.showResult;
                 
-                if (localSelectionBelongsToThisQuestion) {
-                  // Merge server selections with local selection to prevent overwriting
-                  console.log('🔄 [Sync] Preserving local selection:', { 
+                if (isInRevealPhase && currentLocalSelection !== null && playerName) {
+                  // Reveal phase - merge server data with local selection
+                  console.log('🏆 [Sync] Same-question reveal phase - preserving local selection:', { 
                     playerName, 
                     localSelection: currentLocalSelection,
                     serverSelections: data.selections 
@@ -1259,10 +1252,33 @@ useEffect(() => {
                     [playerName]: currentLocalSelection
                   });
                 } else {
-                  // Selection from different question or stale - use server data only
-                  setSelections(data.selections);
-                  if (selectionQuestionId !== currentQuestionId) {
-                    console.log('⚠️ [Sync] Selection from different question in same-question path - using server data');
+                  // Active gameplay - check timestamp AND question ID to prevent old selections from persisting
+                  const selectionQuestionId = window.lastSelectionQuestionId;
+                  const currentQuestionId = data.currentQuestion?.id;
+                  const localSelectionBelongsToThisQuestion = 
+                    currentLocalSelection !== null && 
+                    playerName && 
+                    window.lastSelectionTime && 
+                    selectionQuestionId === currentQuestionId &&
+                    (Date.now() - window.lastSelectionTime < MAX_TIME * 1000); // Within current question timeframe
+                  
+                  if (localSelectionBelongsToThisQuestion) {
+                    // Merge server selections with local selection to prevent overwriting
+                    console.log('🔄 [Sync] Preserving local selection:', { 
+                      playerName, 
+                      localSelection: currentLocalSelection,
+                      serverSelections: data.selections 
+                    });
+                    setSelections({
+                      ...data.selections,
+                      [playerName]: currentLocalSelection
+                    });
+                  } else {
+                    // Selection from different question or stale - use server data only
+                    setSelections(data.selections);
+                    if (selectionQuestionId !== currentQuestionId) {
+                      console.log('⚠️ [Sync] Selection from different question in same-question path - using server data');
+                    }
                   }
                 }
               }
