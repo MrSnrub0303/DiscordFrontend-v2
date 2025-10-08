@@ -1637,7 +1637,7 @@ useEffect(() => {
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [currentQuestion, showResult, socket, roomId]); // Removed isInVoiceChannel to prevent timer restarts
+  }, [currentQuestion?.id, showResult, socket, roomId]); // Use question ID instead of entire object to prevent timer restarts
 
   // Use current user ID if available, fallback to "player1"
   const myPlayerId = currentUser?.id || "player1";
