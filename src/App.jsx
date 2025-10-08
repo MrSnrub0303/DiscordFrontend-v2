@@ -2291,7 +2291,10 @@ useEffect(() => {
                   setSelections({});
                   setMySelection(null);
                   currentSelectionRef.current = null;
-                  // console.log('✅ Restarted with new question from server');
+                  // CRITICAL: Clear scores when restarting quiz
+                  setScores({});
+                  setDisplayScores({});
+                  // console.log('✅ Restarted with new question from server and cleared scores');
                   
                   // Let regular sync polling handle updates - no need for manual trigger
                 }
