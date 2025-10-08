@@ -1333,16 +1333,32 @@ useEffect(() => {
                   if (hasLocalSelection && currentUser?.id) {
                     const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
                     mergedSelections[currentUser.id] = localSelection;
+                    console.log('🏆 [Sync] Reveal phase - merged server + local selections', {
+                      serverSelections: data.selections,
+                      currentUserId: currentUser.id,
+                      localSelection,
+                      mergedSelections
+                    });
+                  } else {
+                    console.log('🏆 [Sync] Reveal phase - using server selections only', {
+                      hasLocalSelection,
+                      currentUserId: currentUser?.id,
+                      serverSelections: data.selections
+                    });
                   }
                   
                   setSelections(mergedSelections);
-                  console.log('🏆 [Sync] Reveal phase - merged server + local selections');
                 } else {
                   // Server sent empty during reveal - keep what we have with local selection
                   if (hasLocalSelection && currentUser?.id) {
                     const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
-                    setSelections({ ...selections, [currentUser.id]: localSelection });
-                    console.log('🛡️ [Sync] Reveal phase - server sent empty, preserving local selection');
+                    const preservedSelections = { ...selections, [currentUser.id]: localSelection };
+                    setSelections(preservedSelections);
+                    console.log('🛡️ [Sync] Reveal phase - server sent empty, preserving local selection', {
+                      currentUserId: currentUser.id,
+                      localSelection,
+                      preservedSelections
+                    });
                   } else {
                     console.log('🛡️ [Sync] Reveal phase - server sent empty, keeping current selections');
                   }
@@ -1363,7 +1379,12 @@ useEffect(() => {
                   const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
                   mergedSelections[currentUser.id] = localSelection;
                   setSelections(mergedSelections);
-                  console.log('🔄 [Sync] Active gameplay - merged local selection');
+                  console.log('🔄 [Sync] Active gameplay - merged local selection', {
+                    serverSelections: data.selections,
+                    currentUserId: currentUser.id,
+                    localSelection,
+                    mergedSelections
+                  });
                 } else {
                   // Stale selection or different question - don't merge
                   setSelections(data.selections);
