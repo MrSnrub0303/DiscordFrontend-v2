@@ -1240,16 +1240,19 @@ useEffect(() => {
                 // Never discard selections based on question ID during reveal
                 const isInRevealPhase = showResult || data.showResult;
                 
-                if (isInRevealPhase && currentLocalSelection !== null && playerName) {
+                // Get player ID for indexing selections (server uses player IDs, not names)
+                const myPlayerId = currentUser?.id;
+                
+                if (isInRevealPhase && currentLocalSelection !== null && myPlayerId) {
                   // Reveal phase - merge server data with local selection
                   console.log('🏆 [Sync] Same-question reveal phase - preserving local selection:', { 
-                    playerName, 
+                    myPlayerId, 
                     localSelection: currentLocalSelection,
                     serverSelections: data.selections 
                   });
                   setSelections({
                     ...data.selections,
-                    [playerName]: currentLocalSelection
+                    [myPlayerId]: currentLocalSelection
                   });
                 } else {
                   // Active gameplay - check timestamp AND question ID to prevent old selections from persisting
@@ -1257,7 +1260,7 @@ useEffect(() => {
                   const currentQuestionId = data.currentQuestion?.id;
                   const localSelectionBelongsToThisQuestion = 
                     currentLocalSelection !== null && 
-                    playerName && 
+                    myPlayerId && 
                     window.lastSelectionTime && 
                     selectionQuestionId === currentQuestionId &&
                     (Date.now() - window.lastSelectionTime < MAX_TIME * 1000); // Within current question timeframe
@@ -1265,13 +1268,13 @@ useEffect(() => {
                   if (localSelectionBelongsToThisQuestion) {
                     // Merge server selections with local selection to prevent overwriting
                     console.log('🔄 [Sync] Preserving local selection:', { 
-                      playerName, 
+                      myPlayerId, 
                       localSelection: currentLocalSelection,
                       serverSelections: data.selections 
                     });
                     setSelections({
                       ...data.selections,
-                      [playerName]: currentLocalSelection
+                      [myPlayerId]: currentLocalSelection
                     });
                   } else {
                     // Selection from different question or stale - use server data only
