@@ -1091,6 +1091,27 @@ useEffect(() => {
     // currentQuestion: !!currentQuestion
   // });
 
+  // Helper function to normalize server selections format
+  // Server sends: {playerId: {optionIndex, timeTaken, timestamp}}
+  // UI expects: {playerId: optionIndex}
+  const normalizeServerSelections = (serverSelections) => {
+    if (!serverSelections || typeof serverSelections !== 'object') return {};
+    
+    const normalized = {};
+    for (const [playerId, selection] of Object.entries(serverSelections)) {
+      // If selection is an object with optionIndex, extract it
+      if (selection && typeof selection === 'object' && 'optionIndex' in selection) {
+        normalized[playerId] = selection.optionIndex;
+      } 
+      // If it's already a number, use it directly
+      else if (typeof selection === 'number') {
+        normalized[playerId] = selection;
+      }
+      // Otherwise skip this entry (invalid format)
+    }
+    return normalized;
+  };
+
   // Continuous synchronization for multiplayer
   useEffect(() => {
     // console.log('🔧 SYNC USEEFFECT TRIGGERED! Checking conditions...');
@@ -1292,7 +1313,7 @@ useEffect(() => {
                   setSelections(prev => {
                     const merged = {
                       ...prev, // Keep existing selections (friend's badge)
-                      ...data.selections, // Merge server data
+                      ...normalizeServerSelections(data.selections), // Merge server data (normalized to numbers)
                     };
                     // CRITICAL: Always override with local selection (don't let server overwrite)
                     merged[myPlayerId] = currentLocalSelection;
@@ -1323,7 +1344,7 @@ useEffect(() => {
                     setSelections(prev => {
                       const merged = {
                         ...prev, // Keep existing selections
-                        ...data.selections, // Merge server data
+                        ...normalizeServerSelections(data.selections), // Merge server data (normalized)
                       };
                       // Always ensure local selection is present
                       merged[myPlayerId] = currentLocalSelection;
@@ -1348,7 +1369,7 @@ useEffect(() => {
                     });
                     setSelections(prev => ({
                       ...prev, // Keep existing selections (friend's badges)
-                      ...data.selections // Merge server data
+                      ...normalizeServerSelections(data.selections) // Merge server data (normalized)
                     }));
                   }
                 }
@@ -1439,7 +1460,7 @@ useEffect(() => {
                   setSelections(prev => {
                     const merged = {
                       ...prev, // Keep existing selections (friend's badge)
-                      ...data.selections, // Merge server data
+                      ...normalizeServerSelections(data.selections), // Merge server data (normalized)
                     };
                     
                     // Ensure our selection is always present if we have one
@@ -1489,16 +1510,19 @@ useEffect(() => {
                   setSelections(prev => {
                     const merged = {
                       ...prev, // Keep existing selections
-                      ...data.selections, // Merge server data
+                      ...normalizeServerSelections(data.selections), // Merge server data (normalized)
                     };
                     merged[currentUser.id] = localSelection;
+                    
+                    console.log('🔄 [Sync] Active gameplay - merged local selection', {
+                      previousSelections: prev,
+                      serverSelections: data.selections,
+                      currentUserId: currentUser.id,
+                      localSelection,
+                      finalMerged: merged
+                    });
+                    
                     return merged;
-                  });
-                  console.log('🔄 [Sync] Active gameplay - merged local selection', {
-                    serverSelections: data.selections,
-                    currentUserId: currentUser.id,
-                    localSelection,
-                    mergedSelections: { ...data.selections, [currentUser.id]: localSelection }
                   });
                 } else {
                   // No local selection or different question - merge server data
@@ -1509,7 +1533,7 @@ useEffect(() => {
                   });
                   setSelections(prev => ({
                     ...prev, // Keep existing (friend's badges)
-                    ...data.selections // Merge server data
+                    ...normalizeServerSelections(data.selections) // Merge server data (normalized)
                   }));
                 }
               }
@@ -1518,7 +1542,7 @@ useEffect(() => {
                 console.log('🔄 [Sync] Not in active gameplay - merging server data');
                 setSelections(prev => ({
                   ...prev, // Keep existing selections
-                  ...data.selections // Merge server data
+                  ...normalizeServerSelections(data.selections) // Merge server data (normalized)
                 }));
               }
             }
