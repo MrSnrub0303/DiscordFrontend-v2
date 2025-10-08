@@ -1305,11 +1305,6 @@ useEffect(() => {
                   
                   if (localSelectionBelongsToThisQuestion) {
                     // Merge server selections with local selection to prevent overwriting
-                    console.log('🔄 [Sync] Preserving local selection:', { 
-                      myPlayerId, 
-                      localSelection: currentLocalSelection,
-                      serverSelections: data.selections 
-                    });
                     setSelections(prev => {
                       const merged = {
                         ...prev, // Keep existing selections
@@ -1317,14 +1312,25 @@ useEffect(() => {
                       };
                       // Always ensure local selection is present
                       merged[myPlayerId] = currentLocalSelection;
+                      
+                      console.log('🔄 [Sync] Preserving local selection:', { 
+                        myPlayerId, 
+                        localSelection: currentLocalSelection,
+                        previousSelections: prev,
+                        serverSelections: data.selections,
+                        finalMerged: merged
+                      });
+                      
                       return merged;
                     });
                   } else {
                     // Selection from different question or stale - use server data only
+                    console.log('⚠️ [Sync] Selection from different question - clearing:', {
+                      selectionQuestionId,
+                      currentQuestionId,
+                      serverSelections: data.selections
+                    });
                     setSelections(data.selections);
-                    if (selectionQuestionId !== currentQuestionId) {
-                      console.log('⚠️ [Sync] Selection from different question in same-question path - using server data');
-                    }
                   }
                 }
               }
@@ -1389,10 +1395,7 @@ useEffect(() => {
             // But be careful not to overwrite local selection during active gameplay
             // AND protect selections during reveal phase until server confirms them
             if (data.selections) {
-              // Use sticky reveal phase logic (same as first path)
-              const serverWantsReveal = data.showResult;
-              const alreadyInRevealForThisQuestion = showResult && revealPhaseQuestionId === data.currentQuestion?.id;
-              const isInRevealPhase = serverWantsReveal || alreadyInRevealForThisQuestion;
+              // Use the sticky reveal phase logic defined above (don't redefine!)
               const hasLocalSelection = mySelection !== null || currentSelectionRef.current !== null;
               
               // During reveal phase: Merge server selections with local selection
