@@ -1266,16 +1266,19 @@ useEffect(() => {
                 });
                 
                 if (isInRevealPhase && currentLocalSelection !== null && myPlayerId) {
-                  // Reveal phase - merge server data with local selection
+                  // Reveal phase - merge server data with EXISTING selections + local selection
+                  // This preserves all badges (including friend's) that we've already received
                   console.log('🏆 [Sync] Same-question reveal phase - preserving local selection:', { 
                     myPlayerId, 
                     localSelection: currentLocalSelection,
-                    serverSelections: data.selections 
+                    serverSelections: data.selections,
+                    currentSelections: selections
                   });
-                  setSelections({
-                    ...data.selections,
-                    [myPlayerId]: currentLocalSelection
-                  });
+                  setSelections(prev => ({
+                    ...prev, // Keep existing selections (friend's badge)
+                    ...data.selections, // Merge server data
+                    [myPlayerId]: currentLocalSelection // Ensure our selection is always present
+                  }));
                 } else {
                   // Active gameplay - check timestamp AND question ID to prevent old selections from persisting
                   const selectionQuestionId = window.lastSelectionQuestionId;
@@ -1374,38 +1377,44 @@ useEffect(() => {
               // During reveal phase: Merge server selections with local selection
               if (isInRevealPhase) {
                 if (Object.keys(data.selections).length > 0) {
-                  // Server sent reveal data - merge with local selection
-                  const mergedSelections = { ...data.selections };
+                  // Server sent reveal data - merge with EXISTING selections + local selection
+                  // This preserves all badges (including friend's) that we've already received
+                  const localSelection = hasLocalSelection && currentUser?.id 
+                    ? (mySelection !== null ? mySelection : currentSelectionRef.current)
+                    : null;
                   
-                  // If we have a local selection, ensure it's included
-                  if (hasLocalSelection && currentUser?.id) {
-                    const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
-                    mergedSelections[currentUser.id] = localSelection;
-                    console.log('🏆 [Sync] Reveal phase - merged server + local selections', {
+                  setSelections(prev => {
+                    const merged = {
+                      ...prev, // Keep existing selections (friend's badge)
+                      ...data.selections, // Merge server data
+                    };
+                    
+                    // Ensure our selection is always present if we have one
+                    if (localSelection !== null && currentUser?.id) {
+                      merged[currentUser.id] = localSelection;
+                    }
+                    
+                    console.log('🏆 [Sync] Reveal phase - merged server + existing + local selections', {
+                      previousSelections: prev,
                       serverSelections: data.selections,
-                      currentUserId: currentUser.id,
-                      localSelection,
-                      mergedSelections
-                    });
-                  } else {
-                    console.log('🏆 [Sync] Reveal phase - using server selections only', {
-                      hasLocalSelection,
                       currentUserId: currentUser?.id,
-                      serverSelections: data.selections
+                      localSelection,
+                      mergedSelections: merged
                     });
-                  }
-                  
-                  setSelections(mergedSelections);
+                    
+                    return merged;
+                  });
                 } else {
                   // Server sent empty during reveal - keep what we have with local selection
                   if (hasLocalSelection && currentUser?.id) {
                     const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
-                    const preservedSelections = { ...selections, [currentUser.id]: localSelection };
-                    setSelections(preservedSelections);
-                    console.log('🛡️ [Sync] Reveal phase - server sent empty, preserving local selection', {
+                    setSelections(prev => ({
+                      ...prev,
+                      [currentUser.id]: localSelection
+                    }));
+                    console.log('🛡️ [Sync] Reveal phase - server sent empty, preserving existing + local', {
                       currentUserId: currentUser.id,
-                      localSelection,
-                      preservedSelections
+                      localSelection
                     });
                   } else {
                     console.log('🛡️ [Sync] Reveal phase - server sent empty, keeping current selections');
