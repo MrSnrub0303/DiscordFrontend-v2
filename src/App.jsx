@@ -1389,7 +1389,10 @@ useEffect(() => {
             // But be careful not to overwrite local selection during active gameplay
             // AND protect selections during reveal phase until server confirms them
             if (data.selections) {
-              const isInRevealPhase = showResult || data.showResult;
+              // Use sticky reveal phase logic (same as first path)
+              const serverWantsReveal = data.showResult;
+              const alreadyInRevealForThisQuestion = showResult && revealPhaseQuestionId === data.currentQuestion?.id;
+              const isInRevealPhase = serverWantsReveal || alreadyInRevealForThisQuestion;
               const hasLocalSelection = mySelection !== null || currentSelectionRef.current !== null;
               
               // During reveal phase: Merge server selections with local selection
