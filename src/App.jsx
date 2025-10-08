@@ -1259,6 +1259,10 @@ useEffect(() => {
                 console.log('🔍 [Sync] Same-question path - reveal check:', {
                   showResult,
                   dataShowResult: data.showResult,
+                  serverWantsReveal,
+                  revealPhaseQuestionId,
+                  currentQuestionId: data.currentQuestion?.id,
+                  alreadyInReveal: alreadyInRevealForThisQuestion,
                   isInRevealPhase,
                   hasLocalSelection: currentLocalSelection !== null,
                   myPlayerId,
@@ -1371,6 +1375,16 @@ useEffect(() => {
             const serverWantsReveal = data.showResult;
             const alreadyInRevealForThisQuestion = showResult && revealPhaseQuestionId === data.currentQuestion?.id;
             const isInRevealPhase = serverWantsReveal || alreadyInRevealForThisQuestion;
+            
+            console.log('🔍 [Sync] Second path - sticky reveal check:', {
+              showResult,
+              dataShowResult: data.showResult,
+              serverWantsReveal,
+              revealPhaseQuestionId,
+              currentQuestionId: data.currentQuestion?.id,
+              alreadyInReveal: alreadyInRevealForThisQuestion,
+              isInRevealPhase
+            });
             
             // Enter reveal phase if server says so (and track question ID)
             if (serverWantsReveal && !alreadyInRevealForThisQuestion) {
