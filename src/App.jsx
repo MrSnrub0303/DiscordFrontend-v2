@@ -308,6 +308,8 @@ export default function App() {
       setSelections({});
       setMySelection(null);
       currentSelectionRef.current = null;
+      window.lastSelectionTime = null;
+      window.lastSelectionQuestionId = null;
       console.log('🔄 Game state reset for fresh start');
     }
   }, [ready, socket, roomId]); // Trigger when Discord Activity ready state changes
@@ -348,6 +350,8 @@ export default function App() {
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
+          window.lastSelectionTime = null;
+          window.lastSelectionQuestionId = null;
         } else if (recentlySelected) {
           console.log('🛡️ Socket: Recently selected - protecting user choice');
         } else if (isInRevealPhase) {
@@ -393,6 +397,8 @@ export default function App() {
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
+          window.lastSelectionTime = null;
+          window.lastSelectionQuestionId = null;
           // Reset per-question tracking
           answerTimesRef.current = {};
           awardedDoneRef.current = false;
@@ -1025,6 +1031,8 @@ useEffect(() => {
                 // console.log('🗑️ Clearing selection due to different question in initial load');
                 setMySelection(null);
                 currentSelectionRef.current = null;
+                window.lastSelectionTime = null;
+                window.lastSelectionQuestionId = null;
               } else {
                 // console.log('✅ Preserving selection - same question in initial load');
               }
@@ -1045,6 +1053,8 @@ useEffect(() => {
             setSelections({});
             setMySelection(null);
             currentSelectionRef.current = null;
+            window.lastSelectionTime = null;
+            window.lastSelectionQuestionId = null;
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
             
@@ -1208,6 +1218,7 @@ useEffect(() => {
                 setMySelection(null);
                 currentSelectionRef.current = null;
                 window.lastSelectionTime = null; // Clear selection timestamp
+                window.lastSelectionQuestionId = null; // Clear question ID
               } else if (isLocalMode) {
                 console.log('🏠 Local mode - skipping auto-clear, letting game flow manage selections');
               } else if (recentlySelected) {
@@ -1226,11 +1237,14 @@ useEffect(() => {
                 const currentLocalSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
                 
                 // CRITICAL: Only preserve local selection if it was made for THIS question
-                // Check that we're not accidentally preserving an old selection from previous question
+                // Check timestamp AND question ID to prevent old selections from persisting
+                const selectionQuestionId = window.lastSelectionQuestionId;
+                const currentQuestionId = data.currentQuestion?.id;
                 const localSelectionBelongsToThisQuestion = 
                   currentLocalSelection !== null && 
                   playerName && 
                   window.lastSelectionTime && 
+                  selectionQuestionId === currentQuestionId &&
                   (Date.now() - window.lastSelectionTime < MAX_TIME * 1000); // Within current question timeframe
                 
                 if (localSelectionBelongsToThisQuestion) {
@@ -1245,7 +1259,11 @@ useEffect(() => {
                     [playerName]: currentLocalSelection
                   });
                 } else {
+                  // Selection from different question or stale - use server data only
                   setSelections(data.selections);
+                  if (selectionQuestionId !== currentQuestionId) {
+                    console.log('⚠️ [Sync] Selection from different question in same-question path - using server data');
+                  }
                 }
               }
             }
@@ -1305,15 +1323,29 @@ useEffect(() => {
               const isInRevealPhase = showResult || data.showResult;
               const hasLocalSelection = mySelection !== null || currentSelectionRef.current !== null;
               
-              // During reveal phase: Accept server selections (they contain everyone's choices)
+              // During reveal phase: Merge server selections with local selection
               if (isInRevealPhase) {
                 if (Object.keys(data.selections).length > 0) {
-                  // Server sent reveal data - use it
-                  setSelections(data.selections);
-                  console.log('🏆 [Sync] Reveal phase - accepting server selections');
+                  // Server sent reveal data - merge with local selection
+                  const mergedSelections = { ...data.selections };
+                  
+                  // If we have a local selection, ensure it's included
+                  if (hasLocalSelection && currentUser?.id) {
+                    const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
+                    mergedSelections[currentUser.id] = localSelection;
+                  }
+                  
+                  setSelections(mergedSelections);
+                  console.log('🏆 [Sync] Reveal phase - merged server + local selections');
                 } else {
-                  // Server sent empty during reveal - keep what we have
-                  console.log('🛡️ [Sync] Reveal phase - server sent empty, keeping current selections');
+                  // Server sent empty during reveal - keep what we have with local selection
+                  if (hasLocalSelection && currentUser?.id) {
+                    const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
+                    setSelections({ ...selections, [currentUser.id]: localSelection });
+                    console.log('🛡️ [Sync] Reveal phase - server sent empty, preserving local selection');
+                  } else {
+                    console.log('🛡️ [Sync] Reveal phase - server sent empty, keeping current selections');
+                  }
                 }
               }
               // During active gameplay: Preserve local selection with timeframe check
@@ -1770,6 +1802,7 @@ useEffect(() => {
         setMySelection(null);
         currentSelectionRef.current = null;
         window.lastSelectionTime = null; // Clear selection timestamp for new question
+        window.lastSelectionQuestionId = null; // Clear question ID
         setTimeLeft(result.timeLeft || MAX_TIME);
         answerTimesRef.current = {};
         awardedDoneRef.current = false;
