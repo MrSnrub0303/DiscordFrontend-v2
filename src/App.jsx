@@ -1027,7 +1027,9 @@ useEffect(() => {
               setCurrentQuestion(question);
               setTimeLeft(timeLeft);
               setShowResult(showResult);
-              setSelections({});
+              // CRITICAL: Don't clear selections on initial load - server has the correct data
+              // The sync mechanism below will populate selections from server
+              // setSelections({}); // REMOVED - was causing friend's badges to disappear on join
               if (!isSameQuestion) {
                 // console.log('🗑️ Clearing selection due to different question in initial load');
                 setMySelection(null);
@@ -1214,8 +1216,17 @@ useEffect(() => {
               
               // Only clear if: real change AND no active selection AND not in reveal AND not local mode
               if (isRealQuestionChange && !recentlySelected && !hasActiveSelection && !isInRevealPhase && !isLocalMode) {
-                console.log('🆕 Real question change detected - clearing selections for fresh start');
-                setSelections({});
+                console.log('🆕 Real question change detected - clearing MY selection only (preserving others)');
+                // CRITICAL: Only clear MY selection, not everyone's
+                // The server will send current selections for the new question via sync
+                const myPlayerId = currentUser?.id;
+                if (myPlayerId) {
+                  setSelections(prev => {
+                    const updated = { ...prev };
+                    delete updated[myPlayerId]; // Only remove my selection
+                    return updated;
+                  });
+                }
                 setMySelection(null);
                 currentSelectionRef.current = null;
                 window.lastSelectionTime = null; // Clear selection timestamp
