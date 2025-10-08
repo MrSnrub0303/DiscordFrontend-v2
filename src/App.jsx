@@ -1307,23 +1307,33 @@ useEffect(() => {
                   console.log('🏆 [Sync] Same-question reveal phase - preserving local selection:', { 
                     myPlayerId, 
                     localSelection: currentLocalSelection,
-                    serverSelections: data.selections,
+                    serverSelectionsRAW: data.selections,
                     currentSelections: selections
                   });
+                  
+                  // Normalize server data BEFORE logging
+                  const normalizedServerData = normalizeServerSelections(data.selections);
+                  console.log('🔧 [Sync] Normalization check:', {
+                    rawServer: data.selections,
+                    normalized: normalizedServerData,
+                    hasData: Object.keys(normalizedServerData).length > 0
+                  });
+                  
                   setSelections(prev => {
                     const merged = {
                       ...prev, // Keep existing selections (friend's badge)
-                      ...normalizeServerSelections(data.selections), // Merge server data (normalized to numbers)
+                      ...normalizedServerData, // Merge normalized server data
                     };
                     // CRITICAL: Always override with local selection (don't let server overwrite)
                     merged[myPlayerId] = currentLocalSelection;
                     
                     console.log('🏆 [Sync] Reveal merge result:', {
                       prev,
-                      serverData: data.selections,
+                      normalizedServer: normalizedServerData,
                       myPlayerId,
                       localSelection: currentLocalSelection,
-                      finalMerged: merged
+                      finalMerged: merged,
+                      mergedKeys: Object.keys(merged)
                     });
                     
                     return merged;
@@ -1457,10 +1467,18 @@ useEffect(() => {
                     ? (mySelection !== null ? mySelection : currentSelectionRef.current)
                     : null;
                   
+                  // Normalize BEFORE merging
+                  const normalizedServerData = normalizeServerSelections(data.selections);
+                  console.log('🔧 [Sync - Second Path] Reveal normalization:', {
+                    rawServer: data.selections,
+                    normalized: normalizedServerData,
+                    hasData: Object.keys(normalizedServerData).length > 0
+                  });
+                  
                   setSelections(prev => {
                     const merged = {
                       ...prev, // Keep existing selections (friend's badge)
-                      ...normalizeServerSelections(data.selections), // Merge server data (normalized)
+                      ...normalizedServerData, // Merge normalized server data
                     };
                     
                     // Ensure our selection is always present if we have one
@@ -1470,10 +1488,11 @@ useEffect(() => {
                     
                     console.log('🏆 [Sync] Reveal phase - merged server + existing + local selections', {
                       previousSelections: prev,
-                      serverSelections: data.selections,
+                      normalizedServer: normalizedServerData,
                       currentUserId: currentUser?.id,
                       localSelection,
-                      mergedSelections: merged
+                      mergedSelections: merged,
+                      mergedKeys: Object.keys(merged)
                     });
                     
                     return merged;
