@@ -175,6 +175,7 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
   const [playerNames, setPlayerNames] = useState({}); // Player names from server
+  const [revealPhaseQuestionId, setRevealPhaseQuestionId] = useState(null); // Track which question we're revealing for
   
   // Leaderboard UI state
   const [isLeaderboardCollapsed, setIsLeaderboardCollapsed] = useState(false);
@@ -1219,6 +1220,8 @@ useEffect(() => {
                 currentSelectionRef.current = null;
                 window.lastSelectionTime = null; // Clear selection timestamp
                 window.lastSelectionQuestionId = null; // Clear question ID
+                setRevealPhaseQuestionId(null); // Clear reveal phase tracking for new question
+                setShowResult(false); // Reset reveal state for new question
               } else if (isLocalMode) {
                 console.log('🏠 Local mode - skipping auto-clear, letting game flow manage selections');
               } else if (recentlySelected) {
@@ -1238,7 +1241,17 @@ useEffect(() => {
                 
                 // CRITICAL: During reveal phase, ALWAYS preserve local selection
                 // Never discard selections based on question ID during reveal
-                const isInRevealPhase = showResult || data.showResult;
+                // Make reveal phase "sticky" - once we enter it for a question, stay in it
+                const serverWantsReveal = data.showResult;
+                const alreadyInRevealForThisQuestion = showResult && revealPhaseQuestionId === data.currentQuestion?.id;
+                const isInRevealPhase = serverWantsReveal || alreadyInRevealForThisQuestion;
+                
+                // Enter reveal phase if server says so (and track question ID)
+                if (serverWantsReveal && !alreadyInRevealForThisQuestion) {
+                  setRevealPhaseQuestionId(data.currentQuestion?.id);
+                  setShowResult(true);
+                  console.log('🎯 [Sync] Entering reveal phase for question:', data.currentQuestion?.id);
+                }
                 
                 // Get player ID for indexing selections (server uses player IDs, not names)
                 const myPlayerId = currentUser?.id;
@@ -1327,10 +1340,17 @@ useEffect(() => {
             // IMPORTANT: Protect user selection until results are actually shown to prevent badge clearing
             const isActiveGameplay = !showResult;
             
-            // Always sync showResult when server says it should be shown (critical for badge display)
-            if (data.showResult !== showResult) {
-              setShowResult(data.showResult);
+            // Make reveal phase "sticky" - once entered, stay until next question
+            const serverWantsReveal = data.showResult;
+            const alreadyInRevealForThisQuestion = showResult && revealPhaseQuestionId === data.currentQuestion?.id;
+            const isInRevealPhase = serverWantsReveal || alreadyInRevealForThisQuestion;
+            
+            // Enter reveal phase if server says so (and track question ID)
+            if (serverWantsReveal && !alreadyInRevealForThisQuestion) {
+              setRevealPhaseQuestionId(data.currentQuestion?.id);
+              setShowResult(true);
               setIsTimerRunning(false);
+              console.log('🎯 [Sync] Entering reveal phase for question:', data.currentQuestion?.id);
             }
             
             if (!isActiveGameplay) {
@@ -1847,6 +1867,7 @@ useEffect(() => {
         const question = result.question;
         setCurrentQuestion(question);
         setShowResult(false);
+        setRevealPhaseQuestionId(null); // Clear reveal phase tracking for new question
         setSelections({});
         setMySelection(null);
         currentSelectionRef.current = null;
