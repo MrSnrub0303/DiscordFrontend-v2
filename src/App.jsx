@@ -1035,36 +1035,18 @@ useEffect(() => {
               return;
             }
 
-            // No active question, start a new one
-            // console.log('🆕 Starting new question from server');
-            const startResponse = await fetch(`${API_BASE_URL}/start_question`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                roomId: roomId,
-                forceNew: false
-              })
-            });
-
-            const startData = await startResponse.json();
-            
-            if (startData.success && startData.question) {
-              // console.log('✅ Got new question from server - timer at:', startData.timeLeft || MAX_TIME);
-              // Batch state updates to prevent visual glitches
-              const question = startData.question;
-              const timeLeft = startData.timeLeft || MAX_TIME;
-              
-              setCurrentQuestion(question);
-              setTimeLeft(timeLeft);
-              setShowResult(false);
-              setSelections({});
-              setMySelection(null);
-              currentSelectionRef.current = null;
-              answerTimesRef.current = {};
-              awardedDoneRef.current = false;
-            } else {
-              // console.log('⚠️ Failed to get question from server:', startData);
-            }
+            // No active question - DON'T auto-start on join
+            // Let players manually start via "Start Question" or "Next Question"
+            // This prevents joining players from triggering new questions mid-game
+            // console.log('ℹ️ No active question in room - waiting for host to start');
+            // Clear any stale state
+            setCurrentQuestion(null);
+            setShowResult(false);
+            setSelections({});
+            setMySelection(null);
+            currentSelectionRef.current = null;
+            answerTimesRef.current = {};
+            awardedDoneRef.current = false;
             
           } catch (error) {
             // console.error('❌ Error getting question from server:', error);
@@ -1323,28 +1305,44 @@ useEffect(() => {
               const isInRevealPhase = showResult || data.showResult;
               const hasLocalSelection = mySelection !== null || currentSelectionRef.current !== null;
               
-              // CRITICAL: Only preserve local selection if it was made for THIS question
-              // Prevent old selections from previous questions being merged in
-              const localSelectionBelongsToThisQuestion = 
-                hasLocalSelection && 
-                window.lastSelectionTime && 
-                (Date.now() - window.lastSelectionTime < MAX_TIME * 1000); // Within current question timeframe
-              
-              // During active gameplay: Preserve local selection ONLY if it belongs to this question
-              if (isActiveGameplay && localSelectionBelongsToThisQuestion && currentUser?.id) {
-                const mergedSelections = { ...data.selections };
-                const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
-                mergedSelections[currentUser.id] = localSelection;
-                setSelections(mergedSelections);
-                console.log('🔄 [Sync] Merged local selection during active gameplay');
+              // During reveal phase: Accept server selections (they contain everyone's choices)
+              if (isInRevealPhase) {
+                if (Object.keys(data.selections).length > 0) {
+                  // Server sent reveal data - use it
+                  setSelections(data.selections);
+                  console.log('🏆 [Sync] Reveal phase - accepting server selections');
+                } else {
+                  // Server sent empty during reveal - keep what we have
+                  console.log('🛡️ [Sync] Reveal phase - server sent empty, keeping current selections');
+                }
               }
-              // During reveal phase: NEVER accept empty selections from server
-              else if (isInRevealPhase && Object.keys(data.selections).length === 0) {
-                // Keep existing selections - server hasn't sent reveal data yet
-                console.log('🛡️ [Sync] Protecting reveal - server sent empty, keeping current selections');
-                // Don't update selections at all - keep what we have
+              // During active gameplay: Preserve local selection with timeframe check
+              else if (isActiveGameplay && hasLocalSelection && currentUser?.id) {
+                // CRITICAL: Only merge if selection was made recently AND for THIS question
+                const selectionQuestionId = window.lastSelectionQuestionId;
+                const currentQuestionId = data.currentQuestion?.id;
+                const localSelectionBelongsToThisQuestion = 
+                  window.lastSelectionTime && 
+                  selectionQuestionId === currentQuestionId &&
+                  (Date.now() - window.lastSelectionTime < MAX_TIME * 1000);
+                
+                if (localSelectionBelongsToThisQuestion) {
+                  const mergedSelections = { ...data.selections };
+                  const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
+                  mergedSelections[currentUser.id] = localSelection;
+                  setSelections(mergedSelections);
+                  console.log('🔄 [Sync] Active gameplay - merged local selection');
+                } else {
+                  // Stale selection or different question - don't merge
+                  setSelections(data.selections);
+                  if (selectionQuestionId !== currentQuestionId) {
+                    console.log('⚠️ [Sync] Selection from different question - using server data');
+                  } else {
+                    console.log('⚠️ [Sync] Stale selection detected - using server data');
+                  }
+                }
               }
-              // Safe to sync when not in active gameplay and server has data
+              // Not in gameplay or reveal - just sync server data
               else {
                 setSelections(data.selections);
               }
@@ -1520,8 +1518,9 @@ useEffect(() => {
     setMySelection(optionIndex);
     currentSelectionRef.current = optionIndex; // Store in ref for persistence
     
-    // Track selection time for clearing protection
+    // Track selection time AND question ID for clearing protection
     window.lastSelectionTime = Date.now();
+    window.lastSelectionQuestionId = currentQuestion?.id;
     
     console.log(`🎯 You selected option ${optionIndex} (${mySelection !== null ? 'changed from ' + mySelection : 'new selection'})`);
     console.log(`🔧 Stored selection in ref:`, optionIndex);
