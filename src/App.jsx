@@ -1274,11 +1274,24 @@ useEffect(() => {
                     serverSelections: data.selections,
                     currentSelections: selections
                   });
-                  setSelections(prev => ({
-                    ...prev, // Keep existing selections (friend's badge)
-                    ...data.selections, // Merge server data
-                    [myPlayerId]: currentLocalSelection // Ensure our selection is always present
-                  }));
+                  setSelections(prev => {
+                    const merged = {
+                      ...prev, // Keep existing selections (friend's badge)
+                      ...data.selections, // Merge server data
+                    };
+                    // CRITICAL: Always override with local selection (don't let server overwrite)
+                    merged[myPlayerId] = currentLocalSelection;
+                    
+                    console.log('🏆 [Sync] Reveal merge result:', {
+                      prev,
+                      serverData: data.selections,
+                      myPlayerId,
+                      localSelection: currentLocalSelection,
+                      finalMerged: merged
+                    });
+                    
+                    return merged;
+                  });
                 } else {
                   // Active gameplay - check timestamp AND question ID to prevent old selections from persisting
                   const selectionQuestionId = window.lastSelectionQuestionId;
@@ -1297,9 +1310,14 @@ useEffect(() => {
                       localSelection: currentLocalSelection,
                       serverSelections: data.selections 
                     });
-                    setSelections({
-                      ...data.selections,
-                      [myPlayerId]: currentLocalSelection
+                    setSelections(prev => {
+                      const merged = {
+                        ...prev, // Keep existing selections
+                        ...data.selections, // Merge server data
+                      };
+                      // Always ensure local selection is present
+                      merged[myPlayerId] = currentLocalSelection;
+                      return merged;
                     });
                   } else {
                     // Selection from different question or stale - use server data only
