@@ -1243,6 +1243,15 @@ useEffect(() => {
                 // Get player ID for indexing selections (server uses player IDs, not names)
                 const myPlayerId = currentUser?.id;
                 
+                console.log('🔍 [Sync] Same-question path - reveal check:', {
+                  showResult,
+                  dataShowResult: data.showResult,
+                  isInRevealPhase,
+                  hasLocalSelection: currentLocalSelection !== null,
+                  myPlayerId,
+                  willEnterRevealPath: isInRevealPhase && currentLocalSelection !== null && myPlayerId
+                });
+                
                 if (isInRevealPhase && currentLocalSelection !== null && myPlayerId) {
                   // Reveal phase - merge server data with local selection
                   console.log('🏆 [Sync] Same-question reveal phase - preserving local selection:', { 
