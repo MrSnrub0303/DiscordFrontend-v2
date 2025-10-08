@@ -1339,13 +1339,17 @@ useEffect(() => {
                       return merged;
                     });
                   } else {
-                    // Selection from different question or stale - use server data only
-                    console.log('⚠️ [Sync] Selection from different question - clearing:', {
+                    // No local selection or from different question - merge server data
+                    // CRITICAL: Use accumulative merge to preserve other players' selections
+                    console.log('🔄 [Sync] No local selection - merging server data:', {
                       selectionQuestionId,
                       currentQuestionId,
                       serverSelections: data.selections
                     });
-                    setSelections(data.selections);
+                    setSelections(prev => ({
+                      ...prev, // Keep existing selections (friend's badges)
+                      ...data.selections // Merge server data
+                    }));
                   }
                 }
               }
@@ -1481,29 +1485,41 @@ useEffect(() => {
                   (Date.now() - window.lastSelectionTime < MAX_TIME * 1000);
                 
                 if (localSelectionBelongsToThisQuestion) {
-                  const mergedSelections = { ...data.selections };
                   const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
-                  mergedSelections[currentUser.id] = localSelection;
-                  setSelections(mergedSelections);
+                  setSelections(prev => {
+                    const merged = {
+                      ...prev, // Keep existing selections
+                      ...data.selections, // Merge server data
+                    };
+                    merged[currentUser.id] = localSelection;
+                    return merged;
+                  });
                   console.log('🔄 [Sync] Active gameplay - merged local selection', {
                     serverSelections: data.selections,
                     currentUserId: currentUser.id,
                     localSelection,
-                    mergedSelections
+                    mergedSelections: { ...data.selections, [currentUser.id]: localSelection }
                   });
                 } else {
-                  // Stale selection or different question - don't merge
-                  setSelections(data.selections);
-                  if (selectionQuestionId !== currentQuestionId) {
-                    console.log('⚠️ [Sync] Selection from different question - using server data');
-                  } else {
-                    console.log('⚠️ [Sync] Stale selection detected - using server data');
-                  }
+                  // No local selection or different question - merge server data
+                  console.log('🔄 [Sync] Active gameplay - no local selection, merging server data', {
+                    selectionQuestionId,
+                    currentQuestionId,
+                    serverSelections: data.selections
+                  });
+                  setSelections(prev => ({
+                    ...prev, // Keep existing (friend's badges)
+                    ...data.selections // Merge server data
+                  }));
                 }
               }
-              // Not in gameplay or reveal - just sync server data
+              // Not in gameplay or reveal - merge server data
               else {
-                setSelections(data.selections);
+                console.log('🔄 [Sync] Not in active gameplay - merging server data');
+                setSelections(prev => ({
+                  ...prev, // Keep existing selections
+                  ...data.selections // Merge server data
+                }));
               }
             }
             if (data.playerNames) {
