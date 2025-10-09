@@ -1624,10 +1624,17 @@ useEffect(() => {
           
           // In multiplayer mode, request round completion from server
           if (socket && !socket.localMode) {
-            // console.log('⏰ Time up! Requesting round completion from server...');
+            console.log('⏰ Time up! Requesting round completion from server...');
+            console.log('🔧 Request details:', {
+              url: `${API_BASE_URL}/game-event`,
+              roomId: roomId,
+              hasSocket: !!socket,
+              localMode: socket.localMode
+            });
             
             const endRoundRequest = async () => {
               try {
+                console.log('📡 Sending end_round request to:', `${API_BASE_URL}/game-event`);
                 const response = await fetch(`${API_BASE_URL}/game-event`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -1639,12 +1646,15 @@ useEffect(() => {
                   })
                 });
                 
+                console.log('📡 end_round response status:', response.status, response.ok);
+                
+                console.log('📡 end_round response status:', response.status, response.ok);
                 if (response.ok) {
                   const result = await response.json();
-                  // console.log('📡 Round completion response:', result);
+                  console.log('📡 Round completion response:', result);
                   if (result && result.data && result.data.selections) {
-                    // console.log('📊 Server scores:', result.data.scores);
-                    // console.log('📊 Server selections:', result.data.selections);
+                    console.log('📊 Server scores:', result.data.scores);
+                    console.log('📊 Server selections:', result.data.selections);
                     setSelections(result.data.selections || {});
                     if (result.data.playerNames) {
                       setPlayerNames(result.data.playerNames);
@@ -1655,33 +1665,35 @@ useEffect(() => {
                     if (result.data.scores) {
                       setScores(result.data.scores);
                       setServerScoredThisRound(true); // Flag that server provided scores
-                      // console.log('✅ Scores updated from server:', result.data.scores);
+                      console.log('✅ Scores updated from server:', result.data.scores);
                     }
                     setShowResult(true);
                   } else {
                     // Fallback to local reveal with current user's selection
-                    // console.log('⚠️ No server response, falling back to local reveal');
-                    // console.log('🔧 Using local mySelection:', mySelection);
-                    // console.log('🔧 Using ref selection:', currentSelectionRef.current);
-                    // console.log('🔧 Current user ID:', currentUser?.id);
+                    console.log('⚠️ No server response, falling back to local reveal');
+                    console.log('🔧 Using local mySelection:', mySelection);
+                    console.log('🔧 Using ref selection:', currentSelectionRef.current);
+                    console.log('🔧 Current user ID:', currentUser?.id);
                     
                     // Create selections object from local data - try both state and ref
                     const localSelections = {};
                     const selectionToUse = mySelection !== null ? mySelection : currentSelectionRef.current;
                     if (selectionToUse !== null && currentUser?.id) {
                       localSelections[currentUser.id] = selectionToUse;
-                      // console.log('🔧 Created local selections:', localSelections);
+                      console.log('🔧 Created local selections:', localSelections);
                     } else {
-                      // console.log('🚨 No selection found in state or ref!');
+                      console.log('🚨 No selection found in state or ref!');
                     }
                     setSelections(localSelections);
                     setShowResult(true);
                   }
                 } else {
+                  console.error('🚨 Server responded with error status:', response.status);
                   throw new Error(`Server responded with status: ${response.status}`);
                 }
               } catch (error) {
-                // console.log('⚠️ Failed to end round via server:', error);
+                console.log('⚠️ Failed to end round via server:', error);
+                console.log('⚠️ Error details:', error.message, error.stack);
                 // Fallback to local reveal
                 const localSelections = {};
                 const selectionToUse = mySelection !== null ? mySelection : currentSelectionRef.current;
