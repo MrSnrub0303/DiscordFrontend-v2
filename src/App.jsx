@@ -1298,6 +1298,13 @@ useEffect(() => {
                 // Get player ID for indexing selections (server uses player IDs, not names)
                 const myPlayerId = currentUser?.id;
                 
+                // CRITICAL FIX: Verify local selection belongs to THIS question
+                const selectionQuestionId = window.lastSelectionQuestionId;
+                const currentQuestionId = data.currentQuestion?.id;
+                const localSelectionBelongsToCurrentQuestion = 
+                  currentLocalSelection !== null && 
+                  selectionQuestionId === currentQuestionId;
+                
                 console.log('🔍 [Sync] Same-question path - reveal check:', {
                   showResult,
                   dataShowResult: data.showResult,
@@ -1307,11 +1314,13 @@ useEffect(() => {
                   alreadyInReveal: alreadyInRevealForThisQuestion,
                   isInRevealPhase,
                   hasLocalSelection: currentLocalSelection !== null,
+                  selectionQuestionId,
+                  localSelectionBelongsToCurrentQuestion,
                   myPlayerId,
-                  willEnterRevealPath: isInRevealPhase && currentLocalSelection !== null && myPlayerId
+                  willEnterRevealPath: isInRevealPhase && localSelectionBelongsToCurrentQuestion && myPlayerId
                 });
                 
-                if (isInRevealPhase && currentLocalSelection !== null && myPlayerId) {
+                if (isInRevealPhase && localSelectionBelongsToCurrentQuestion && myPlayerId) {
                   // Reveal phase - merge server data with EXISTING selections + local selection
                   // This preserves all badges (including friend's) that we've already received
                   console.log('🏆 [Sync] Same-question reveal phase - preserving local selection:', { 
@@ -1486,7 +1495,15 @@ useEffect(() => {
                 if (Object.keys(data.selections).length > 0) {
                   // Server sent reveal data - merge with EXISTING selections + local selection
                   // This preserves all badges (including friend's) that we've already received
-                  const localSelection = hasLocalSelection && currentUser?.id 
+                  
+                  // CRITICAL FIX: Verify local selection belongs to THIS question before preserving it
+                  const selectionQuestionId = window.lastSelectionQuestionId;
+                  const currentQuestionId = data.currentQuestion?.id;
+                  const localSelectionBelongsToCurrentQuestion = 
+                    hasLocalSelection && 
+                    selectionQuestionId === currentQuestionId;
+                  
+                  const localSelection = localSelectionBelongsToCurrentQuestion && currentUser?.id 
                     ? (mySelection !== null ? mySelection : currentSelectionRef.current)
                     : null;
                   
@@ -1521,8 +1538,14 @@ useEffect(() => {
                     return merged;
                   });
                 } else {
-                  // Server sent empty during reveal - keep what we have with local selection
-                  if (hasLocalSelection && currentUser?.id) {
+                  // Server sent empty during reveal - CRITICAL FIX: Only keep local selection if it belongs to THIS question
+                  const selectionQuestionId = window.lastSelectionQuestionId;
+                  const currentQuestionId = data.currentQuestion?.id;
+                  const localSelectionBelongsToCurrentQuestion = 
+                    hasLocalSelection && 
+                    selectionQuestionId === currentQuestionId;
+                  
+                  if (localSelectionBelongsToCurrentQuestion && currentUser?.id) {
                     const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
                     setSelections(prev => ({
                       ...prev,
@@ -1533,7 +1556,13 @@ useEffect(() => {
                       localSelection
                     });
                   } else {
-                    console.log('🛡️ [Sync] Reveal phase - server sent empty, keeping current selections');
+                    console.log('🛡️ [Sync] Reveal phase - server sent empty, local selection from different question - clearing', {
+                      selectionQuestionId,
+                      currentQuestionId,
+                      belongsToCurrentQuestion: localSelectionBelongsToCurrentQuestion
+                    });
+                    // Clear selections if local selection doesn't belong to this question
+                    setSelections({});
                   }
                 }
               }
