@@ -1254,6 +1254,16 @@ useEffect(() => {
                 window.lastSelectionQuestionId = null; // Clear question ID
                 setRevealPhaseQuestionId(null); // Clear reveal phase tracking for new question
                 setShowResult(false); // Reset reveal state for new question
+              } else if (isRealQuestionChange && !isInRevealPhase && !isLocalMode) {
+                // CRITICAL FIX: Even if guards prevent full clearing, always clear mySelection state
+                // for new questions to prevent green badges from persisting for joined players
+                console.log('🆕 Real question change - clearing mySelection state despite guards');
+                setMySelection(null);
+                currentSelectionRef.current = null;
+                window.lastSelectionTime = null;
+                window.lastSelectionQuestionId = null;
+                setRevealPhaseQuestionId(null);
+                setShowResult(false);
               } else if (isLocalMode) {
                 console.log('🏠 Local mode - skipping auto-clear, letting game flow manage selections');
               } else if (recentlySelected) {
