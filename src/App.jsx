@@ -1203,78 +1203,30 @@ useEffect(() => {
             
             // Only reset selections for truly new questions, preserve for same question
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
-              // Only clear selections when showing results or timer expired - never during active gameplay
-              console.log('� Question ID changed:', { from: currentQuestionId, to: serverQuestionId });
-              // Add time-based protection and detailed content logging
-              const isRealQuestionChange = 
-                currentQuestion.isCard !== data.currentQuestion.isCard ||
-                (currentQuestion.isCard && currentQuestion.cardName !== data.currentQuestion.cardName) ||
-                (!currentQuestion.isCard && currentQuestion.question !== data.currentQuestion.question);
-              
-              // Log what's actually different
-              console.log('🔍 Content comparison:', {
-                typeMatch: currentQuestion.isCard === data.currentQuestion.isCard,
-                cardNameMatch: currentQuestion.cardName === data.currentQuestion.cardName,  
-                questionMatch: currentQuestion.question === data.currentQuestion.question,
-                isRealChange: isRealQuestionChange
+              // CRITICAL FIX: Different question ID = NEW QUESTION
+              // Always clear mySelection and selections state for the new question
+              // The server has already cleared its selections and will send empty {}
+              console.log('🆕 Question ID changed - clearing all selection state:', { 
+                from: currentQuestionId, 
+                to: serverQuestionId 
               });
               
-              // Time-based protection: Don't clear selections during active gameplay
-              const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
-              const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
+              const myPlayerId = currentUser?.id;
               
-              // CRITICAL: Protect selections during active gameplay
-              // If user has made a selection (mySelection or ref has value), never clear until reveal
-              const hasActiveSelection = mySelection !== null || currentSelectionRef.current !== null;
+              // Clear mySelection state (green badge for current user)
+              setMySelection(null);
+              currentSelectionRef.current = null;
+              window.lastSelectionTime = null;
+              window.lastSelectionQuestionId = null;
               
-              // CRITICAL: Never clear selections during reveal phase
-              // This prevents badges from disappearing for ALL players (host and friends)
-              // The server will send proper selection data in the reveal response
-              const isInRevealPhase = showResult || data.showResult;
+              // Clear reveal phase tracking
+              setRevealPhaseQuestionId(null);
+              setShowResult(false);
               
-              // In local mode, don't clear selections automatically - let the game flow handle it
-              const isLocalMode = socket?.localMode === true;
-            
-              // Only clear if: real change AND no active selection AND not in reveal AND not local mode
-              if (isRealQuestionChange && !recentlySelected && !hasActiveSelection && !isInRevealPhase && !isLocalMode) {
-                console.log('🆕 Real question change detected - clearing MY selection only (preserving others)');
-                // CRITICAL: Only clear MY selection, not everyone's
-                // The server will send current selections for the new question via sync
-                const myPlayerId = currentUser?.id;
-                if (myPlayerId) {
-                  setSelections(prev => {
-                    const updated = { ...prev };
-                    delete updated[myPlayerId]; // Only remove my selection
-                    return updated;
-                  });
-                }
-                setMySelection(null);
-                currentSelectionRef.current = null;
-                window.lastSelectionTime = null; // Clear selection timestamp
-                window.lastSelectionQuestionId = null; // Clear question ID
-                setRevealPhaseQuestionId(null); // Clear reveal phase tracking for new question
-                setShowResult(false); // Reset reveal state for new question
-              } else if (isRealQuestionChange && !isInRevealPhase && !isLocalMode) {
-                // CRITICAL FIX: Even if guards prevent full clearing, always clear mySelection state
-                // for new questions to prevent green badges from persisting for joined players
-                console.log('🆕 Real question change - clearing mySelection state despite guards');
-                setMySelection(null);
-                currentSelectionRef.current = null;
-                window.lastSelectionTime = null;
-                window.lastSelectionQuestionId = null;
-                setRevealPhaseQuestionId(null);
-                setShowResult(false);
-              } else if (isLocalMode) {
-                console.log('🏠 Local mode - skipping auto-clear, letting game flow manage selections');
-              } else if (recentlySelected) {
-                console.log('🛡️ Recently selected - protecting user choice from clearing');
-              } else if (hasActiveSelection) {
-                console.log('🎯 Active selection detected - protecting green badge from clearing');
-              } else if (isInRevealPhase) {
-                console.log('🏆 Protecting reveal phase - NEVER clear selections during reveal');
-              } else {
-                console.log('🎯 Same question content, different ID - preserving selections');
-              }
+              // Clear selections state (will be repopulated by server's empty {} via logic below)
+              setSelections({});
+              
+              console.log('✅ Selection state cleared for new question');
             } else {
               // console.log('✅ Preserving selection - same question or initial load');
               // For same question, sync server selections but preserve local selection
@@ -1298,13 +1250,6 @@ useEffect(() => {
                 // Get player ID for indexing selections (server uses player IDs, not names)
                 const myPlayerId = currentUser?.id;
                 
-                // CRITICAL FIX: Verify local selection belongs to THIS question
-                const selectionQuestionId = window.lastSelectionQuestionId;
-                const currentQuestionId = data.currentQuestion?.id;
-                const localSelectionBelongsToCurrentQuestion = 
-                  currentLocalSelection !== null && 
-                  selectionQuestionId === currentQuestionId;
-                
                 console.log('🔍 [Sync] Same-question path - reveal check:', {
                   showResult,
                   dataShowResult: data.showResult,
@@ -1314,13 +1259,11 @@ useEffect(() => {
                   alreadyInReveal: alreadyInRevealForThisQuestion,
                   isInRevealPhase,
                   hasLocalSelection: currentLocalSelection !== null,
-                  selectionQuestionId,
-                  localSelectionBelongsToCurrentQuestion,
                   myPlayerId,
-                  willEnterRevealPath: isInRevealPhase && localSelectionBelongsToCurrentQuestion && myPlayerId
+                  willEnterRevealPath: isInRevealPhase && currentLocalSelection !== null && myPlayerId
                 });
                 
-                if (isInRevealPhase && localSelectionBelongsToCurrentQuestion && myPlayerId) {
+                if (isInRevealPhase && currentLocalSelection !== null && myPlayerId) {
                   // Reveal phase - merge server data with EXISTING selections + local selection
                   // This preserves all badges (including friend's) that we've already received
                   console.log('🏆 [Sync] Same-question reveal phase - preserving local selection:', { 
@@ -1495,15 +1438,7 @@ useEffect(() => {
                 if (Object.keys(data.selections).length > 0) {
                   // Server sent reveal data - merge with EXISTING selections + local selection
                   // This preserves all badges (including friend's) that we've already received
-                  
-                  // CRITICAL FIX: Verify local selection belongs to THIS question before preserving it
-                  const selectionQuestionId = window.lastSelectionQuestionId;
-                  const currentQuestionId = data.currentQuestion?.id;
-                  const localSelectionBelongsToCurrentQuestion = 
-                    hasLocalSelection && 
-                    selectionQuestionId === currentQuestionId;
-                  
-                  const localSelection = localSelectionBelongsToCurrentQuestion && currentUser?.id 
+                  const localSelection = hasLocalSelection && currentUser?.id 
                     ? (mySelection !== null ? mySelection : currentSelectionRef.current)
                     : null;
                   
@@ -1538,14 +1473,8 @@ useEffect(() => {
                     return merged;
                   });
                 } else {
-                  // Server sent empty during reveal - CRITICAL FIX: Only keep local selection if it belongs to THIS question
-                  const selectionQuestionId = window.lastSelectionQuestionId;
-                  const currentQuestionId = data.currentQuestion?.id;
-                  const localSelectionBelongsToCurrentQuestion = 
-                    hasLocalSelection && 
-                    selectionQuestionId === currentQuestionId;
-                  
-                  if (localSelectionBelongsToCurrentQuestion && currentUser?.id) {
+                  // Server sent empty during reveal - keep what we have with local selection
+                  if (hasLocalSelection && currentUser?.id) {
                     const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
                     setSelections(prev => ({
                       ...prev,
@@ -1556,13 +1485,7 @@ useEffect(() => {
                       localSelection
                     });
                   } else {
-                    console.log('🛡️ [Sync] Reveal phase - server sent empty, local selection from different question - clearing', {
-                      selectionQuestionId,
-                      currentQuestionId,
-                      belongsToCurrentQuestion: localSelectionBelongsToCurrentQuestion
-                    });
-                    // Clear selections if local selection doesn't belong to this question
-                    setSelections({});
+                    console.log('🛡️ [Sync] Reveal phase - server sent empty, keeping current selections');
                   }
                 }
               }
