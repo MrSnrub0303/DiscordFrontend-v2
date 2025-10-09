@@ -1234,7 +1234,7 @@ useEffect(() => {
               
               // In local mode, don't clear selections automatically - let the game flow handle it
               const isLocalMode = socket?.localMode === true;
-              
+            
               // Only clear if: real change AND no active selection AND not in reveal AND not local mode
               if (isRealQuestionChange && !recentlySelected && !hasActiveSelection && !isInRevealPhase && !isLocalMode) {
                 console.log('🆕 Real question change detected - clearing MY selection only (preserving others)');
@@ -1380,17 +1380,30 @@ useEffect(() => {
                       return merged;
                     });
                   } else {
-                    // No local selection or from different question - merge server data
-                    // CRITICAL: Use accumulative merge to preserve other players' selections
+                    // No local selection or from different question - check if server is sending NEW question data
+                    // CRITICAL FIX: If server sends empty selections {}, it means new question - DON'T preserve old badges
+                    const normalizedServerData = normalizeServerSelections(data.selections);
+                    const serverHasNoSelections = Object.keys(normalizedServerData).length === 0;
+                    
                     console.log('🔄 [Sync] No local selection - merging server data:', {
                       selectionQuestionId,
                       currentQuestionId,
-                      serverSelections: data.selections
+                      serverSelections: data.selections,
+                      normalizedServerData,
+                      serverHasNoSelections
                     });
-                    setSelections(prev => ({
-                      ...prev, // Keep existing selections (friend's badges)
-                      ...normalizeServerSelections(data.selections) // Merge server data (normalized)
-                    }));
+                    
+                    if (serverHasNoSelections) {
+                      // Server sent empty selections - this is a NEW question, clear all badges
+                      console.log('🆕 [Sync] Server sent empty selections - clearing all badges for new question');
+                      setSelections({});
+                    } else {
+                      // Server has selection data - merge it (preserve existing + add server data)
+                      setSelections(prev => ({
+                        ...prev, // Keep existing selections (friend's badges)
+                        ...normalizedServerData // Merge server data (normalized)
+                      }));
+                    }
                   }
                 }
               }
@@ -1554,25 +1567,55 @@ useEffect(() => {
                     return merged;
                   });
                 } else {
-                  // No local selection or different question - merge server data
+                  // No local selection or different question - check if server is sending NEW question data
+                  // CRITICAL FIX: If server sends empty selections {}, it means new question - DON'T preserve old badges
+                  const normalizedServerData = normalizeServerSelections(data.selections);
+                  const serverHasNoSelections = Object.keys(normalizedServerData).length === 0;
+                  
                   console.log('🔄 [Sync] Active gameplay - no local selection, merging server data', {
                     selectionQuestionId,
                     currentQuestionId,
-                    serverSelections: data.selections
+                    serverSelections: data.selections,
+                    normalizedServerData,
+                    serverHasNoSelections
                   });
-                  setSelections(prev => ({
-                    ...prev, // Keep existing (friend's badges)
-                    ...normalizeServerSelections(data.selections) // Merge server data (normalized)
-                  }));
+                  
+                  if (serverHasNoSelections) {
+                    // Server sent empty selections - this is a NEW question, clear all badges
+                    console.log('🆕 [Sync] Server sent empty selections during active gameplay - clearing all badges');
+                    setSelections({});
+                  } else {
+                    // Server has selection data - merge it
+                    setSelections(prev => ({
+                      ...prev, // Keep existing (friend's badges)
+                      ...normalizedServerData // Merge server data (normalized)
+                    }));
+                  }
                 }
               }
               // Not in gameplay or reveal - merge server data
               else {
-                console.log('🔄 [Sync] Not in active gameplay - merging server data');
-                setSelections(prev => ({
-                  ...prev, // Keep existing selections
-                  ...normalizeServerSelections(data.selections) // Merge server data (normalized)
-                }));
+                // CRITICAL FIX: If server sends empty selections {}, it means new question - DON'T preserve old badges
+                const normalizedServerData = normalizeServerSelections(data.selections);
+                const serverHasNoSelections = Object.keys(normalizedServerData).length === 0;
+                
+                console.log('🔄 [Sync] Not in active gameplay - merging server data', {
+                  serverSelections: data.selections,
+                  normalizedServerData,
+                  serverHasNoSelections
+                });
+                
+                if (serverHasNoSelections) {
+                  // Server sent empty selections - this is a NEW question, clear all badges
+                  console.log('🆕 [Sync] Server sent empty selections - clearing all badges for new question');
+                  setSelections({});
+                } else {
+                  // Server has selection data - merge it
+                  setSelections(prev => ({
+                    ...prev, // Keep existing selections
+                    ...normalizedServerData // Merge server data (normalized)
+                  }));
+                }
               }
             }
             if (data.playerNames) {
