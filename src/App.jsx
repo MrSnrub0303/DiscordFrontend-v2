@@ -1195,38 +1195,37 @@ useEffect(() => {
             // Don't show transition loaders from sync - let user actions handle transitions
             // Just update the question state without transitions
             
+            // CRITICAL FIX: Always clear mySelection when receiving a new question from server
+            // Do this BEFORE any other checks to prevent old selection from persisting
+            const currentQuestionId = currentQuestion?.id;
+            const serverQuestionId = data.currentQuestion?.id;
+            
+            // If we have a server question and it's different from current, clear immediately
+            if (serverQuestionId && currentQuestionId !== serverQuestionId) {
+              console.log('🧹 Pre-clearing mySelection before state updates:', { 
+                from: currentQuestionId, 
+                to: serverQuestionId,
+                oldMySelection: mySelection
+              });
+              setMySelection(null);
+              currentSelectionRef.current = null;
+              window.lastSelectionTime = null;
+              window.lastSelectionQuestionId = null;
+              setRevealPhaseQuestionId(null);
+              setShowResult(false);
+              setSelections({});
+            }
+            
             // Batch all state updates together to prevent flickering
             setCurrentQuestion(data.currentQuestion);
             setTimeLeft(data.timeLeft);
             // Use server's showResult state - don't override during grace period
             setShowResult(data.showResult);
             
-            // Only reset selections for truly new questions, preserve for same question
+            // Additional sync logic for selections
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
-              // CRITICAL FIX: Different question ID = NEW QUESTION
-              // Always clear mySelection and selections state for the new question
-              // The server has already cleared its selections and will send empty {}
-              console.log('🆕 Question ID changed - clearing all selection state:', { 
-                from: currentQuestionId, 
-                to: serverQuestionId 
-              });
-              
-              const myPlayerId = currentUser?.id;
-              
-              // Clear mySelection state (green badge for current user)
-              setMySelection(null);
-              currentSelectionRef.current = null;
-              window.lastSelectionTime = null;
-              window.lastSelectionQuestionId = null;
-              
-              // Clear reveal phase tracking
-              setRevealPhaseQuestionId(null);
-              setShowResult(false);
-              
-              // Clear selections state (will be repopulated by server's empty {} via logic below)
-              setSelections({});
-              
-              console.log('✅ Selection state cleared for new question');
+              // Question already changed above, just log for debugging
+              console.log('✅ Selection state already cleared for new question');
             } else {
               // console.log('✅ Preserving selection - same question or initial load');
               // For same question, sync server selections but preserve local selection
