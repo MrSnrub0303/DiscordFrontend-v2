@@ -1739,6 +1739,12 @@ useEffect(() => {
   const onSelectOption = (playerId, optionIndex) => {
     if (showResult) return; // Can't select after results are shown
     
+    // CRITICAL FIX: Prevent re-clicking the same option
+    if (mySelection === optionIndex) {
+      console.log(`⚠️ Already selected option ${optionIndex} - ignoring duplicate click`);
+      return; // Don't allow re-selecting the same option
+    }
+    
     console.log(`🎯 Attempting to select option ${optionIndex}`, {
       showResult,
       currentSelection: mySelection,
