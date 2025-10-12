@@ -1345,9 +1345,24 @@ useEffect(() => {
                     });
                     
                     if (serverHasNoSelections) {
-                      // Server sent empty selections - this is a NEW question, clear all badges
-                      console.log('🆕 [Sync] Server sent empty selections - clearing all badges for new question');
-                      setSelections({});
+                      // CRITICAL: Only clear if player hasn't made a selection for this question
+                      // Don't clear during active gameplay if player has a selection
+                      const hasMySelection = mySelection !== null || currentSelectionRef.current !== null;
+                      const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === currentQuestionId;
+                      
+                      if (mySelectionForThisQuestion) {
+                        // Player has made a selection for THIS question - preserve it even if server is empty
+                        console.log('🛡️ [Sync] Player has selection for current question - preserving despite empty server');
+                        // Keep current selections, ensure my selection is there
+                        setSelections(prev => ({
+                          ...prev,
+                          [myPlayerId]: mySelection !== null ? mySelection : currentSelectionRef.current
+                        }));
+                      } else {
+                        // No local selection for this question - safe to clear
+                        console.log('🆕 [Sync] No local selection for current question - allowing clear');
+                        setSelections({});
+                      }
                     } else {
                       // Server has selection data - merge it (preserve existing + add server data)
                       setSelections(prev => ({
@@ -1532,9 +1547,27 @@ useEffect(() => {
                   });
                   
                   if (serverHasNoSelections) {
-                    // Server sent empty selections - this is a NEW question, clear all badges
-                    console.log('🆕 [Sync] Server sent empty selections during active gameplay - clearing all badges');
-                    setSelections({});
+                    // CRITICAL: Only clear if player hasn't made a selection for this question
+                    // Don't clear during active gameplay if player has a selection
+                    const hasMySelection = mySelection !== null || currentSelectionRef.current !== null;
+                    const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === data.currentQuestion?.id;
+                    
+                    if (mySelectionForThisQuestion) {
+                      // Player has made a selection for THIS question - preserve it even if server is empty
+                      console.log('🛡️ [Sync - Active] Player has selection - preserving despite empty server');
+                      // Keep current selections, ensure my selection is there
+                      const myPlayerId = currentUser?.id;
+                      if (myPlayerId) {
+                        setSelections(prev => ({
+                          ...prev,
+                          [myPlayerId]: mySelection !== null ? mySelection : currentSelectionRef.current
+                        }));
+                      }
+                    } else {
+                      // No local selection for this question - safe to clear
+                      console.log('🆕 [Sync - Active] No local selection - allowing clear');
+                      setSelections({});
+                    }
                   } else {
                     // Server has selection data - merge it
                     setSelections(prev => ({
@@ -1557,9 +1590,27 @@ useEffect(() => {
                 });
                 
                 if (serverHasNoSelections) {
-                  // Server sent empty selections - this is a NEW question, clear all badges
-                  console.log('🆕 [Sync] Server sent empty selections - clearing all badges for new question');
-                  setSelections({});
+                  // CRITICAL: Only clear if player hasn't made a selection for this question
+                  // Don't clear if player has a selection
+                  const hasMySelection = mySelection !== null || currentSelectionRef.current !== null;
+                  const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === data.currentQuestion?.id;
+                  
+                  if (mySelectionForThisQuestion) {
+                    // Player has made a selection for THIS question - preserve it even if server is empty
+                    console.log('🛡️ [Sync - Idle] Player has selection - preserving despite empty server');
+                    // Keep current selections, ensure my selection is there
+                    const myPlayerId = currentUser?.id;
+                    if (myPlayerId) {
+                      setSelections(prev => ({
+                        ...prev,
+                        [myPlayerId]: mySelection !== null ? mySelection : currentSelectionRef.current
+                      }));
+                    }
+                  } else {
+                    // No local selection for this question - safe to clear
+                    console.log('🆕 [Sync - Idle] No local selection - allowing clear');
+                    setSelections({});
+                  }
                 } else {
                   // Server has selection data - merge it
                   setSelections(prev => ({
