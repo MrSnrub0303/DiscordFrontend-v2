@@ -1803,7 +1803,7 @@ useEffect(() => {
     // CRITICAL FIX: Prevent re-clicking the same option
     if (mySelection === optionIndex) {
       console.log(`⚠️ Already selected option ${optionIndex} - ignoring duplicate click`);
-      return; // Don't allow re-selecting the same option
+      return; // Don't allow re-selecting the same option (no sound, no action)
     }
     
     // NEW FIX: Allow switching to different option even if locked
@@ -1819,6 +1819,9 @@ useEffect(() => {
       socket: !!socket
     });
 
+    // Play click sound only when making a new selection or switching
+    playClickSound();
+    
     // Allow changing selection - update to new choice
     setMySelection(optionIndex); // This also sets isLocked = true
     currentSelectionRef.current = optionIndex; // Store in ref for persistence
@@ -1902,14 +1905,14 @@ useEffect(() => {
     // unlock audio context & maybe start music because this was a user gesture
     if (musicEnabled) startBackgroundMusic();
     unlockAudioContext();
-    playClickSound();
+    // playClickSound(); // REMOVED - now played earlier in the function, before state updates
   };
 
   // New: submit typed answer for card questions (player can keep trying until time runs out)
   const onSubmitCardAnswer = async (playerId, text) => {
     if (showResult) return;
     if (!isCardMode) return;
-    if (selections[playerId] !== undefined) return; // already answered correctly
+    if (selections[playerId] !== undefined) return; // already answered correctly - no sound, no action
 
     const attempt = (text || cardInput || "").trim();
     if (!attempt) return;
@@ -1931,7 +1934,7 @@ useEffect(() => {
       setCardLastWrong(false);
       // don't reveal immediately — follow the same reveal rules (either everyone or timer)
 
-      // play click to reward the user feel
+      // play click to reward the user feel (only on correct answer)
       playClickSound();
 
       // Send correct card answer to server
@@ -2712,12 +2715,17 @@ useEffect(() => {
                     backgroundColor: "transparent",
                     WebkitAppearance: "none",
                     MozAppearance: "none",
+                    // Locked state visual feedback
+                    opacity: (showResult || selections[myPlayerId] !== undefined) ? 0.7 : 1,
+                    filter: (showResult || selections[myPlayerId] !== undefined) ? "brightness(0.85)" : "none",
+                    transition: "opacity 0.3s ease, filter 0.3s ease",
+                    pointerEvents: (showResult || selections[myPlayerId] !== undefined) ? "none" : "auto",
                   }}
                 />
 
                 <button
                   onClick={() => onSubmitCardAnswer(myPlayerId, cardInput)}
-                  onMouseEnter={playHoverSound}
+                  onMouseEnter={(showResult || selections[myPlayerId] !== undefined) ? undefined : playHoverSound}
                   disabled={showResult || selections[myPlayerId] !== undefined}
                   style={{
                     height: 48,
@@ -2734,6 +2742,11 @@ useEffect(() => {
                     textShadow: "0 1px 3px rgba(0,0,0,0.8)",
                     fontSize: "1.4rem",
                     width: 320,
+                    // Locked state visual feedback
+                    opacity: (showResult || selections[myPlayerId] !== undefined) ? 0.7 : 1,
+                    filter: (showResult || selections[myPlayerId] !== undefined) ? "brightness(0.85)" : "none",
+                    transition: "opacity 0.3s ease, filter 0.3s ease",
+                    pointerEvents: (showResult || selections[myPlayerId] !== undefined) ? "none" : "auto",
                   }}
                 >
                   Submit!
@@ -2758,11 +2771,14 @@ useEffect(() => {
                 const isMySelected = i === mySelection; // Use state mySelection, not selections[myPlayerId]
                 // Also check if server has my selection for this option (backup check)
                 const isMySelectionOnServer = selections[myPlayerId] === i;
+                const isLocked = isMySelected || isMySelectionOnServer;
 
                 let backgroundImage = `url(${btnNormal})`;
                 let boxShadow = "none";
                 let opacity = 1;
                 let cursor = "pointer";
+                let pointerEvents = "auto";
+                let filter = "none";
 
                 if (reveal) {
                   if (i === correctIndex) {
@@ -2771,11 +2787,13 @@ useEffect(() => {
                   } else {
                     backgroundImage = `url(${btnDisabled})`;
                   }
-                } else if (isMySelected) {
+                } else if (isLocked) {
                   backgroundImage = `url(${btnHover})`;
-                  // Show locked state visually
-                  opacity = 0.9;
+                  // Show locked state visually - dimmed and disabled appearance
+                  opacity = 0.7;
                   cursor = "default";
+                  pointerEvents = "none"; // Prevent all interactions
+                  filter = "brightness(0.85)"; // Dim the button
                 }
 
                 return (
@@ -2788,17 +2806,15 @@ useEffect(() => {
                       boxShadow,
                       opacity,
                       cursor: reveal ? "default" : cursor,
-                      transition: "opacity 0.3s ease"
+                      pointerEvents: reveal ? "none" : pointerEvents,
+                      filter,
+                      transition: "opacity 0.3s ease, filter 0.3s ease"
                     }}
-                    onMouseEnter={playHoverSound}
+                    onMouseEnter={!isLocked && !reveal ? playHoverSound : undefined}
                     onClick={() => {
-                      // console.log(`🔥 Button ${i} clicked!`, {
-                        // reveal,
-                        // mySelection,
-                        // disabled: reveal,
-                        // myPlayerId,
-                        // showResult
-                      // });
+                      // Don't play sound or process click if locked
+                      if (isLocked) return;
+                      
                       onSelectOption(myPlayerId, i);
                     }}
                   >
