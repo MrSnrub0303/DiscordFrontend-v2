@@ -161,12 +161,16 @@ export default function App() {
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [selections, setSelections] = useState({}); // Final revealed selections
   const [mySelection, setMySelectionState] = useState(null); // Only my selection (for immediate feedback)
+  const [isLocked, setIsLocked] = useState(false); // Track if player's selection is locked
   
   // Wrapper for mySelection state management
   const setMySelection = (value) => {
     // Only log when actually setting a selection (not clearing)
     if (value !== null) {
       console.log('✅ Setting mySelection to:', value);
+      setIsLocked(true); // Lock when selection is made
+    } else {
+      setIsLocked(false); // Unlock when clearing (new question)
     }
     setMySelectionState(value);
   };
@@ -1358,10 +1362,12 @@ useEffect(() => {
                           ...prev,
                           [myPlayerId]: mySelection !== null ? mySelection : currentSelectionRef.current
                         }));
-                      } else {
-                        // No local selection for this question - safe to clear
+                      } else if (!isLocked) {
+                        // No local selection for this question - safe to clear (only if not locked)
                         console.log('🆕 [Sync] No local selection for current question - allowing clear');
                         setSelections({});
+                      } else {
+                        console.log('🔒 [Sync] Selection is locked - keeping current selections');
                       }
                     } else {
                       // Server has selection data - merge it (preserve existing + add server data)
@@ -1563,10 +1569,12 @@ useEffect(() => {
                           [myPlayerId]: mySelection !== null ? mySelection : currentSelectionRef.current
                         }));
                       }
-                    } else {
-                      // No local selection for this question - safe to clear
+                    } else if (!isLocked) {
+                      // No local selection for this question - safe to clear (only if not locked)
                       console.log('🆕 [Sync - Active] No local selection - allowing clear');
                       setSelections({});
+                    } else {
+                      console.log('🔒 [Sync - Active] Selection is locked - keeping current selections');
                     }
                   } else {
                     // Server has selection data - merge it
@@ -1606,10 +1614,12 @@ useEffect(() => {
                         [myPlayerId]: mySelection !== null ? mySelection : currentSelectionRef.current
                       }));
                     }
-                  } else {
-                    // No local selection for this question - safe to clear
+                  } else if (!isLocked) {
+                    // No local selection for this question - safe to clear (only if not locked)
                     console.log('🆕 [Sync - Idle] No local selection - allowing clear');
                     setSelections({});
+                  } else {
+                    console.log('🔒 [Sync - Idle] Selection is locked - keeping current selections');
                   }
                 } else {
                   // Server has selection data - merge it
@@ -1796,9 +1806,13 @@ useEffect(() => {
       return; // Don't allow re-selecting the same option
     }
     
+    // NEW FIX: Allow switching to different option even if locked
+    // But the lock ensures they can't spam the same option
+    
     console.log(`🎯 Attempting to select option ${optionIndex}`, {
       showResult,
       currentSelection: mySelection,
+      isLocked,
       isInVoiceChannel,
       voiceChannel: !!voiceChannel,
       playerId,
@@ -1806,7 +1820,7 @@ useEffect(() => {
     });
 
     // Allow changing selection - update to new choice
-    setMySelection(optionIndex);
+    setMySelection(optionIndex); // This also sets isLocked = true
     currentSelectionRef.current = optionIndex; // Store in ref for persistence
     
     // Track selection time AND question ID for clearing protection
@@ -2747,6 +2761,8 @@ useEffect(() => {
 
                 let backgroundImage = `url(${btnNormal})`;
                 let boxShadow = "none";
+                let opacity = 1;
+                let cursor = "pointer";
 
                 if (reveal) {
                   if (i === correctIndex) {
@@ -2757,6 +2773,9 @@ useEffect(() => {
                   }
                 } else if (isMySelected) {
                   backgroundImage = `url(${btnHover})`;
+                  // Show locked state visually
+                  opacity = 0.9;
+                  cursor = "default";
                 }
 
                 return (
@@ -2764,7 +2783,13 @@ useEffect(() => {
                     key={i}
                     disabled={reveal} // Only disable after results are revealed
                     className="option-button"
-                    style={{ backgroundImage, boxShadow }}
+                    style={{ 
+                      backgroundImage, 
+                      boxShadow,
+                      opacity,
+                      cursor: reveal ? "default" : cursor,
+                      transition: "opacity 0.3s ease"
+                    }}
                     onMouseEnter={playHoverSound}
                     onClick={() => {
                       // console.log(`🔥 Button ${i} clicked!`, {
