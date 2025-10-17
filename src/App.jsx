@@ -1361,13 +1361,16 @@ useEffect(() => {
                       const hasMySelection = mySelection !== null || currentSelectionRef.current !== null;
                       const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === currentQuestionId;
                       
-                      if (mySelectionForThisQuestion) {
+                      // Check if player has answered (exists in selections) - important for HC card questions
+                      const hasAnsweredInSelections = selections[myPlayerId] !== undefined;
+                      
+                      if (mySelectionForThisQuestion || hasAnsweredInSelections) {
                         // Player has made a selection for THIS question - preserve it even if server is empty
                         console.log('🛡️ [Sync] Player has selection for current question - preserving despite empty server');
                         // Keep current selections, ensure my selection is there
                         setSelections(prev => ({
                           ...prev,
-                          [myPlayerId]: mySelection !== null ? mySelection : currentSelectionRef.current
+                          [myPlayerId]: hasAnsweredInSelections ? prev[myPlayerId] : (mySelection !== null ? mySelection : currentSelectionRef.current)
                         }));
                       } else if (!isLocked) {
                         // No local selection for this question - safe to clear (only if not locked)
@@ -1565,15 +1568,18 @@ useEffect(() => {
                     const hasMySelection = mySelection !== null || currentSelectionRef.current !== null;
                     const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === data.currentQuestion?.id;
                     
-                    if (mySelectionForThisQuestion) {
+                    // Check if player has answered (exists in selections) - important for HC card questions
+                    const myPlayerId = currentUser?.id;
+                    const hasAnsweredInSelections = myPlayerId && selections[myPlayerId] !== undefined;
+                    
+                    if (mySelectionForThisQuestion || hasAnsweredInSelections) {
                       // Player has made a selection for THIS question - preserve it even if server is empty
                       console.log('🛡️ [Sync - Active] Player has selection - preserving despite empty server');
                       // Keep current selections, ensure my selection is there
-                      const myPlayerId = currentUser?.id;
                       if (myPlayerId) {
                         setSelections(prev => ({
                           ...prev,
-                          [myPlayerId]: mySelection !== null ? mySelection : currentSelectionRef.current
+                          [myPlayerId]: hasAnsweredInSelections ? prev[myPlayerId] : (mySelection !== null ? mySelection : currentSelectionRef.current)
                         }));
                       }
                     } else if (!isLocked) {
@@ -1610,15 +1616,18 @@ useEffect(() => {
                   const hasMySelection = mySelection !== null || currentSelectionRef.current !== null;
                   const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === data.currentQuestion?.id;
                   
-                  if (mySelectionForThisQuestion) {
+                  // Check if player has answered (exists in selections) - important for HC card questions
+                  const myPlayerId = currentUser?.id;
+                  const hasAnsweredInSelections = myPlayerId && selections[myPlayerId] !== undefined;
+                  
+                  if (mySelectionForThisQuestion || hasAnsweredInSelections) {
                     // Player has made a selection for THIS question - preserve it even if server is empty
                     console.log('🛡️ [Sync - Idle] Player has selection - preserving despite empty server');
                     // Keep current selections, ensure my selection is there
-                    const myPlayerId = currentUser?.id;
                     if (myPlayerId) {
                       setSelections(prev => ({
                         ...prev,
-                        [myPlayerId]: mySelection !== null ? mySelection : currentSelectionRef.current
+                        [myPlayerId]: hasAnsweredInSelections ? prev[myPlayerId] : (mySelection !== null ? mySelection : currentSelectionRef.current)
                       }));
                     }
                   } else if (!isLocked) {
