@@ -1934,8 +1934,8 @@ useEffect(() => {
       setCardLastWrong(false);
       // don't reveal immediately — follow the same reveal rules (either everyone or timer)
 
-      // play click to reward the user feel (only on correct answer)
-      playClickSound();
+      // NO SOUND - Silent lock like trivia buttons
+      // playClickSound(); // REMOVED - Should be silent when locking
 
       // Send correct card answer to server
       try {
