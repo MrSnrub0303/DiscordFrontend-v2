@@ -170,7 +170,13 @@ export default function App() {
       console.log('✅ Setting mySelection to:', value);
       setIsLocked(true); // Lock when selection is made
     } else {
-      setIsLocked(false); // Unlock when clearing (new question)
+      // Don't unlock if player has already answered correctly in selections
+      // This prevents the sync loop from unlocking HC card inputs after correct answer
+      const playerId = currentUser?.id || "player1";
+      const hasAnswered = selections[playerId] !== undefined;
+      if (!hasAnswered) {
+        setIsLocked(false); // Only unlock when clearing for a truly new question
+      }
     }
     setMySelectionState(value);
   };
@@ -1212,6 +1218,7 @@ useEffect(() => {
                 oldMySelection: mySelection
               });
               setMySelection(null);
+              setIsLocked(false); // Reset lock for new question
               currentSelectionRef.current = null;
               window.lastSelectionTime = null;
               window.lastSelectionQuestionId = null;
@@ -1932,6 +1939,7 @@ useEffect(() => {
 
       setSelections((prev) => ({ ...prev, [playerId]: true }));
       setCardLastWrong(false);
+      setIsLocked(true); // Lock the input when correct answer is entered
       // don't reveal immediately — follow the same reveal rules (either everyone or timer)
 
       // NO SOUND - Silent lock like trivia buttons
