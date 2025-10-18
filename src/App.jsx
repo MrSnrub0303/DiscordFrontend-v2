@@ -1393,9 +1393,22 @@ useEffect(() => {
                       } else if (!isLocked) {
                         // No local selection for this question - safe to clear (only if not locked)
                         console.log('🆕 [Sync] No local selection for current question - allowing clear');
+                        console.log('⚠️ [HC Card Debug] About to clear selections - current state:', {
+                          selections,
+                          myPlayerId,
+                          hasMySelection,
+                          hasAnsweredInSelections,
+                          isLocked,
+                          timestamp: Date.now()
+                        });
                         setSelections({});
                       } else {
                         console.log('🔒 [Sync] Selection is locked - keeping current selections');
+                        console.log('✅ [HC Card Debug] Lock prevented clearing selections:', {
+                          selections,
+                          isLocked,
+                          timestamp: Date.now()
+                        });
                       }
                     } else {
                       // Server has selection data - merge it (preserve existing + add server data)
@@ -1964,9 +1977,18 @@ useEffect(() => {
         [playerId]: clickedTimeLeft,
       };
 
-      setSelections((prev) => ({ ...prev, [playerId]: true }));
+      setSelections((prev) => {
+        console.log('🎴 [HC Card] Setting correct answer in selections:', {
+          playerId,
+          currentSelections: prev,
+          newSelections: { ...prev, [playerId]: true },
+          timestamp: Date.now()
+        });
+        return { ...prev, [playerId]: true };
+      });
       setCardLastWrong(false);
       setIsLocked(true); // Lock the input when correct answer is entered
+      console.log('🔒 [HC Card] Lock state set to TRUE for player:', playerId);
       // don't reveal immediately — follow the same reveal rules (either everyone or timer)
 
       // NO SOUND - Silent lock like trivia buttons
