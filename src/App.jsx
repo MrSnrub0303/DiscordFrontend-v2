@@ -170,10 +170,13 @@ export default function App() {
       console.log('✅ Setting mySelection to:', value);
       setIsLocked(true); // Lock when selection is made
     } else {
-      // When clearing (new question), always unlock
+      // When clearing (new question), always unlock AND clear HC card ref
       // The lock will be re-applied when user makes a selection
       console.log('🔓 Unlocking for new question/clearing selection');
       setIsLocked(false);
+      // CRITICAL: Clear HC card ref when clearing selection for new question
+      hcCardAnswersRef.current = {};
+      console.log('🧹 [setMySelection] Cleared HC card ref for new question');
     }
     setMySelectionState(value);
   };
