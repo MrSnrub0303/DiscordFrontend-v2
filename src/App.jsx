@@ -265,7 +265,8 @@ export default function App() {
   
   // Track if activity has been restarted (to request fresh scores)
   const activityRestartedRef = useRef(false);
-  const lastReadyStateRef = useRef(ready);
+  const lastReadyStateRef = useRef(null); // null = not yet initialized
+  const hasInitializedRef = useRef(false); // Track first initialization
 
   // NEW — Audio refs
   const clickSound = useRef(new Audio(clickSoundFile));
@@ -290,8 +291,16 @@ export default function App() {
 
   // Clean up timers when Discord Activity ready state changes (activity stop/start)
   useEffect(() => {
-    // Detect activity restart (went from not ready to ready)
-    if (!lastReadyStateRef.current && ready) {
+    // First time initialization - don't treat as restart
+    if (!hasInitializedRef.current && ready) {
+      console.log('🎬 Initial activity load');
+      hasInitializedRef.current = true;
+      lastReadyStateRef.current = ready;
+      return;
+    }
+    
+    // Detect activity restart (went from not ready to ready AFTER initial load)
+    if (hasInitializedRef.current && lastReadyStateRef.current === false && ready) {
       console.log('🔄 Activity restarted - marking for score reset');
       activityRestartedRef.current = true;
     }
@@ -465,6 +474,20 @@ export default function App() {
       setScores({});
       setDisplayScores({});
       scoreAnimFramesRef.current = {};
+    });
+
+    // Listen for room state updates (when joining mid-game)
+    socket.on('room_state', (data) => {
+      console.log('🏠 Room state received:', data);
+      if (data.scores) {
+        console.log('📊 Syncing scores from room state:', data.scores);
+        setScores(data.scores);
+        setDisplayScores(data.scores);
+      }
+      if (data.players) {
+        console.log('👥 Syncing players from room state:', data.players);
+        setPlayers(data.players);
+      }
     });
 
     socket.on('player_selected', (data) => {
