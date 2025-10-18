@@ -2821,7 +2821,12 @@ useEffect(() => {
                 />
 
                 <button
-                  onClick={() => onSubmitCardAnswer(myPlayerId, cardInput)}
+                  onClick={() => {
+                    if (!showResult && selections[myPlayerId] === undefined) {
+                      playClickSound();
+                    }
+                    onSubmitCardAnswer(myPlayerId, cardInput);
+                  }}
                   onMouseEnter={(showResult || selections[myPlayerId] !== undefined) ? undefined : playHoverSound}
                   disabled={showResult || selections[myPlayerId] !== undefined}
                   style={{
