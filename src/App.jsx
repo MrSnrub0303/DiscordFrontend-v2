@@ -485,6 +485,11 @@ export default function App() {
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
       // console.log('🃏 Loading card image for:', currentQuestion.cardName);
+      
+      // 🧪 TESTING: Display correct answer in console
+      console.log('🎴 HC CARD QUESTION - CORRECT ANSWER:', currentQuestion.cardName);
+      console.log('💡 Testing Tip: Type exactly:', `"${currentQuestion.cardName}"`);
+      
       // Clear previous card input and feedback when new card question arrives
       setCardInput("");
       setCardLastWrong(false);
