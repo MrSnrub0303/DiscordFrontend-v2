@@ -256,6 +256,9 @@ export default function App() {
   // Record per-player answer-time (timeLeft at moment of click)
   // shape: { playerId: number (timeLeftAtClick), ... }
   const answerTimesRef = useRef({});
+  
+  // Track HC card correct answers immediately (before state updates) to prevent sync from clearing
+  const hcCardAnswersRef = useRef({});
 
   // NEW — Audio refs
   const clickSound = useRef(new Audio(clickSoundFile));
@@ -1225,6 +1228,7 @@ useEffect(() => {
               setMySelection(null);
               setIsLocked(false); // Reset lock for new question
               currentSelectionRef.current = null;
+              hcCardAnswersRef.current = {}; // Clear HC card answers ref for new question
               window.lastSelectionTime = null;
               window.lastSelectionQuestionId = null;
               setRevealPhaseQuestionId(null);
@@ -1380,15 +1384,25 @@ useEffect(() => {
                       const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === currentQuestionId;
                       
                       // Check if player has answered (exists in selections) - important for HC card questions
+                      // CRITICAL FIX: Check ref FIRST before state (ref is set immediately, state updates later)
+                      const hasAnsweredInRef = hcCardAnswersRef.current[myPlayerId] !== undefined;
                       const hasAnsweredInSelections = selections[myPlayerId] !== undefined;
+                      const hasAnswered = hasAnsweredInRef || hasAnsweredInSelections;
                       
-                      if (mySelectionForThisQuestion || hasAnsweredInSelections) {
+                      if (mySelectionForThisQuestion || hasAnswered) {
                         // Player has made a selection for THIS question - preserve it even if server is empty
                         console.log('🛡️ [Sync] Player has selection for current question - preserving despite empty server');
+                        console.log('🎴 [HC Card Debug] Preservation check:', {
+                          hasAnsweredInRef,
+                          hasAnsweredInSelections,
+                          hasAnswered,
+                          refState: hcCardAnswersRef.current,
+                          selectionsState: selections
+                        });
                         // Keep current selections, ensure my selection is there
                         setSelections(prev => ({
                           ...prev,
-                          [myPlayerId]: hasAnsweredInSelections ? prev[myPlayerId] : (mySelection !== null ? mySelection : currentSelectionRef.current)
+                          [myPlayerId]: hasAnswered ? (prev[myPlayerId] || true) : (mySelection !== null ? mySelection : currentSelectionRef.current)
                         }));
                       } else if (!isLocked) {
                         // No local selection for this question - safe to clear (only if not locked)
@@ -1397,7 +1411,9 @@ useEffect(() => {
                           selections,
                           myPlayerId,
                           hasMySelection,
-                          hasAnsweredInSelections,
+                          hasAnsweredInRef: hcCardAnswersRef.current[myPlayerId] !== undefined,
+                          hasAnsweredInSelections: selections[myPlayerId] !== undefined,
+                          refState: hcCardAnswersRef.current,
                           isLocked,
                           timestamp: Date.now()
                         });
@@ -1600,17 +1616,20 @@ useEffect(() => {
                     const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === data.currentQuestion?.id;
                     
                     // Check if player has answered (exists in selections) - important for HC card questions
+                    // CRITICAL FIX: Check ref FIRST before state (ref is set immediately, state updates later)
                     const myPlayerId = currentUser?.id;
+                    const hasAnsweredInRef = myPlayerId && hcCardAnswersRef.current[myPlayerId] !== undefined;
                     const hasAnsweredInSelections = myPlayerId && selections[myPlayerId] !== undefined;
+                    const hasAnswered = hasAnsweredInRef || hasAnsweredInSelections;
                     
-                    if (mySelectionForThisQuestion || hasAnsweredInSelections) {
+                    if (mySelectionForThisQuestion || hasAnswered) {
                       // Player has made a selection for THIS question - preserve it even if server is empty
                       console.log('🛡️ [Sync - Active] Player has selection - preserving despite empty server');
                       // Keep current selections, ensure my selection is there
                       if (myPlayerId) {
                         setSelections(prev => ({
                           ...prev,
-                          [myPlayerId]: hasAnsweredInSelections ? prev[myPlayerId] : (mySelection !== null ? mySelection : currentSelectionRef.current)
+                          [myPlayerId]: hasAnswered ? (prev[myPlayerId] || true) : (mySelection !== null ? mySelection : currentSelectionRef.current)
                         }));
                       }
                     } else if (!isLocked) {
@@ -1648,17 +1667,20 @@ useEffect(() => {
                   const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === data.currentQuestion?.id;
                   
                   // Check if player has answered (exists in selections) - important for HC card questions
+                  // CRITICAL FIX: Check ref FIRST before state (ref is set immediately, state updates later)
                   const myPlayerId = currentUser?.id;
+                  const hasAnsweredInRef = myPlayerId && hcCardAnswersRef.current[myPlayerId] !== undefined;
                   const hasAnsweredInSelections = myPlayerId && selections[myPlayerId] !== undefined;
+                  const hasAnswered = hasAnsweredInRef || hasAnsweredInSelections;
                   
-                  if (mySelectionForThisQuestion || hasAnsweredInSelections) {
+                  if (mySelectionForThisQuestion || hasAnswered) {
                     // Player has made a selection for THIS question - preserve it even if server is empty
                     console.log('🛡️ [Sync - Idle] Player has selection - preserving despite empty server');
                     // Keep current selections, ensure my selection is there
                     if (myPlayerId) {
                       setSelections(prev => ({
                         ...prev,
-                        [myPlayerId]: hasAnsweredInSelections ? prev[myPlayerId] : (mySelection !== null ? mySelection : currentSelectionRef.current)
+                        [myPlayerId]: hasAnswered ? (prev[myPlayerId] || true) : (mySelection !== null ? mySelection : currentSelectionRef.current)
                       }));
                     }
                   } else if (!isLocked) {
@@ -1976,6 +1998,13 @@ useEffect(() => {
         ...answerTimesRef.current,
         [playerId]: clickedTimeLeft,
       };
+      
+      // CRITICAL: Set ref IMMEDIATELY before state updates to prevent sync from clearing
+      hcCardAnswersRef.current = {
+        ...hcCardAnswersRef.current,
+        [playerId]: true,
+      };
+      console.log('🎴 [HC Card] Ref set immediately for player:', playerId, hcCardAnswersRef.current);
 
       setSelections((prev) => {
         console.log('🎴 [HC Card] Setting correct answer in selections:', {
