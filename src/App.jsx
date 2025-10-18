@@ -1241,6 +1241,16 @@ useEffect(() => {
             // Use server's showResult state - don't override during grace period
             setShowResult(data.showResult);
             
+            // CRITICAL: Clear HC card ref when question changes
+            // This prevents old ref data from persisting into new questions
+            if (currentQuestion && data.currentQuestion && currentQuestion.id !== data.currentQuestion.id) {
+              console.log('🧹 Clearing HC card ref for new question:', {
+                oldQuestion: currentQuestion.id,
+                newQuestion: data.currentQuestion.id
+              });
+              hcCardAnswersRef.current = {};
+            }
+            
             // Additional sync logic for selections
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
               // Question already changed above, just log for debugging
