@@ -262,6 +262,10 @@ export default function App() {
   
   // Track last question ID we cleared selection for (prevent multiple clears on same transition)
   const lastClearedQuestionRef = useRef(null);
+  
+  // Track if activity has been restarted (to request fresh scores)
+  const activityRestartedRef = useRef(false);
+  const lastReadyStateRef = useRef(ready);
 
   // NEW — Audio refs
   const clickSound = useRef(new Audio(clickSoundFile));
@@ -286,6 +290,15 @@ export default function App() {
 
   // Clean up timers when Discord Activity ready state changes (activity stop/start)
   useEffect(() => {
+    // Detect activity restart (went from not ready to ready)
+    if (!lastReadyStateRef.current && ready) {
+      console.log('🔄 Activity restarted - marking for score reset');
+      activityRestartedRef.current = true;
+    }
+    
+    // Update last ready state
+    lastReadyStateRef.current = ready;
+    
     // When Discord Activity is not ready (stopped), clean up all timers
     if (!ready) {
       // console.log('🧹 Discord Activity not ready - cleaning up timers');
@@ -444,6 +457,14 @@ export default function App() {
           setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
         }
       }
+    });
+    
+    // Listen for score reset (when activity restarts)
+    socket.on('scores_reset', (data) => {
+      console.log('🔄 Scores reset received from server:', data);
+      setScores({});
+      setDisplayScores({});
+      scoreAnimFramesRef.current = {};
     });
 
     socket.on('player_selected', (data) => {
@@ -638,6 +659,25 @@ export default function App() {
                   username: currentUser.username 
                 });
                 // console.log(`🏠 Joined room: ${roomId} as ${currentUser.username}`);
+                
+                // If activity was restarted, request score reset
+                if (activityRestartedRef.current) {
+                  console.log('🔄 Activity restarted - requesting score reset for room:', roomId);
+                  try {
+                    await fetch(`${API_BASE_URL}/game-event`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        event: 'reset_scores',
+                        data: { roomId }
+                      })
+                    });
+                    console.log('✅ Score reset requested');
+                    activityRestartedRef.current = false; // Clear the flag
+                  } catch (error) {
+                    console.error('❌ Failed to reset scores:', error);
+                  }
+                }
               } catch (error) {
                 joinAttempts++;
                 // console.log(`⚠️ Join room attempt ${joinAttempts} failed:`, error.message);
