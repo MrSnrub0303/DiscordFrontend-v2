@@ -1240,7 +1240,12 @@ useEffect(() => {
             
             // CRITICAL: Clear HC card ref when question changes
             // This MUST happen BEFORE setCurrentQuestion to use old state value for comparison
-            if (currentQuestion && data.currentQuestion && currentQuestion.id !== data.currentQuestion.id) {
+            // ONLY clear if this is an ACTUAL new question transition (not a stale state comparison)
+            const isActualNewQuestion = currentQuestion && data.currentQuestion && 
+                                       currentQuestion.id !== data.currentQuestion.id &&
+                                       currentQuestionId !== data.currentQuestion.id; // Don't clear if we're already on the new question
+            
+            if (isActualNewQuestion) {
               console.log('🧹 Clearing HC card ref for new question:', {
                 oldQuestion: currentQuestion.id,
                 newQuestion: data.currentQuestion.id
