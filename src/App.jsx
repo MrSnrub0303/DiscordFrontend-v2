@@ -1260,6 +1260,10 @@ useEffect(() => {
                 // Get player ID for indexing selections (server uses player IDs, not names)
                 const myPlayerId = currentUser?.id;
                 
+                // CRITICAL: For HC cards, check if player has answered in selections (mySelection is null for cards)
+                const hasAnsweredInSelections = myPlayerId && selections[myPlayerId] !== undefined;
+                const effectiveLocalSelection = hasAnsweredInSelections ? selections[myPlayerId] : currentLocalSelection;
+                
                 console.log('🔍 [Sync] Same-question path - reveal check:', {
                   showResult,
                   dataShowResult: data.showResult,
@@ -1269,16 +1273,20 @@ useEffect(() => {
                   alreadyInReveal: alreadyInRevealForThisQuestion,
                   isInRevealPhase,
                   hasLocalSelection: currentLocalSelection !== null,
+                  hasAnsweredInSelections,
+                  effectiveLocalSelection,
                   myPlayerId,
-                  willEnterRevealPath: isInRevealPhase && currentLocalSelection !== null && myPlayerId
+                  willEnterRevealPath: isInRevealPhase && effectiveLocalSelection !== null && myPlayerId
                 });
                 
-                if (isInRevealPhase && currentLocalSelection !== null && myPlayerId) {
+                if (isInRevealPhase && effectiveLocalSelection !== null && myPlayerId) {
                   // Reveal phase - merge server data with EXISTING selections + local selection
                   // This preserves all badges (including friend's) that we've already received
                   console.log('🏆 [Sync] Same-question reveal phase - preserving local selection:', { 
                     myPlayerId, 
                     localSelection: currentLocalSelection,
+                    effectiveLocalSelection,
+                    hasAnsweredInSelections,
                     serverSelectionsRAW: data.selections,
                     currentSelections: selections
                   });
@@ -1296,14 +1304,15 @@ useEffect(() => {
                       ...prev, // Keep existing selections (friend's badge)
                       ...normalizedServerData, // Merge normalized server data
                     };
-                    // CRITICAL: Always override with local selection (don't let server overwrite)
-                    merged[myPlayerId] = currentLocalSelection;
+                    // CRITICAL: Always override with effective local selection (preserves HC card answers)
+                    merged[myPlayerId] = effectiveLocalSelection;
                     
                     console.log('🏆 [Sync] Reveal merge result:', {
                       prev,
                       normalizedServer: normalizedServerData,
                       myPlayerId,
                       localSelection: currentLocalSelection,
+                      effectiveLocalSelection,
                       finalMerged: merged,
                       mergedKeys: Object.keys(merged)
                     });
@@ -1321,19 +1330,23 @@ useEffect(() => {
                     selectionQuestionId === currentQuestionId &&
                     (Date.now() - window.lastSelectionTime < MAX_TIME * 1000); // Within current question timeframe
                   
-                  if (localSelectionBelongsToThisQuestion) {
+                  // Also check if player has answered HC card (effectiveLocalSelection includes HC card answers)
+                  const hasValidSelection = localSelectionBelongsToThisQuestion || effectiveLocalSelection !== null;
+                  
+                  if (hasValidSelection) {
                     // Merge server selections with local selection to prevent overwriting
                     setSelections(prev => {
                       const merged = {
                         ...prev, // Keep existing selections
                         ...normalizeServerSelections(data.selections), // Merge server data (normalized)
                       };
-                      // Always ensure local selection is present
-                      merged[myPlayerId] = currentLocalSelection;
+                      // Always ensure effective local selection is present (includes HC card answers)
+                      merged[myPlayerId] = effectiveLocalSelection;
                       
                       console.log('🔄 [Sync] Preserving local selection:', { 
                         myPlayerId, 
                         localSelection: currentLocalSelection,
+                        effectiveLocalSelection,
                         previousSelections: prev,
                         serverSelections: data.selections,
                         finalMerged: merged
