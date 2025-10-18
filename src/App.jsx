@@ -44,7 +44,7 @@ import { getCardImageUrl } from './utils/cardImages';
 // API configuration - use same base URL as socket
 const API_BASE_URL = '/api';
 
-const MAX_TIME = 15;
+const MAX_TIME = 20;
 
 // Volume/fade settings
 const NORMAL_VOLUME = 0.6; // volume when question is active
