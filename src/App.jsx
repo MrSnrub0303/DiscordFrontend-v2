@@ -1389,6 +1389,15 @@ useEffect(() => {
                       const hasAnsweredInSelections = selections[myPlayerId] !== undefined;
                       const hasAnswered = hasAnsweredInRef || hasAnsweredInSelections;
                       
+                      console.log('🔎 [HC Card Ref Check] Checking player answer:', {
+                        myPlayerId,
+                        hasAnsweredInRef,
+                        refContents: hcCardAnswersRef.current,
+                        refKeys: Object.keys(hcCardAnswersRef.current),
+                        refHasThisPlayer: myPlayerId in hcCardAnswersRef.current,
+                        timestamp: Date.now()
+                      });
+                      
                       if (mySelectionForThisQuestion || hasAnswered) {
                         // Player has made a selection for THIS question - preserve it even if server is empty
                         console.log('🛡️ [Sync] Player has selection for current question - preserving despite empty server');
