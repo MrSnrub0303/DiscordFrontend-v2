@@ -259,6 +259,9 @@ export default function App() {
   
   // Track HC card correct answers immediately (before state updates) to prevent sync from clearing
   const hcCardAnswersRef = useRef({});
+  
+  // Track last question ID we cleared selection for (prevent multiple clears on same transition)
+  const lastClearedQuestionRef = useRef(null);
 
   // NEW — Audio refs
   const clickSound = useRef(new Audio(clickSoundFile));
@@ -1220,13 +1223,17 @@ useEffect(() => {
             
             // If we have a server question and it's different from current, clear immediately
             // CRITICAL FIX: Don't clear if currentQuestionId is undefined (initial load) - only clear on actual question change
-            const isActualQuestionChange = serverQuestionId && currentQuestionId && currentQuestionId !== serverQuestionId;
+            // CRITICAL FIX #2: Don't clear if we've already cleared for this question (prevent multiple clears)
+            const isActualQuestionChange = serverQuestionId && currentQuestionId && 
+                                          currentQuestionId !== serverQuestionId &&
+                                          lastClearedQuestionRef.current !== serverQuestionId;
             if (isActualQuestionChange) {
               console.log('🧹 Pre-clearing mySelection before state updates:', { 
                 from: currentQuestionId, 
                 to: serverQuestionId,
                 oldMySelection: mySelection
               });
+              lastClearedQuestionRef.current = serverQuestionId; // Mark this question as cleared
               setMySelection(null);
               setIsLocked(false); // Reset lock for new question
               currentSelectionRef.current = null;
