@@ -170,13 +170,10 @@ export default function App() {
       console.log('✅ Setting mySelection to:', value);
       setIsLocked(true); // Lock when selection is made
     } else {
-      // Don't unlock if player has already answered correctly in selections
-      // This prevents the sync loop from unlocking HC card inputs after correct answer
-      const playerId = currentUser?.id || "player1";
-      const hasAnswered = selections[playerId] !== undefined;
-      if (!hasAnswered) {
-        setIsLocked(false); // Only unlock when clearing for a truly new question
-      }
+      // When clearing (new question), always unlock
+      // The lock will be re-applied when user makes a selection
+      console.log('🔓 Unlocking for new question/clearing selection');
+      setIsLocked(false);
     }
     setMySelectionState(value);
   };
