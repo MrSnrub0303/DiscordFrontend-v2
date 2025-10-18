@@ -1264,14 +1264,23 @@ useEffect(() => {
             // If we have a server question and it's different from current, clear immediately
             // CRITICAL FIX: Don't clear if currentQuestionId is undefined (initial load) - only clear on actual question change
             // CRITICAL FIX #2: Don't clear if we've already cleared for this question (prevent multiple clears)
+            // CRITICAL FIX #3: Don't clear if user just made a selection (protect recent selections)
+            const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
+            const hasRecentSelection = timeSinceLastSelection < 5000; // 5 second protection window
+            const hasCurrentSelection = mySelection !== null || currentSelectionRef.current !== null;
+            
             const isActualQuestionChange = serverQuestionId && currentQuestionId && 
                                           currentQuestionId !== serverQuestionId &&
-                                          lastClearedQuestionRef.current !== serverQuestionId;
+                                          lastClearedQuestionRef.current !== serverQuestionId &&
+                                          !hasRecentSelection; // Don't clear if user just selected
+            
             if (isActualQuestionChange) {
               console.log('🧹 Pre-clearing mySelection before state updates:', { 
                 from: currentQuestionId, 
                 to: serverQuestionId,
-                oldMySelection: mySelection
+                oldMySelection: mySelection,
+                hasRecentSelection,
+                timeSinceLastSelection
               });
               lastClearedQuestionRef.current = serverQuestionId; // Mark this question as cleared
               setMySelection(null);
@@ -1283,6 +1292,12 @@ useEffect(() => {
               setRevealPhaseQuestionId(null);
               setShowResult(false);
               setSelections({});
+            } else if (hasRecentSelection) {
+              console.log('🛡️ Protecting recent selection from sync clear:', {
+                timeSinceLastSelection,
+                currentSelection: mySelection,
+                refSelection: currentSelectionRef.current
+              });
             }
             
             // CRITICAL: Clear HC card ref when question changes
