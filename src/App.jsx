@@ -1219,7 +1219,9 @@ useEffect(() => {
             const serverQuestionId = data.currentQuestion?.id;
             
             // If we have a server question and it's different from current, clear immediately
-            if (serverQuestionId && currentQuestionId !== serverQuestionId) {
+            // CRITICAL FIX: Don't clear if currentQuestionId is undefined (initial load) - only clear on actual question change
+            const isActualQuestionChange = serverQuestionId && currentQuestionId && currentQuestionId !== serverQuestionId;
+            if (isActualQuestionChange) {
               console.log('🧹 Pre-clearing mySelection before state updates:', { 
                 from: currentQuestionId, 
                 to: serverQuestionId,
