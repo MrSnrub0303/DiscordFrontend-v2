@@ -1235,14 +1235,8 @@ useEffect(() => {
               setSelections({});
             }
             
-            // Batch all state updates together to prevent flickering
-            setCurrentQuestion(data.currentQuestion);
-            setTimeLeft(data.timeLeft);
-            // Use server's showResult state - don't override during grace period
-            setShowResult(data.showResult);
-            
             // CRITICAL: Clear HC card ref when question changes
-            // This prevents old ref data from persisting into new questions
+            // This MUST happen BEFORE setCurrentQuestion to use old state value for comparison
             if (currentQuestion && data.currentQuestion && currentQuestion.id !== data.currentQuestion.id) {
               console.log('🧹 Clearing HC card ref for new question:', {
                 oldQuestion: currentQuestion.id,
@@ -1250,6 +1244,12 @@ useEffect(() => {
               });
               hcCardAnswersRef.current = {};
             }
+            
+            // Batch all state updates together to prevent flickering
+            setCurrentQuestion(data.currentQuestion);
+            setTimeLeft(data.timeLeft);
+            // Use server's showResult state - don't override during grace period
+            setShowResult(data.showResult);
             
             // Additional sync logic for selections
             if (currentQuestion && currentQuestionId !== serverQuestionId) {
