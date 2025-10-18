@@ -2886,6 +2886,8 @@ useEffect(() => {
               {currentQuestion.options.map((opt, i) => {
                 const reveal = showResult;
                 const isMySelected = i === mySelection; // Use state mySelection, not selections[myPlayerId]
+                // Use ref for immediate badge rendering (avoids duplicate badges from stale state)
+                const isMySelectionInRef = currentSelectionRef.current === i;
                 // Also check if server has my selection for this option (backup check)
                 const isMySelectionOnServer = selections[myPlayerId] === i;
                 const isLocked = isMySelected || isMySelectionOnServer;
@@ -2938,7 +2940,8 @@ useEffect(() => {
                     <span className="option-text">{opt}</span>
                     
                     {/* Show my name on my selected option (even before reveal) */}
-                    {!reveal && (isMySelected || isMySelectionOnServer) && (
+                    {/* Use ref for immediate rendering to avoid duplicate badges from state batching */}
+                    {!reveal && (isMySelected || isMySelectionInRef) && (
                       <>
                         {/* console.log(`🟢 Rendering green badge for option ${i}, reveal: ${reveal}, mySelection: ${mySelection}, serverSelection: ${selections[myPlayerId]}`) */}
                         <span className="option-badge my-selection">
