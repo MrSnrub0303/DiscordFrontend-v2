@@ -1290,12 +1290,14 @@ useEffect(() => {
             // CRITICAL FIX #3: Don't clear if user just made a selection (protect recent selections)
             const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
             const hasRecentSelection = timeSinceLastSelection < 5000; // 5 second protection window
-            const hasCurrentSelection = mySelection !== null || currentSelectionRef.current !== null;
+            const lastSelectionQuestionId = window.lastSelectionQuestionId;
+            const recentSelectionMatchesServer = hasRecentSelection && lastSelectionQuestionId && serverQuestionId && lastSelectionQuestionId === serverQuestionId;
+            const shouldProtectRecentSelection = recentSelectionMatchesServer;
             
             const isActualQuestionChange = serverQuestionId && currentQuestionId && 
                                           currentQuestionId !== serverQuestionId &&
                                           lastClearedQuestionRef.current !== serverQuestionId &&
-                                          !hasRecentSelection; // Don't clear if user just selected
+                                          !shouldProtectRecentSelection;
             
             if (isActualQuestionChange) {
               console.log('🧹 Pre-clearing mySelection before state updates:', { 
@@ -1315,11 +1317,18 @@ useEffect(() => {
               setRevealPhaseQuestionId(null);
               setShowResult(false);
               setSelections({});
-            } else if (hasRecentSelection) {
+            } else if (shouldProtectRecentSelection) {
               console.log('🛡️ Protecting recent selection from sync clear:', {
                 timeSinceLastSelection,
                 currentSelection: mySelection,
-                refSelection: currentSelectionRef.current
+                refSelection: currentSelectionRef.current,
+                serverQuestionId
+              });
+            } else if (hasRecentSelection) {
+              console.log('ℹ️ Recent selection detected but belongs to previous question - allowing clear:', {
+                timeSinceLastSelection,
+                lastSelectionQuestionId,
+                serverQuestionId
               });
             }
             
