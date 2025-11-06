@@ -1,10 +1,9 @@
-// (entire file — only small changes around the leaderboard rendering and the <style> block)
 import { useState, useEffect, useRef, useMemo, useLayoutEffect } from "react";
 import "./App.css";
 import questions from "./questions.json";
-import { useDiscordActivity } from './discord/useDiscordActivity';
-import { DiscordProxySocket } from './socket';
-import {  safeLog } from './utils/logger';
+import { useDiscordActivity } from "./discord/useDiscordActivity";
+import { DiscordProxySocket } from "./socket";
+import { safeLog } from "./utils/logger";
 
 import marbleBg from "./assets/marblebg2.png";
 import woodPanelBg from "./assets/sendresource_bg.png";
@@ -17,50 +16,36 @@ import nicknameBg from "./assets/uiskirmishnickname_textentry.png";
 import nicknameBgOver from "./assets/uiskirmishnickname_textentry_over.png";
 import dividingLine from "./assets/dividingline.png";
 
-// NEW — medal assets (top 3)
-import medalFirst from "./assets/award_03.png"; // first place (gold)
-import medalSecond from "./assets/award_02.png"; // second place (silver)
-import medalThird from "./assets/award_01.png"; // third place (bronze)
+import medalFirst from "./assets/award_03.png";
+import medalSecond from "./assets/award_02.png";
+import medalThird from "./assets/award_01.png";
 
-// NEW — Import sounds
 import clickSoundFile from "./assets/bigbutton.wav";
 import hoverSoundFile from "./assets/hoverobject_short.wav";
 
-// Background music tracks (playlist)
 import someOfAKindFile from "./assets/SomeOfAKind.mp3";
 import revolootinFile from "./assets/Revolootin.mp3";
 import kothFile from "./assets/KOTH.mp3";
 
-// Music toggle icons
 import soundOnIcon from "./assets/notification_sound_on.png";
 import soundOffIcon from "./assets/notification_sound_off.png";
 
-// REVEAL SOUND (we'll decode and play via WebAudio)
 import revealSoundFile from "./assets/chatreceived.wav";
 
-// Card image utility
-import { getCardImageUrl } from './utils/cardImages';
+import { getCardImageUrl } from "./utils/cardImages";
 
-// API configuration - use same base URL as socket
-const API_BASE_URL = '/api';
+const API_BASE_URL = "/api";
 
 const MAX_TIME = 20;
 
-// Volume/fade settings
-const NORMAL_VOLUME = 0.6; // volume when question is active
-const FADED_VOLUME = 0.08; // volume when question ended (faded down)
-const FADE_DURATION = 800; // milliseconds
+const NORMAL_VOLUME = 0.6;
+const FADED_VOLUME = 0.08;
+const FADE_DURATION = 800;
 
-// Scoring config
-const MAX_POINTS = 150; // points for an instant (maximum)
-// Scoring shape: use a power curve f(x) = x^k where x = timeLeft / MAX_TIME in [0..1].
-// When k > 1 the curve drops steeply when timeLeft falls a little from the maximum,
-// then flattens out as time approaches 0 — this matches "steep at first, then less steep".
-// Increase SCORING_EXPONENT to make the initial falloff steeper (e.g. 3). 
+const MAX_POINTS = 150;
+
 const SCORING_EXPONENT = 2;
 
-// Helper: format numbers with commas (e.g. 1000 -> "1,000")
-// Uses the user's locale; falls back to a safe numeric conversion.
 const formatNumber = (n) => {
   if (n === null || n === undefined) return "0";
   const num = Number(n);
@@ -68,115 +53,221 @@ const formatNumber = (n) => {
   return num.toLocaleString();
 };
 
-// Age of Empires III Home City Cards
 const cardNames = [
-  "Conquistador", "Team Fencing Instructor", "Unction", "Team Spanish Road", "Team Hidalgos",
-  "Native Lore", "Advanced Trading Post", "Town Militia", "Pioneers", "Advanced Mill",
-  "Advanced Market", "Advanced Estate", "Advanced Dock", "Llama Ranching", "Ranching",
-  "Fish Market", "Schooners", "Sawmills", "Exotic Hardwoods", "Team Ironmonger",
-  "Stockyards", "Furrier", "Rum Distillery", "Capitalism", "Stonemasons",
-  "Land Grab", "Team Coastal Defenses", "Tercio Tactics", "Reconquista", "Advanced Arsenal",
-  "Extensive Fortifications", "Rendering Plant", "Silversmith", "Sustainable Agriculture", "Spice Trade",
-  "Medicine", "Cigar Roller", "Spanish Galleons", "Theaters", "Caballeros",
-  "Liberation March", "Spanish Gold", "Armada", "Mercenary Loyalty", "Grenade Launchers",
-  "Improved Buildings", "Blood Brothers", "Peninsular Guerrillas", "Advanced Balloon", "Florence Nightingale",
-  "Virginia Company", "South Sea Bubble", "Fulling Mills", "Yeomen", "Siege Archery",
-  "Master Surgeons", "Northwest Passage", "Distributivism", "Wilderness Warfare", "French Royal Army",
-  "Naval Gunners", "Thoroughbreds", "Gribeauval System", "Navigator", "Agents",
-  "Portuguese White Fleet", "Carracks", "Stadhouder", "Admiral Tromp", "Tulip Speculation",
-  "Willem", "Polar Explorer", "Engineering School", "Suvorov Reforms", "Ransack",
-  "Polk", "Offshore Support", "Germantown Farmers", "Guild Artisans", "Spanish Riding School",
-  "Mosque Construction", "Flight Archery", "New Ways", "Beaver Wars", "Medicine Wheels",
-  "Black Arrow", "Silent Strike", "Smoking Mirror", "Boxer Rebellion", "Western Reforms",
-  "Advanced Wonders", "Seven Lucky Gods", "Desert Terror", "Foreign Logging", "Salt Ponds",
-  "Imperial Unity", "Duelist", "Trample Tactics", "Virginia Oak", "Coffee Mill Guns",
-  "Bushburning", "Beekeepers", "Koose", "Kingslayer", "Barbacoa",
-  "Man of Destiny", "Freemasons", "Admirality", "Advanced Commanderies", "Bailiff",
-  "Fire Towers", "Native Treaties", "Advanced Scouts", "Grain Market", "Chinampa",
-  "Knight Hitpoints", "Knight Attack", "Aztec Mining", "Ritual Gladiators", "Artificial Islands",
-  "Knight Combat", "Scorched Earth", "Aztec Fortification", "Chichimeca Rebellion", "Wall of Skulls",
-  "Old Ways", "Improved Warships", "Terraced Houses", "Rangers", "Textile Mill",
-  "Refrigeration", "Royal Mint", "Greenwich Time", "Dowager Empress", "Year of the Goat",
-  "Year of the Tiger", "Year of the Ox", "Year of the Dragon", "Acupuncture",
-  "Repelling Volley", "Native Crafts", "Colbertism", "Cartridge Currency", "European Cannons",
-  "Voyageur", "Solingen Steel", "Town Destroyer", "Battlefield Construction", "Conservative Tactics",
-  "Dane Guns"
+  "Conquistador",
+  "Team Fencing Instructor",
+  "Unction",
+  "Team Spanish Road",
+  "Team Hidalgos",
+  "Native Lore",
+  "Advanced Trading Post",
+  "Town Militia",
+  "Pioneers",
+  "Advanced Mill",
+  "Advanced Market",
+  "Advanced Estate",
+  "Advanced Dock",
+  "Llama Ranching",
+  "Ranching",
+  "Fish Market",
+  "Schooners",
+  "Sawmills",
+  "Exotic Hardwoods",
+  "Team Ironmonger",
+  "Stockyards",
+  "Furrier",
+  "Rum Distillery",
+  "Capitalism",
+  "Stonemasons",
+  "Land Grab",
+  "Team Coastal Defenses",
+  "Tercio Tactics",
+  "Reconquista",
+  "Advanced Arsenal",
+  "Extensive Fortifications",
+  "Rendering Plant",
+  "Silversmith",
+  "Sustainable Agriculture",
+  "Spice Trade",
+  "Medicine",
+  "Cigar Roller",
+  "Spanish Galleons",
+  "Theaters",
+  "Caballeros",
+  "Liberation March",
+  "Spanish Gold",
+  "Armada",
+  "Mercenary Loyalty",
+  "Grenade Launchers",
+  "Improved Buildings",
+  "Blood Brothers",
+  "Peninsular Guerrillas",
+  "Advanced Balloon",
+  "Florence Nightingale",
+  "Virginia Company",
+  "South Sea Bubble",
+  "Fulling Mills",
+  "Yeomen",
+  "Siege Archery",
+  "Master Surgeons",
+  "Northwest Passage",
+  "Distributivism",
+  "Wilderness Warfare",
+  "French Royal Army",
+  "Naval Gunners",
+  "Thoroughbreds",
+  "Gribeauval System",
+  "Navigator",
+  "Agents",
+  "Portuguese White Fleet",
+  "Carracks",
+  "Stadhouder",
+  "Admiral Tromp",
+  "Tulip Speculation",
+  "Willem",
+  "Polar Explorer",
+  "Engineering School",
+  "Suvorov Reforms",
+  "Ransack",
+  "Polk",
+  "Offshore Support",
+  "Germantown Farmers",
+  "Guild Artisans",
+  "Spanish Riding School",
+  "Mosque Construction",
+  "Flight Archery",
+  "New Ways",
+  "Beaver Wars",
+  "Medicine Wheels",
+  "Black Arrow",
+  "Silent Strike",
+  "Smoking Mirror",
+  "Boxer Rebellion",
+  "Western Reforms",
+  "Advanced Wonders",
+  "Seven Lucky Gods",
+  "Desert Terror",
+  "Foreign Logging",
+  "Salt Ponds",
+  "Imperial Unity",
+  "Duelist",
+  "Trample Tactics",
+  "Virginia Oak",
+  "Coffee Mill Guns",
+  "Bushburning",
+  "Beekeepers",
+  "Koose",
+  "Kingslayer",
+  "Barbacoa",
+  "Man of Destiny",
+  "Freemasons",
+  "Admirality",
+  "Advanced Commanderies",
+  "Bailiff",
+  "Fire Towers",
+  "Native Treaties",
+  "Advanced Scouts",
+  "Grain Market",
+  "Chinampa",
+  "Knight Hitpoints",
+  "Knight Attack",
+  "Aztec Mining",
+  "Ritual Gladiators",
+  "Artificial Islands",
+  "Knight Combat",
+  "Scorched Earth",
+  "Aztec Fortification",
+  "Chichimeca Rebellion",
+  "Wall of Skulls",
+  "Old Ways",
+  "Improved Warships",
+  "Terraced Houses",
+  "Rangers",
+  "Textile Mill",
+  "Refrigeration",
+  "Royal Mint",
+  "Greenwich Time",
+  "Dowager Empress",
+  "Year of the Goat",
+  "Year of the Tiger",
+  "Year of the Ox",
+  "Year of the Dragon",
+  "Acupuncture",
+  "Repelling Volley",
+  "Native Crafts",
+  "Colbertism",
+  "Cartridge Currency",
+  "European Cannons",
+  "Voyageur",
+  "Solingen Steel",
+  "Town Destroyer",
+  "Battlefield Construction",
+  "Conservative Tactics",
+  "Dane Guns",
 ];
 
-// Helper: Convert card name to image path
 const getCardImagePath = (cardName) => {
-  // Convert spaces to underscores and remove special characters for filename
-  const fileName = cardName.replace(/\s+/g, '_').replace(/[:/]/g, '');
+  const fileName = cardName.replace(/\s+/g, "_").replace(/[:/]/g, "");
   return new URL(`./assets/cards/${fileName}.png`, import.meta.url).href;
 };
 
 export default function App() {
-  // Players will be populated from Discord voice channel
   const [players, setPlayers] = useState([]);
 
-  // Socket state for multiplayer communication
   const [socket, setSocket] = useState(null);
 
-  // Use Discord Activity hook
-  const { 
-    voiceChannel, 
-    participants, 
+  const {
+    voiceChannel,
+    participants,
     currentUser,
     instanceId,
     channelId,
     isHost,
     isInVoiceChannel,
-    ready
+    ready,
   } = useDiscordActivity();
 
-  // Use Discord channel ID as room ID so all players in same voice channel join same game
-  // Prioritize channelId, but extract channelId from instanceId as fallback
   let roomId = channelId;
-  
+
   if (!roomId && instanceId) {
-    // instanceId format: i-{sessionId}-gc-{guildId}-{channelId}
-    // Extract channelId from instanceId as fallback
-    const instanceParts = instanceId.split('-');
+    const instanceParts = instanceId.split("-");
     if (instanceParts.length >= 4) {
-      roomId = instanceParts[instanceParts.length - 1]; // Last part is channelId
+      roomId = instanceParts[instanceParts.length - 1];
     } else {
-      roomId = instanceId; // Use full instanceId if parsing fails
+      roomId = instanceId;
     }
   }
-  
+
   if (!roomId) {
     roomId = "fallback-quiz-room";
   }
-  
-  safeLog.room('🏠 Using room ID:', roomId);
-  // logger.debug('🔍 Discord Activity Values (partial):', { 
-  //   hasChannelId: !!channelId, 
-  //   hasInstanceId: !!instanceId,
-  //   isInVoiceChannel, 
-  //   participantCount: participants?.length || 0,
-  //   finalRoomId: roomId ? 'room_***' : null
-  // });
 
-  const [availableQuestions, setAvailableQuestions] = useState([...questions]); // Not used anymore but keep for compatibility
+  safeLog.room("🏠 Using room ID:", roomId);
+
+  const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [selections, setSelections] = useState({}); // Final revealed selections
-  const [mySelection, setMySelectionState] = useState(null); // Only my selection (for immediate feedback)
-  const [isLocked, setIsLocked] = useState(false); // Track if player's selection is locked
-  
-  // Wrapper for mySelection state management
+  const [selections, setSelections] = useState({});
+  const [mySelection, setMySelectionState] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
+
   const setMySelection = (value) => {
-    // Only log when actually setting a selection (not clearing)
     if (value !== null) {
-      console.log('✅ Setting mySelection to:', value);
-      setIsLocked(true); // Lock when selection is made
+      setIsLocked(true);
     } else {
-      // When clearing (new question), always unlock AND clear HC card ref
-      // The lock will be re-applied when user makes a selection
-      console.log('🔓 Unlocking for new question/clearing selection');
       setIsLocked(false);
-      // CRITICAL: Clear HC card ref when clearing selection for new question
+
       hcCardAnswersRef.current = {};
-      console.log('🧹 [setMySelection] Cleared HC card ref for new question');
+
+      const playerId = currentUser?.id || "player1";
+      setSelections((prevSelections) => {
+        if (!prevSelections || prevSelections[playerId] === undefined) {
+          return prevSelections || {};
+        }
+
+        const nextSelections = { ...prevSelections };
+        delete nextSelections[playerId];
+        return nextSelections;
+      });
     }
     setMySelectionState(value);
   };
@@ -184,163 +275,132 @@ export default function App() {
   const [showResult, setShowResult] = useState(false);
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
-  const [playerNames, setPlayerNames] = useState({}); // Player names from server
-  const [revealPhaseQuestionId, setRevealPhaseQuestionId] = useState(null); // Track which question we're revealing for
-  
-  // Leaderboard UI state
+  const [playerNames, setPlayerNames] = useState({});
+  const [revealPhaseQuestionId, setRevealPhaseQuestionId] = useState(null);
+
   const [isLeaderboardCollapsed, setIsLeaderboardCollapsed] = useState(false);
-  const [leaderboardPosition, setLeaderboardPosition] = useState({ x: 0, y: 92 }); 
+  const [leaderboardPosition, setLeaderboardPosition] = useState({
+    x: 0,
+    y: 92,
+  });
   const [isDraggingLeaderboard, setIsDraggingLeaderboard] = useState(false);
-  
-  // Set initial leaderboard position from the right edge
+
   useEffect(() => {
     const setInitialPosition = () => {
-      setLeaderboardPosition({ 
-        x: window.innerWidth - 300, // 280px width + 20px margin from right
-        y: 92 
+      setLeaderboardPosition({
+        x: window.innerWidth - 300,
+        y: 92,
       });
     };
-    
-    // Set position immediately and on window resize
+
     setInitialPosition();
-    window.addEventListener('resize', setInitialPosition);
-    
-    return () => window.removeEventListener('resize', setInitialPosition);
+    window.addEventListener("resize", setInitialPosition);
+
+    return () => window.removeEventListener("resize", setInitialPosition);
   }, []);
 
-  const [isLoading, setIsLoading] = useState(true); // Loading state for server questions
-  const [isTimerRunning, setIsTimerRunning] = useState(false); // Track timer state to prevent sync conflicts
-  const [isTransitioning, setIsTransitioning] = useState(false); // Loading state for question transitions
+  const [isLoading, setIsLoading] = useState(true);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // For card-mode: input state and last attempt feedback
   const [cardInput, setCardInput] = useState("");
   const [cardLastWrong, setCardLastWrong] = useState(false);
-  const [cardImageUrl, setCardImageUrl] = useState(null); // Dynamically loaded card image URL
+  const [cardImageUrl, setCardImageUrl] = useState(null);
 
-  // Animated display scores (counts up when underlying `scores` changes)
   const [displayScores, setDisplayScores] = useState({});
   const displayScoresRef = useRef(displayScores);
   useEffect(() => {
     displayScoresRef.current = displayScores;
   }, [displayScores]);
 
-  // whether music is toggled on (user-visible setting)
   const [musicEnabled, setMusicEnabled] = useState(true);
 
-  // Socket state trigger for useEffect re-runs when socket properties change
   const [socketStateVersion, setSocketStateVersion] = useState(0);
 
-  // Safety timeout for transition state to prevent getting stuck
   useEffect(() => {
     if (isTransitioning) {
       const timeout = setTimeout(() => {
-        // console.log('⚠️ Transition timeout - resetting isTransitioning state');
         setIsTransitioning(false);
-      }, 5000); // 5 second safety timeout
-      
+      }, 5000);
+
       return () => clearTimeout(timeout);
     }
   }, [isTransitioning]);
 
   const timerRef = useRef(null);
 
-  // Track whether awarding has been performed for the current question
   const awardedDoneRef = useRef(false);
-  
-  // Debounce ref to prevent rapid transition toggling
+
   const transitionDebounceRef = useRef(null);
-  
-  // Store current selection in ref for persistence during reveals
+
   const currentSelectionRef = useRef(null);
 
-  // Record per-player answer-time (timeLeft at moment of click)
-  // shape: { playerId: number (timeLeftAtClick), ... }
   const answerTimesRef = useRef({});
-  
-  // Track HC card correct answers immediately (before state updates) to prevent sync from clearing
-  const hcCardAnswersRef = useRef({});
-  
-  // Track last question ID we cleared selection for (prevent multiple clears on same transition)
-  const lastClearedQuestionRef = useRef(null);
-  
-  // Track if activity has been restarted (to request fresh scores)
-  const activityRestartedRef = useRef(false);
-  const lastReadyStateRef = useRef(null); // null = not yet initialized
-  const hasInitializedRef = useRef(false); // Track first initialization
 
-  // NEW — Audio refs
+  const hcCardAnswersRef = useRef({});
+
+  const lastClearedQuestionRef = useRef(null);
+
+  const activityRestartedRef = useRef(false);
+  const lastReadyStateRef = useRef(null);
+  const hasInitializedRef = useRef(false);
+
   const clickSound = useRef(new Audio(clickSoundFile));
   const hoverSound = useRef(new Audio(hoverSoundFile));
 
-  // WEB AUDIO for reveal sound
   const audioCtxRef = useRef(null);
   const revealBufferRef = useRef(null);
-  const audioUnlockedRef = useRef(false); // whether audio context has been resumed
-  const pendingRevealRef = useRef(false); // if reveal should play when context resumes
+  const audioUnlockedRef = useRef(false);
+  const pendingRevealRef = useRef(false);
 
-  // Playlist audio refs
   const bg = useRef({
-    tracks: [], // array of Audio objects in playlist order
+    tracks: [],
   });
 
-  // index of currently playing track in bg.current.tracks
   const currentIndexRef = useRef(0);
 
-  // single fade timer for current audio
   const fadeTimerRef = useRef(null);
 
-  // Clean up timers when Discord Activity ready state changes (activity stop/start)
   useEffect(() => {
-    // First time initialization - don't treat as restart
     if (!hasInitializedRef.current && ready) {
-      console.log('🎬 Initial activity load');
       hasInitializedRef.current = true;
       lastReadyStateRef.current = ready;
       return;
     }
-    
-    // Detect activity restart (went from not ready to ready AFTER initial load)
-    if (hasInitializedRef.current && lastReadyStateRef.current === false && ready) {
-      console.log('🔄 Activity restarted - marking for score reset');
+
+    if (
+      hasInitializedRef.current &&
+      lastReadyStateRef.current === false &&
+      ready
+    ) {
       activityRestartedRef.current = true;
     }
-    
-    // Update last ready state
+
     lastReadyStateRef.current = ready;
-    
-    // When Discord Activity is not ready (stopped), clean up all timers
+
     if (!ready) {
-      // console.log('🧹 Discord Activity not ready - cleaning up timers');
-      
-      // Clear the main game timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      
-      // Clear fade timer
+
       if (fadeTimerRef.current) {
         clearInterval(fadeTimerRef.current);
         fadeTimerRef.current = null;
       }
-      
-      // Clear transition debounce
+
       if (transitionDebounceRef.current) {
         clearTimeout(transitionDebounceRef.current);
         transitionDebounceRef.current = null;
       }
-      
-      // Reset timer-related state
+
       setIsTimerRunning(false);
       setIsTransitioning(false);
-      
-      // Notify server that activity is ending (trigger room cleanup)
+
       if (socket && roomId) {
-        socket.emit('activity_ended', { roomId });
-        console.log('📴 Notified server of activity end for room:', roomId);
+        socket.emit("activity_ended", { roomId });
       }
-      
-      // Reset game state when activity stops for fresh start on next launch
+
       setTimeLeft(MAX_TIME);
       setShowResult(false);
       setCurrentQuestion(null);
@@ -349,178 +409,128 @@ export default function App() {
       currentSelectionRef.current = null;
       window.lastSelectionTime = null;
       window.lastSelectionQuestionId = null;
-      console.log('🔄 Game state reset for fresh start');
     }
-  }, [ready, socket, roomId]); // Trigger when Discord Activity ready state changes
+  }, [ready, socket, roomId]);
 
-  // Setup socket event listeners when socket is available
   useEffect(() => {
     if (!socket || !currentUser) return;
-    
-    // Set up socket event listeners
-    socket.on('gameState', (gameState) => {
-      // console.log('📡 Received gameState:', gameState);
-      
-      // Check if this is a new question - if so, clear selections
-      const isNewQuestion = currentQuestion?.id !== gameState.currentQuestion?.id;
-      
+
+    socket.on("gameState", (gameState) => {
+      const isNewQuestion =
+        currentQuestion?.id !== gameState.currentQuestion?.id;
+
       setCurrentQuestion(gameState.currentQuestion);
-      
-      // Only set selections if not a new question, otherwise clear them
+
       if (isNewQuestion) {
-        // Only clear when safe - never during active gameplay
-        console.log('� Socket detected question change:', { from: currentQuestion?.id, to: gameState.currentQuestion?.id });
-        // Smart clearing: Check if it's truly a different question by comparing content
-        const isRealQuestionChange = 
-          currentQuestion.isCard !== gameState.currentQuestion.isCard ||
-          (currentQuestion.isCard && currentQuestion.cardName !== gameState.currentQuestion.cardName) ||
-          (!currentQuestion.isCard && currentQuestion.question !== gameState.currentQuestion.question);
-        
-        // Time-based protection for socket events too
-        const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
-        const recentlySelected = timeSinceLastSelection < 10000; // 10 seconds protection
-        
-        // ONLY preserve selections during active reveal phase (when showResult is true)
-        // If we're moving to a new question and NOT showing results, clear selections
         const isInRevealPhase = showResult || gameState.showResult;
-        
-        if (isRealQuestionChange && !recentlySelected && !isInRevealPhase) {
-          console.log('🆕 Socket: Real question change - clearing selections');
+
+        if (!isInRevealPhase) {
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
           window.lastSelectionTime = null;
           window.lastSelectionQuestionId = null;
-        } else if (recentlySelected) {
-          console.log('🛡️ Socket: Recently selected - protecting user choice');
-        } else if (isInRevealPhase) {
-          console.log('🏆 Socket: Preserving selections - results are being/were revealed');
-        } else {
-          console.log('🎯 Socket: Same question content - preserving selections');
+          setIsLocked(false);
+          hcCardAnswersRef.current = {};
+          answerTimesRef.current = {};
+          awardedDoneRef.current = false;
+          setServerScoredThisRound(false);
         }
       } else {
-        // Preserve local selection when syncing with server gameState
-        const currentLocalSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
+        const currentLocalSelection =
+          mySelection !== null ? mySelection : currentSelectionRef.current;
         if (currentLocalSelection !== null && playerName) {
-          console.log('🔄 [GameState] Preserving local selection:', { 
-            playerName, 
-            localSelection: currentLocalSelection,
-            serverSelections: gameState.selections 
-          });
           setSelections({
             ...(gameState.selections || {}),
-            [playerName]: currentLocalSelection
+            [playerName]: currentLocalSelection,
           });
         } else {
           setSelections(gameState.selections || {});
         }
       }
-      
-      setShowResult(gameState.showResult); 
+
+      setShowResult(gameState.showResult);
       setTimeLeft(gameState.timeLeft);
       setScores(gameState.scores);
     });
 
-    // Listen for server responses to multiplayer events
-    socket.on('question_started', (data) => {
-      // console.log('📡 Received question_started from server:', data);
+    socket.on("question_started", (data) => {
       if (data.question) {
-        const isNewQuestion = !currentQuestion || currentQuestion.id !== data.question.id;
-        
+        const isNewQuestion =
+          !currentQuestion || currentQuestion.id !== data.question.id;
+
         setCurrentQuestion(data.question);
         setShowResult(false);
-        
+
         if (isNewQuestion) {
-          // Only reset selections for truly new questions
-          console.log('🆕 New question detected, clearing selections:', data.question.id);
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
           window.lastSelectionTime = null;
           window.lastSelectionQuestionId = null;
-          // Reset per-question tracking
+
           answerTimesRef.current = {};
           awardedDoneRef.current = false;
-        } else {
-          console.log('🔄 Same question in question_started, preserving selection');
         }
-        
+
         setTimeLeft(data.timeLeft || MAX_TIME);
       }
-      
     });
 
-    // Listen for round completion and reveal phase
-    socket.on('round_complete', (data) => {
-      // console.log('📡 Round complete - revealing all selections:', data);
+    socket.on("round_complete", (data) => {
       if (data.selections) {
         setSelections(data.selections);
         setShowResult(true);
-        // Update scores if provided
+
         if (data.scores) {
           setScores(data.scores);
         }
-        // Update player names if provided  
+
         if (data.playerNames) {
-          // console.log('📝 Updating player names from round_complete:', data.playerNames);
-          setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
+          setPlayerNames((prevNames) => ({
+            ...prevNames,
+            ...data.playerNames,
+          }));
         }
       }
     });
-    
-    // Listen for score reset (when activity restarts)
-    socket.on('scores_reset', (data) => {
-      console.log('🔄 Scores reset received from server:', data);
+
+    socket.on("scores_reset", (data) => {
       setScores({});
       setDisplayScores({});
       scoreAnimFramesRef.current = {};
     });
 
-    // Listen for room state updates (when joining mid-game)
-    socket.on('room_state', (data) => {
-      console.log('🏠 Room state received:', data);
+    socket.on("room_state", (data) => {
       if (data.scores) {
-        console.log('📊 Syncing scores from room state:', data.scores);
         setScores(data.scores);
         setDisplayScores(data.scores);
       }
       if (data.players) {
-        console.log('👥 Syncing players from room state:', data.players);
         setPlayers(data.players);
       }
     });
 
-    socket.on('player_selected', (data) => {
-      // console.log('📡 Player made selection (hidden until reveal):', data.playerId);
-      // Don't show the actual selection - just acknowledge someone selected
-      // This could be used for "Player X has answered" indicators
-    });
+    socket.on("player_selected", (data) => {});
 
-    socket.on('playerJoined', (player) => {
-      // console.log('📡 Player joined via socket:', player);
-      setPlayers(prev => {
-        // Avoid duplicates
-        if (prev.find(p => p.id === player.id)) {
+    socket.on("playerJoined", (player) => {
+      setPlayers((prev) => {
+        if (prev.find((p) => p.id === player.id)) {
           return prev;
         }
         return [...prev, player];
       });
     });
 
-    // Remove local mode initialization - we now sync with Discord participants
-    // The participants useEffect will handle both multiplayer and single player setup
-
-    socket.on('playerLeft', (playerId) => {
-      // console.log('📡 Player left via socket:', playerId);
-      setPlayers(prev => prev.filter(p => p.id !== playerId));
+    socket.on("playerLeft", (playerId) => {
+      setPlayers((prev) => prev.filter((p) => p.id !== playerId));
     });
 
-    // Send current user info if socket is connected
     if (socket.connected && !socket.localMode) {
-      socket.emit('join', {
+      socket.emit("join", {
         id: currentUser.id,
         name: currentUser.username,
-        isHost
+        isHost,
       });
     }
 
@@ -531,60 +541,40 @@ export default function App() {
     };
   }, [socket, currentUser, isHost]);
 
-  // Load card image when currentQuestion is a card
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
-      // console.log('🃏 Loading card image for:', currentQuestion.cardName);
-      
-      // 🧪 TESTING: Display correct answer in console
-      console.log('🎴 HC CARD QUESTION - CORRECT ANSWER:', currentQuestion.cardName);
-      console.log('💡 Testing Tip: Type exactly:', `"${currentQuestion.cardName}"`);
-      
-      // Clear previous card input and feedback when new card question arrives
       setCardInput("");
       setCardLastWrong(false);
-      // Clear previous card image immediately to prevent flash
+
       setCardImageUrl(null);
-      
+
       getCardImageUrl(currentQuestion.cardName)
         .then((imageUrl) => {
-          // console.log('🃏 Card image loaded:', imageUrl);
           setCardImageUrl(imageUrl);
         })
         .catch((error) => {
-          // console.error('🃏 Failed to load card image:', error);
           setCardImageUrl(null);
         });
     } else {
-      // Not a card question, clear all card-related state
       setCardImageUrl(null);
       setCardInput("");
       setCardLastWrong(false);
     }
-  }, [currentQuestion?.id, currentQuestion?.isCard, currentQuestion?.cardName]); // Only trigger on actual question changes
+  }, [currentQuestion?.id, currentQuestion?.isCard, currentQuestion?.cardName]);
 
-  // Debug mySelection changes
-  useEffect(() => {
-    // console.log(`🎯 MySelection changed to:`, mySelection);
-  }, [mySelection]);
+  useEffect(() => {}, [mySelection]);
 
-  // For animation (FLIP) of leaderboard
-  // We store the previous bounding rects so we can compute deltas when order changes
   const prevRectsRef = useRef({});
 
-  // Animation frames refs for the score count animations so we can cancel if needed
   const scoreAnimFramesRef = useRef({});
 
-  // Prevent double execution of initial game check
   const gameCheckExecutedRef = useRef(false);
   const gameCheckRetriesRef = useRef(0);
-  const MAX_SOCKET_WAIT_RETRIES = 6; // Wait up to 3 seconds for socket
-  const questionFetchInProgressRef = useRef(false); // Prevent duplicate question fetches
+  const MAX_SOCKET_WAIT_RETRIES = 6;
+  const questionFetchInProgressRef = useRef(false);
 
-  // small highlight state for when score bumps (used to add a temporary CSS class)
   const [scoreHighlight, setScoreHighlight] = useState({});
 
-  // helper: fade an audio element to target volume over duration (single timer)
   const fadeTo = (audio, targetVolume, duration = FADE_DURATION) => {
     if (!audio) return;
     if (fadeTimerRef.current) {
@@ -606,12 +596,11 @@ export default function App() {
       if (step >= steps) {
         clearInterval(fadeTimerRef.current);
         fadeTimerRef.current = null;
-        audio.volume = Math.max(0, Math.min(1, targetVolume)); // final exact value
+        audio.volume = Math.max(0, Math.min(1, targetVolume));
       }
     }, intervalMs);
   };
 
-  // helper: pause all tracks
   const pauseAllTracks = () => {
     bg.current.tracks.forEach((t) => {
       try {
@@ -620,20 +609,17 @@ export default function App() {
     });
   };
 
-  // play the track at given index (pauses others)
   const playTrackAt = (index) => {
     const tracks = bg.current.tracks;
     if (!tracks || tracks.length === 0) return;
     index = ((index % tracks.length) + tracks.length) % tracks.length;
     currentIndexRef.current = index;
 
-    // pause other tracks
     tracks.forEach((t, i) => {
       if (!t) return;
       if (i !== index) {
         try {
           t.pause();
-          // don't reset currentTime — we want tracks to play full when they come up again
         } catch (e) {}
       }
     });
@@ -641,215 +627,177 @@ export default function App() {
     const current = tracks[index];
     if (!current) return;
 
-    // set appropriate volume depending on showResult
     current.volume = showResult ? FADED_VOLUME : NORMAL_VOLUME;
 
     const p = current.play();
     if (p && typeof p.catch === "function") {
-      p.catch((err) => {
-        // console.warn("playTrackAt play() rejected:", err);
-      });
+      p.catch((err) => {});
     }
   };
 
-    // Initialize socket connection when Discord user info is available
   useEffect(() => {
     if (currentUser?.username && !socket) {
-      // console.log('🎮 Initializing multiplayer socket for:', currentUser.username);
-      
       const initSocket = async () => {
         try {
           const newSocket = new DiscordProxySocket();
-          
-          // Set up state change callback to trigger React re-renders
+
           newSocket.onStateChange(() => {
-            setSocketStateVersion(prev => prev + 1);
+            setSocketStateVersion((prev) => prev + 1);
           });
-          
+
           const connected = await newSocket.connect();
-          
+
           if (connected && !newSocket.localMode) {
-            // console.log('🌐 Successfully connected to multiplayer mode');
-            
-            // Join shared room with retry logic
             let joinAttempts = 0;
             const maxAttempts = 3;
-            
+
             const joinRoom = async () => {
               try {
-                await newSocket.emit('join_room', { 
-                  room: roomId, 
-                  username: currentUser.username 
+                await newSocket.emit("join_room", {
+                  room: roomId,
+                  username: currentUser.username,
                 });
-                // console.log(`🏠 Joined room: ${roomId} as ${currentUser.username}`);
-                
-                // If activity was restarted, request score reset
+
                 if (activityRestartedRef.current) {
-                  console.log('🔄 Activity restarted - requesting score reset for room:', roomId);
                   try {
                     await fetch(`${API_BASE_URL}/game-event`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
-                        event: 'reset_scores',
-                        data: { roomId }
-                      })
+                        event: "reset_scores",
+                        data: { roomId },
+                      }),
                     });
-                    console.log('✅ Score reset requested');
-                    activityRestartedRef.current = false; // Clear the flag
+                    activityRestartedRef.current = false;
                   } catch (error) {
-                    console.error('❌ Failed to reset scores:', error);
+                    console.error("❌ Failed to reset scores:", error);
                   }
                 }
               } catch (error) {
                 joinAttempts++;
-                // console.log(`⚠️ Join room attempt ${joinAttempts} failed:`, error.message);
-                
+
                 if (joinAttempts < maxAttempts) {
-                  // console.log(`🔄 Retrying join room in 2 seconds...`);
                   setTimeout(joinRoom, 2000);
                 } else {
-                  // console.log('❌ Failed to join room after max attempts');
                 }
               }
             };
-            
+
             await joinRoom();
           } else {
-            // console.log('🏠 Using local single-player mode');
           }
-          
+
           setSocket(newSocket);
-        } catch (error) {
-          // console.error('❌ Socket initialization failed:', error);
-        }
+        } catch (error) {}
       };
-      
+
       initSocket();
     }
   }, [currentUser, roomId, socket]);
 
-  // Component cleanup - ensure all timers are cleared when component unmounts
   useEffect(() => {
     return () => {
-      // console.log('🧹 Component unmounting - cleaning up all timers');
-      
-      // Clear all timer refs
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      
+
       if (fadeTimerRef.current) {
         clearInterval(fadeTimerRef.current);
       }
-      
+
       if (transitionDebounceRef.current) {
         clearTimeout(transitionDebounceRef.current);
       }
     };
-  }, []); // Empty dependency array - only runs on unmount
+  }, []);
 
-  // Sync Discord participants with players state
   useEffect(() => {
     if (participants && participants.length > 0 && currentUser) {
-      // console.log('🎮 Syncing Discord participants to players:', participants);
-      
-      // Convert Discord participants to player objects using Discord's proper format
-      const discordPlayers = participants.map(participant => {
+      const discordPlayers = participants.map((participant) => {
         const user = participant.user || participant;
-        
-        // Use Discord's recommended username format
-        const displayName = user.global_name || user.username || 'Discord User';
-        
-        // Generate Discord avatar URL using proper CDN format
-        let avatarUrl = '';
+
+        const displayName = user.global_name || user.username || "Discord User";
+
+        let avatarUrl = "";
         if (user.avatar) {
           avatarUrl = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`;
         } else {
           const defaultAvatarIndex = (BigInt(user.id) >> 22n) % 6n;
           avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
         }
-        
+
         return {
           id: user.id,
           name: displayName,
-          avatar: avatarUrl
+          avatar: avatarUrl,
         };
       });
-      
-      // Make sure current user is included (should already be from participants API)
-      if (currentUser && !discordPlayers.find(p => p.id === currentUser.id)) {
-        const currentUserDisplayName = currentUser.global_name || currentUser.username || 'You';
-        let currentUserAvatar = '';
+
+      if (currentUser && !discordPlayers.find((p) => p.id === currentUser.id)) {
+        const currentUserDisplayName =
+          currentUser.global_name || currentUser.username || "You";
+        let currentUserAvatar = "";
         if (currentUser.avatar) {
           currentUserAvatar = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png?size=256`;
         } else {
           const defaultAvatarIndex = (BigInt(currentUser.id) >> 22n) % 6n;
           currentUserAvatar = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
         }
-        
+
         discordPlayers.unshift({
           id: currentUser.id,
           name: currentUserDisplayName,
-          avatar: currentUserAvatar
+          avatar: currentUserAvatar,
         });
       }
-      
+
       setPlayers(discordPlayers);
-      
-      // Initialize scores for all players
+
       const initialScores = {};
-      discordPlayers.forEach(player => {
+      discordPlayers.forEach((player) => {
         initialScores[player.id] = 0;
       });
       setScores(initialScores);
-      
-      // console.log('✅ Players synced with Discord instance:', discordPlayers);
     } else if (!participants || participants.length === 0) {
-      // Fallback to single player mode with current user
       if (currentUser) {
-        const currentUserDisplayName = currentUser.global_name || currentUser.username || 'You';
-        let currentUserAvatar = '';
+        const currentUserDisplayName =
+          currentUser.global_name || currentUser.username || "You";
+        let currentUserAvatar = "";
         if (currentUser.avatar) {
           currentUserAvatar = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png?size=256`;
         } else {
           const defaultAvatarIndex = (BigInt(currentUser.id) >> 22n) % 6n;
           currentUserAvatar = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
         }
-        
+
         const singlePlayer = {
           id: currentUser.id,
           name: currentUserDisplayName,
-          avatar: currentUserAvatar
+          avatar: currentUserAvatar,
         };
         setPlayers([singlePlayer]);
-        setScores({[singlePlayer.id]: 0});
-        // console.log('🏠 Fallback to single player mode:', singlePlayer);
+        setScores({ [singlePlayer.id]: 0 });
       }
     }
   }, [participants, currentUser]);
 
-// Initialize playlist audios on mount AND create AudioContext + decode reveal sound
-useEffect(() => {
-  // create playlist audios
-  try {
+  useEffect(() => {
+    try {
       const files = [someOfAKindFile, revolootinFile, kothFile];
       const created = files.map((f, i) => {
         const a = new Audio(f);
         a.preload = "auto";
-        a.loop = false; // we'll chain via 'ended' to go to next track
+        a.loop = false;
         a.volume = NORMAL_VOLUME;
         a.crossOrigin = "anonymous";
 
-        // ended: advance to next track and play it
         const onEnded = () => {
           const next = (currentIndexRef.current + 1) % files.length;
           currentIndexRef.current = next;
-          // only auto-advance/play if music is enabled
+
           if (musicEnabled) playTrackAt(next);
         };
 
-        // attach listener
         a.addEventListener("ended", onEnded);
         a._onEnded = onEnded;
 
@@ -857,31 +805,23 @@ useEffect(() => {
       });
 
       bg.current.tracks = created;
-    } catch (err) {
-      // console.error("Error creating playlist audios:", err);
-    }
+    } catch (err) {}
 
-    // create audio context and decode reveal sound
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       audioCtxRef.current = new AudioCtx();
 
-      // fetch the revealSoundFile (import gives a URL) and decode
       (async () => {
         try {
           const resp = await fetch(revealSoundFile);
           const arrayBuffer = await resp.arrayBuffer();
-          const decoded = await audioCtxRef.current.decodeAudioData(arrayBuffer);
+          const decoded =
+            await audioCtxRef.current.decodeAudioData(arrayBuffer);
           revealBufferRef.current = decoded;
-        } catch (err) {
-          // console.warn("Failed to load/decode reveal sound:", err);
-        }
+        } catch (err) {}
       })();
-    } catch (e) {
-      // console.warn("WebAudio not available:", e);
-    }
+    } catch (e) {}
 
-    // cleanup on unmount: remove listeners, pause and free
     return () => {
       if (fadeTimerRef.current) {
         clearInterval(fadeTimerRef.current);
@@ -896,17 +836,14 @@ useEffect(() => {
       });
       bg.current.tracks = [];
 
-      // close audio context
       try {
         if (audioCtxRef.current && audioCtxRef.current.close) {
           audioCtxRef.current.close();
         }
       } catch (e) {}
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // helper: unlock/resume the audio context on user gesture and play any pending reveal
   const unlockAudioContext = async () => {
     const ctx = audioCtxRef.current;
     if (!ctx) return;
@@ -915,17 +852,14 @@ useEffect(() => {
         await ctx.resume();
       }
       audioUnlockedRef.current = true;
-      // if reveal was pending, play it now
+
       if (pendingRevealRef.current && revealBufferRef.current) {
         playRevealBuffer();
         pendingRevealRef.current = false;
       }
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
   };
 
-  // one-time pointerdown unlock attempt (in case user interacts somewhere else)
   useEffect(() => {
     const handler = () => {
       unlockAudioContext();
@@ -935,7 +869,6 @@ useEffect(() => {
     return () => window.removeEventListener("pointerdown", handler);
   }, []);
 
-  // play reveal buffer via Web Audio
   const playRevealBuffer = () => {
     const ctx = audioCtxRef.current;
     const buffer = revealBufferRef.current;
@@ -944,39 +877,28 @@ useEffect(() => {
       const src = ctx.createBufferSource();
       src.buffer = buffer;
       const gain = ctx.createGain();
-      gain.gain.value = 1.0; // tweak if too loud
+      gain.gain.value = 1.0;
       src.connect(gain);
       gain.connect(ctx.destination);
       src.start(0);
-      // no need to keep a reference — it will close after playback
-    } catch (e) {
-      // console.warn("Failed to play reveal buffer:", e);
-    }
+    } catch (e) {}
   };
 
-  // function that attempts to play the current track (must be called from a user gesture to satisfy autoplay)
   const startBackgroundMusic = () => {
     if (!musicEnabled) return;
     const tracks = bg.current.tracks;
     if (!tracks || tracks.length === 0) {
-      // console.warn("Playlist not ready yet.");
       return;
     }
 
-    // ensure AudioContext is unlocked/resumed as well (so reveal sound will work later)
     unlockAudioContext();
 
-    // attempt to play the track at current index
     const indexToPlay = currentIndexRef.current || 0;
     try {
       playTrackAt(indexToPlay);
-      // console.log("Background playlist started at index", indexToPlay);
-    } catch (err) {
-      // console.warn("startBackgroundMusic: play failed:", err);
-    }
+    } catch (err) {}
   };
 
-  // Attach one-time pointerdown to start music on first user gesture (only if musicEnabled)
   useEffect(() => {
     const tryAutoStart = () => {
       if (musicEnabled) startBackgroundMusic();
@@ -984,18 +906,13 @@ useEffect(() => {
     };
     window.addEventListener("pointerdown", tryAutoStart, { once: true });
     return () => window.removeEventListener("pointerdown", tryAutoStart);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [musicEnabled]);
 
-  // When showResult changes, fade the currently-playing track down/up (only if music enabled)
-  // and play the reveal sound once (via WebAudio) when results are shown.
   useEffect(() => {
     if (showResult) {
-      // attempt to play via WebAudio
       if (audioUnlockedRef.current && revealBufferRef.current) {
         playRevealBuffer();
       } else {
-        // can't play now — mark pending to play once context is unlocked
         pendingRevealRef.current = true;
       }
     }
@@ -1009,34 +926,27 @@ useEffect(() => {
     if (showResult) {
       fadeTo(current, FADED_VOLUME, FADE_DURATION);
     } else {
-      // try resume if paused
       current
         .play()
-        .catch(() => {
-          /* ignore */
-        })
+        .catch(() => {})
         .finally(() => {
           fadeTo(current, NORMAL_VOLUME, FADE_DURATION);
         });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showResult, musicEnabled]);
 
-  // toggle music on/off handler
   const toggleMusic = (e) => {
     e.stopPropagation();
     const newValue = !musicEnabled;
     setMusicEnabled(newValue);
 
     if (newValue) {
-      // user turned music ON — this click is a user gesture so play() should be allowed
       startBackgroundMusic();
     } else {
-      // user turned music OFF — pause immediately
       try {
         pauseAllTracks();
       } catch (err) {}
-      // clear fade timer if any
+
       if (fadeTimerRef.current) {
         clearInterval(fadeTimerRef.current);
         fadeTimerRef.current = null;
@@ -1045,10 +955,8 @@ useEffect(() => {
   };
 
   const playClickSound = () => {
-    // attempt to start background music if enabled (user gesture)
     if (musicEnabled) startBackgroundMusic();
 
-    // unlocking audio context on any user click will also flush pending reveal sounds
     unlockAudioContext();
 
     clickSound.current.currentTime = 0;
@@ -1061,27 +969,19 @@ useEffect(() => {
   };
 
   useEffect(() => {
-    // Delay initial question fetch to ensure Discord integration stabilizes
     const initializeQuestion = async () => {
-      // Wait a bit for Discord currentUser to stabilize
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Always get questions from server - no more local generation
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       const getQuestionFromServer = async () => {
-        // Prevent duplicate question fetches
         if (questionFetchInProgressRef.current) {
-          // console.log('⚠️ Question fetch already in progress, skipping duplicate');
           return;
         }
-        
+
         questionFetchInProgressRef.current = true;
         setIsLoading(true);
-        
+
         try {
-          // Simplified check - just ensure we have basic requirements
           if (!roomId) {
-            // console.log('❌ No room ID available, cannot proceed');
-            // Keep loading screen for at least 1 second even if no roomId
             setTimeout(() => {
               setIsLoading(false);
               questionFetchInProgressRef.current = false;
@@ -1089,39 +989,30 @@ useEffect(() => {
             return;
           }
 
-          // Skip the Discord user wait - we'll proceed with what we have
-          // console.log('🌐 Getting question from server for room:', roomId);
-          
           try {
-            // Check if room already has an active question FIRST
-            const gameStateResponse = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
+            const gameStateResponse = await fetch(
+              `${API_BASE_URL}/game-state/${roomId}`,
+            );
             const gameStateData = await gameStateResponse.json();
-            
+
             if (gameStateData.success && gameStateData.currentQuestion) {
-              // console.log('✅ Found existing question in room - timer at:', gameStateData.timeLeft);
-              // Batch all state updates to prevent flickering
               const question = gameStateData.currentQuestion;
               const timeLeft = gameStateData.timeLeft;
               const showResult = gameStateData.showResult || timeLeft <= 0;
-              
-              // Only reset selection if this is actually a different question
-              const isSameQuestion = currentQuestion && currentQuestion.id === question.id;
-              // console.log('🔄 Initial question load:', { isSameQuestion, currentId: currentQuestion?.id, serverId: question.id });
-              
+
+              const isSameQuestion =
+                currentQuestion && currentQuestion.id === question.id;
+
               setCurrentQuestion(question);
               setTimeLeft(timeLeft);
               setShowResult(showResult);
-              // CRITICAL: Don't clear selections on initial load - server has the correct data
-              // The sync mechanism below will populate selections from server
-              // setSelections({}); // REMOVED - was causing friend's badges to disappear on join
+
               if (!isSameQuestion) {
-                // console.log('🗑️ Clearing selection due to different question in initial load');
                 setMySelection(null);
                 currentSelectionRef.current = null;
                 window.lastSelectionTime = null;
                 window.lastSelectionQuestionId = null;
               } else {
-                // console.log('✅ Preserving selection - same question in initial load');
               }
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
@@ -1130,11 +1021,6 @@ useEffect(() => {
               return;
             }
 
-            // No active question - DON'T auto-start on join
-            // Let players manually start via "Start Question" or "Next Question"
-            // This prevents joining players from triggering new questions mid-game
-            // console.log('ℹ️ No active question in room - waiting for host to start');
-            // Clear any stale state
             setCurrentQuestion(null);
             setShowResult(false);
             setSelections({});
@@ -1144,12 +1030,8 @@ useEffect(() => {
             window.lastSelectionQuestionId = null;
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
-            
-          } catch (error) {
-            // console.error('❌ Error getting question from server:', error);
-          }
+          } catch (error) {}
         } finally {
-          // Ensure loading screen shows for at least 1.5 seconds for better UX
           setTimeout(() => {
             setIsLoading(false);
             questionFetchInProgressRef.current = false;
@@ -1157,425 +1039,260 @@ useEffect(() => {
         }
       };
 
-      // Only fetch if we don't already have a current question (prevent duplicate fetches)
       if (!currentQuestion && !questionFetchInProgressRef.current) {
         getQuestionFromServer();
       }
     };
 
     initializeQuestion();
-  }, [roomId]); // Only depend on roomId, let Discord integration settle naturally
+  }, [roomId]);
 
-  // console.log('🔍 DEBUG: Top level component state:', {
-    // socket: !!socket,
-    // socketConnected: socket?.connected,
-    // socketLocalMode: socket?.localMode,
-    // currentUser: !!currentUser,
-    // roomId,
-    // currentQuestion: !!currentQuestion
-  // });
-
-  // Helper function to normalize server selections format
-  // Server sends: {playerId: {optionIndex, timeTaken, timestamp}}
-  // UI expects: {playerId: optionIndex}
   const normalizeServerSelections = (serverSelections) => {
-    if (!serverSelections || typeof serverSelections !== 'object') return {};
-    
+    if (!serverSelections || typeof serverSelections !== "object") return {};
+
     const normalized = {};
     for (const [playerId, selection] of Object.entries(serverSelections)) {
-      // If selection is an object with optionIndex, extract it
-      if (selection && typeof selection === 'object' && 'optionIndex' in selection) {
+      if (
+        selection &&
+        typeof selection === "object" &&
+        "optionIndex" in selection
+      ) {
         normalized[playerId] = selection.optionIndex;
-      } 
-      // If it's already a number, use it directly
-      else if (typeof selection === 'number') {
+      } else if (typeof selection === "number") {
         normalized[playerId] = selection;
       }
-      // Otherwise skip this entry (invalid format)
     }
     return normalized;
   };
 
-  // Continuous synchronization for multiplayer
   useEffect(() => {
-    // console.log('🔧 SYNC USEEFFECT TRIGGERED! Checking conditions...');
-    // console.log('🔧 Sync useEffect triggered with conditions:', {
-      // socket: !!socket,
-      // localMode: socket?.localMode,
-      // connected: socket?.connected,
-      // currentUser: !!currentUser,
-      // roomId,
-      // shouldSync: !(!socket || socket.localMode || !socket.connected || !currentUser || !roomId)
-    // });
-    
-    if (!socket || socket.localMode || !socket.connected || !currentUser || !roomId) {
-      // console.log('❌ Sync disabled - conditions not met. Details:', {
-        // noSocket: !socket,
-        // localMode: socket?.localMode,
-        // notConnected: !socket?.connected,
-        // noCurrentUser: !currentUser,
-        // noRoomId: !roomId
-      // });
+    if (
+      !socket ||
+      socket.localMode ||
+      !socket.connected ||
+      !currentUser ||
+      !roomId
+    ) {
       return;
     }
 
-    // console.log('✅ Starting sync for multiplayer mode');
     const syncGameState = async () => {
-      // Don't sync if question fetch is in progress to prevent conflicts
       if (questionFetchInProgressRef.current) {
-        // console.log('⚠️ Skipping sync - question fetch in progress');
         return;
       }
-      
-      // console.log('🔄 Sync executing for room:', roomId);
+
       try {
-        // Use game-state endpoint to sync without generating new questions
         const response = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const data = await response.json();
-        // console.log('📡 Sync response:', { success: data.success, hasQuestion: !!data.currentQuestion });
-        
+
         if (data.success && data.currentQuestion) {
-          // Check if this is a different question than what we have
-          // console.log('🔍 Sync check - Current question:', {
-            // exists: !!currentQuestion,
-            // isCard: currentQuestion?.isCard,
-            // cardName: currentQuestion?.cardName,
-            // questionText: currentQuestion?.question ? currentQuestion.question.substring(0, 30) + '...' : 'N/A'
-          // });
-          // console.log('🔍 Sync check - Server question:', {
-            // isCard: data.currentQuestion.isCard,
-            // cardName: data.currentQuestion.cardName,
-            // questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 30) + '...' : 'N/A'
-          // });
-          
-          // Use question ID for more reliable comparison
           const currentQuestionId = currentQuestion?.id;
           const serverQuestionId = data.currentQuestion?.id;
-          const isDifferentQuestion = !currentQuestion || currentQuestionId !== serverQuestionId;
-          
-          // console.log('🔍 Is different question?', isDifferentQuestion, `(current: ${currentQuestionId}, server: ${serverQuestionId})`);
-          
+          const isDifferentQuestion =
+            !currentQuestion || currentQuestionId !== serverQuestionId;
+          let questionChangedThisSync = false;
+
           if (isDifferentQuestion) {
-            // console.log("🔄 New question detected, syncing:", data.currentQuestion.isCard ? 'Card Question' : 'Regular Question');
-            // console.log('📄 Client received question details:', {
-              // isCard: data.currentQuestion.isCard,
-              // cardName: data.currentQuestion.cardName,
-              // cardUrl: data.currentQuestion.cardUrl,
-              // questionText: data.currentQuestion.question ? data.currentQuestion.question.substring(0, 50) + '...' : 'N/A'
-            // });
-            
-            // Only show transition loading if we detect a real question change
-            // Check if there's actually a new question from server vs current client state
-            const hasCurrentQuestion = currentQuestion && (currentQuestion.question || currentQuestion.questionText || currentQuestion.cardName);
-            const hasServerQuestion = data.currentQuestion && (data.currentQuestion.question || data.currentQuestion.cardName);
-            
-            // console.log('🔄 Sync update:', { 
-              // hasCurrentQuestion, 
-              // hasServerQuestion,
-              // currentQuestionId: currentQuestion?.id,
-              // serverQuestionId: data.currentQuestion?.id
-            // });
-            
-            // Don't show transition loaders from sync - let user actions handle transitions
-            // Just update the question state without transitions
-            
-            // CRITICAL FIX: Always clear mySelection when receiving a new question from server
-            // Do this BEFORE any other checks to prevent old selection from persisting
+            const hasCurrentQuestion =
+              currentQuestion &&
+              (currentQuestion.question ||
+                currentQuestion.questionText ||
+                currentQuestion.cardName);
+            const hasServerQuestion =
+              data.currentQuestion &&
+              (data.currentQuestion.question || data.currentQuestion.cardName);
+
             const currentQuestionId = currentQuestion?.id;
             const serverQuestionId = data.currentQuestion?.id;
-            
-            // If we have a server question and it's different from current, clear immediately
-            // CRITICAL FIX: Don't clear if currentQuestionId is undefined (initial load) - only clear on actual question change
-            // CRITICAL FIX #2: Don't clear if we've already cleared for this question (prevent multiple clears)
-            // CRITICAL FIX #3: Don't clear if user just made a selection (protect recent selections)
-            const timeSinceLastSelection = Date.now() - (window.lastSelectionTime || 0);
-            const hasRecentSelection = timeSinceLastSelection < 5000; // 5 second protection window
+
+            const timeSinceLastSelection =
+              Date.now() - (window.lastSelectionTime || 0);
+            const hasRecentSelection = timeSinceLastSelection < 5000;
             const lastSelectionQuestionId = window.lastSelectionQuestionId;
-            const recentSelectionMatchesServer = hasRecentSelection && lastSelectionQuestionId && serverQuestionId && lastSelectionQuestionId === serverQuestionId;
+            const recentSelectionMatchesServer =
+              hasRecentSelection &&
+              lastSelectionQuestionId &&
+              serverQuestionId &&
+              lastSelectionQuestionId === serverQuestionId;
             const shouldProtectRecentSelection = recentSelectionMatchesServer;
-            
-            const isActualQuestionChange = serverQuestionId && currentQuestionId && 
-                                          currentQuestionId !== serverQuestionId &&
-                                          lastClearedQuestionRef.current !== serverQuestionId &&
-                                          !shouldProtectRecentSelection;
-            
+
+            const isActualQuestionChange =
+              serverQuestionId &&
+              currentQuestionId &&
+              currentQuestionId !== serverQuestionId &&
+              lastClearedQuestionRef.current !== serverQuestionId &&
+              !shouldProtectRecentSelection;
+
             if (isActualQuestionChange) {
-              console.log('🧹 Pre-clearing mySelection before state updates:', { 
-                from: currentQuestionId, 
-                to: serverQuestionId,
-                oldMySelection: mySelection,
-                hasRecentSelection,
-                timeSinceLastSelection
-              });
-              lastClearedQuestionRef.current = serverQuestionId; // Mark this question as cleared
+              lastClearedQuestionRef.current = serverQuestionId;
               setMySelection(null);
-              setIsLocked(false); // Reset lock for new question
+              setIsLocked(false);
               currentSelectionRef.current = null;
-              hcCardAnswersRef.current = {}; // Clear HC card answers ref for new question
+              hcCardAnswersRef.current = {};
               window.lastSelectionTime = null;
               window.lastSelectionQuestionId = null;
               setRevealPhaseQuestionId(null);
               setShowResult(false);
               setSelections({});
-            } else if (shouldProtectRecentSelection) {
-              console.log('🛡️ Protecting recent selection from sync clear:', {
-                timeSinceLastSelection,
-                currentSelection: mySelection,
-                refSelection: currentSelectionRef.current,
-                serverQuestionId
-              });
-            } else if (hasRecentSelection) {
-              console.log('ℹ️ Recent selection detected but belongs to previous question - allowing clear:', {
-                timeSinceLastSelection,
-                lastSelectionQuestionId,
-                serverQuestionId
-              });
+              answerTimesRef.current = {};
+              awardedDoneRef.current = false;
+              setServerScoredThisRound(false);
+              questionChangedThisSync = true;
             }
-            
-            // CRITICAL: Clear HC card ref when question changes
-            // This MUST happen BEFORE setCurrentQuestion to use old state value for comparison
-            // ONLY clear if this is an ACTUAL new question transition (not a stale state comparison)
-            const isActualNewQuestion = currentQuestion && data.currentQuestion && 
-                                       currentQuestion.id !== data.currentQuestion.id &&
-                                       currentQuestionId !== data.currentQuestion.id; // Don't clear if we're already on the new question
-            
+
+            const isActualNewQuestion =
+              currentQuestion &&
+              data.currentQuestion &&
+              currentQuestion.id !== data.currentQuestion.id &&
+              currentQuestionId !== data.currentQuestion.id;
+
             if (isActualNewQuestion) {
-              console.log('🧹 Clearing HC card ref for new question:', {
-                oldQuestion: currentQuestion.id,
-                newQuestion: data.currentQuestion.id
-              });
               hcCardAnswersRef.current = {};
             }
-            
-            // Batch all state updates together to prevent flickering
+
             setCurrentQuestion(data.currentQuestion);
             setTimeLeft(data.timeLeft);
-            // Use server's showResult state - don't override during grace period
+
             setShowResult(data.showResult);
-            
-            // Additional sync logic for selections
-            if (currentQuestion && currentQuestionId !== serverQuestionId) {
-              // Question already changed above, just log for debugging
-              console.log('✅ Selection state already cleared for new question');
-            } else {
-              // console.log('✅ Preserving selection - same question or initial load');
-              // For same question, sync server selections but preserve local selection
+
+            if (questionChangedThisSync) {
+              const normalizedServerData = normalizeServerSelections(
+                data.selections || {},
+              );
+              setSelections(normalizedServerData);
+            } else if (!currentQuestion || currentQuestionId === serverQuestionId) {
               if (data.selections) {
-                const currentLocalSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
-                
-                // CRITICAL: During reveal phase, ALWAYS preserve local selection
-                // Never discard selections based on question ID during reveal
-                // Make reveal phase "sticky" - once we enter it for a question, stay in it
+                const currentLocalSelection =
+                  mySelection !== null
+                    ? mySelection
+                    : currentSelectionRef.current;
+
                 const serverWantsReveal = data.showResult;
-                const alreadyInRevealForThisQuestion = showResult && revealPhaseQuestionId === data.currentQuestion?.id;
-                const isInRevealPhase = serverWantsReveal || alreadyInRevealForThisQuestion;
-                
-                // Enter reveal phase if server says so (and track question ID)
+                const alreadyInRevealForThisQuestion =
+                  showResult &&
+                  revealPhaseQuestionId === data.currentQuestion?.id;
+                const isInRevealPhase =
+                  serverWantsReveal || alreadyInRevealForThisQuestion;
+
                 if (serverWantsReveal && !alreadyInRevealForThisQuestion) {
                   setRevealPhaseQuestionId(data.currentQuestion?.id);
                   setShowResult(true);
-                  console.log('🎯 [Sync] Entering reveal phase for question:', data.currentQuestion?.id);
                 }
-                
-                // Get player ID for indexing selections (server uses player IDs, not names)
+
                 const myPlayerId = currentUser?.id;
-                
-                // CRITICAL: For HC cards, check if player has answered in selections (mySelection is null for cards)
-                const hasAnsweredInSelections = myPlayerId && selections[myPlayerId] !== undefined;
-                const effectiveLocalSelection = hasAnsweredInSelections ? selections[myPlayerId] : currentLocalSelection;
-                
-                console.log('🔍 [Sync] Same-question path - reveal check:', {
-                  showResult,
-                  dataShowResult: data.showResult,
-                  serverWantsReveal,
-                  revealPhaseQuestionId,
-                  currentQuestionId: data.currentQuestion?.id,
-                  alreadyInReveal: alreadyInRevealForThisQuestion,
-                  isInRevealPhase,
-                  hasLocalSelection: currentLocalSelection !== null,
-                  hasAnsweredInSelections,
-                  effectiveLocalSelection,
-                  myPlayerId,
-                  willEnterRevealPath: isInRevealPhase && effectiveLocalSelection !== null && myPlayerId
-                });
-                
-                if (isInRevealPhase && effectiveLocalSelection !== null && myPlayerId) {
-                  // Reveal phase - merge server data with EXISTING selections + local selection
-                  // This preserves all badges (including friend's) that we've already received
-                  console.log('🏆 [Sync] Same-question reveal phase - preserving local selection:', { 
-                    myPlayerId, 
-                    localSelection: currentLocalSelection,
-                    effectiveLocalSelection,
-                    hasAnsweredInSelections,
-                    serverSelectionsRAW: data.selections,
-                    currentSelections: selections
-                  });
-                  
-                  // Normalize server data BEFORE logging
-                  const normalizedServerData = normalizeServerSelections(data.selections);
-                  console.log('🔧 [Sync] Normalization check:', {
-                    rawServer: data.selections,
-                    normalized: normalizedServerData,
-                    hasData: Object.keys(normalizedServerData).length > 0
-                  });
-                  
-                  setSelections(prev => {
+
+                const hasAnsweredInSelections =
+                  myPlayerId && selections[myPlayerId] !== undefined;
+                const effectiveLocalSelection = hasAnsweredInSelections
+                  ? selections[myPlayerId]
+                  : currentLocalSelection;
+
+                if (
+                  isInRevealPhase &&
+                  effectiveLocalSelection !== null &&
+                  myPlayerId
+                ) {
+                  const normalizedServerData = normalizeServerSelections(
+                    data.selections,
+                  );
+
+                  setSelections((prev) => {
                     const merged = {
-                      ...prev, // Keep existing selections (friend's badge)
-                      ...normalizedServerData, // Merge normalized server data
+                      ...prev,
+                      ...normalizedServerData,
                     };
-                    // CRITICAL: Always override with effective local selection (preserves HC card answers)
+
                     merged[myPlayerId] = effectiveLocalSelection;
-                    
-                    console.log('🏆 [Sync] Reveal merge result:', {
-                      prev,
-                      normalizedServer: normalizedServerData,
-                      myPlayerId,
-                      localSelection: currentLocalSelection,
-                      effectiveLocalSelection,
-                      finalMerged: merged,
-                      mergedKeys: Object.keys(merged)
-                    });
-                    
+
                     return merged;
                   });
                 } else {
-                  // Active gameplay - check timestamp AND question ID to prevent old selections from persisting
                   const selectionQuestionId = window.lastSelectionQuestionId;
                   const currentQuestionId = data.currentQuestion?.id;
-                  const localSelectionBelongsToThisQuestion = 
-                    currentLocalSelection !== null && 
-                    myPlayerId && 
-                    window.lastSelectionTime && 
+                  const localSelectionBelongsToThisQuestion =
+                    currentLocalSelection !== null &&
+                    myPlayerId &&
+                    window.lastSelectionTime &&
                     selectionQuestionId === currentQuestionId &&
-                    (Date.now() - window.lastSelectionTime < MAX_TIME * 1000); // Within current question timeframe
-                  
-                  // Also check if player has answered HC card (effectiveLocalSelection includes HC card answers)
-                  const hasValidSelection = localSelectionBelongsToThisQuestion || effectiveLocalSelection !== null;
-                  
+                    Date.now() - window.lastSelectionTime < MAX_TIME * 1000;
+
+                  const hasValidSelection =
+                    localSelectionBelongsToThisQuestion ||
+                    effectiveLocalSelection !== null;
+
                   if (hasValidSelection) {
-                    // Merge server selections with local selection to prevent overwriting
-                    setSelections(prev => {
+                    setSelections((prev) => {
                       const merged = {
-                        ...prev, // Keep existing selections
-                        ...normalizeServerSelections(data.selections), // Merge server data (normalized)
+                        ...prev,
+                        ...normalizeServerSelections(data.selections),
                       };
-                      // Always ensure effective local selection is present (includes HC card answers)
+
                       merged[myPlayerId] = effectiveLocalSelection;
-                      
-                      console.log('🔄 [Sync] Preserving local selection:', { 
-                        myPlayerId, 
-                        localSelection: currentLocalSelection,
-                        effectiveLocalSelection,
-                        previousSelections: prev,
-                        serverSelections: data.selections,
-                        finalMerged: merged
-                      });
-                      
+
                       return merged;
                     });
                   } else {
-                    // No local selection or from different question - check if server is sending NEW question data
-                    // CRITICAL FIX: If server sends empty selections {}, it means new question - DON'T preserve old badges
-                    const normalizedServerData = normalizeServerSelections(data.selections);
-                    const serverHasNoSelections = Object.keys(normalizedServerData).length === 0;
-                    
-                    console.log('🔄 [Sync] No local selection - merging server data:', {
-                      selectionQuestionId,
-                      currentQuestionId,
-                      serverSelections: data.selections,
-                      normalizedServerData,
-                      serverHasNoSelections
-                    });
-                    
+                    const normalizedServerData = normalizeServerSelections(
+                      data.selections,
+                    );
+                    const serverHasNoSelections =
+                      Object.keys(normalizedServerData).length === 0;
+
                     if (serverHasNoSelections) {
-                      // CRITICAL: Only clear if player hasn't made a selection for this question
-                      // Don't clear during active gameplay if player has a selection
-                      const hasMySelection = mySelection !== null || currentSelectionRef.current !== null;
-                      const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === currentQuestionId;
-                      
-                      // Check if player has answered (exists in selections) - important for HC card questions
-                      // CRITICAL FIX: Check ref FIRST before state (ref is set immediately, state updates later)
-                      const hasAnsweredInRef = hcCardAnswersRef.current[myPlayerId] !== undefined;
-                      const hasAnsweredInSelections = selections[myPlayerId] !== undefined;
-                      const hasAnswered = hasAnsweredInRef || hasAnsweredInSelections;
-                      
-                      console.log('🔎 [HC Card Ref Check] Checking player answer:', {
-                        myPlayerId,
-                        hasAnsweredInRef,
-                        refContents: hcCardAnswersRef.current,
-                        refKeys: Object.keys(hcCardAnswersRef.current),
-                        refHasThisPlayer: myPlayerId in hcCardAnswersRef.current,
-                        timestamp: Date.now()
-                      });
-                      
+                      const hasMySelection =
+                        mySelection !== null ||
+                        currentSelectionRef.current !== null;
+                      const mySelectionForThisQuestion =
+                        hasMySelection &&
+                        window.lastSelectionQuestionId === currentQuestionId;
+
+                      const hasAnsweredInRef =
+                        hcCardAnswersRef.current[myPlayerId] !== undefined;
+                      const hasAnsweredInSelections =
+                        selections[myPlayerId] !== undefined;
+                      const hasAnswered =
+                        hasAnsweredInRef || hasAnsweredInSelections;
+
                       if (mySelectionForThisQuestion || hasAnswered) {
-                        // Player has made a selection for THIS question - preserve it even if server is empty
-                        console.log('🛡️ [Sync] Player has selection for current question - preserving despite empty server');
-                        console.log('🎴 [HC Card Debug] Preservation check:', {
-                          hasAnsweredInRef,
-                          hasAnsweredInSelections,
-                          hasAnswered,
-                          refState: hcCardAnswersRef.current,
-                          selectionsState: selections
-                        });
-                        // Keep current selections, ensure my selection is there
-                        setSelections(prev => ({
+                        setSelections((prev) => ({
                           ...prev,
-                          [myPlayerId]: hasAnswered ? (prev[myPlayerId] || true) : (mySelection !== null ? mySelection : currentSelectionRef.current)
+                          [myPlayerId]: hasAnswered
+                            ? prev[myPlayerId] || true
+                            : mySelection !== null
+                              ? mySelection
+                              : currentSelectionRef.current,
                         }));
                       } else if (!isLocked) {
-                        // No local selection for this question - safe to clear (only if not locked)
-                        console.log('🆕 [Sync] No local selection for current question - allowing clear');
-                        console.log('⚠️ [HC Card Debug] About to clear selections - current state:', {
-                          selections,
-                          myPlayerId,
-                          hasMySelection,
-                          hasAnsweredInRef: hcCardAnswersRef.current[myPlayerId] !== undefined,
-                          hasAnsweredInSelections: selections[myPlayerId] !== undefined,
-                          refState: hcCardAnswersRef.current,
-                          isLocked,
-                          timestamp: Date.now()
-                        });
                         setSelections({});
                       } else {
-                        console.log('🔒 [Sync] Selection is locked - keeping current selections');
-                        console.log('✅ [HC Card Debug] Lock prevented clearing selections:', {
-                          selections,
-                          isLocked,
-                          timestamp: Date.now()
-                        });
                       }
                     } else {
-                      // Server has selection data - merge it (preserve existing + add server data)
-                      setSelections(prev => ({
-                        ...prev, // Keep existing selections (friend's badges)
-                        ...normalizedServerData // Merge server data (normalized)
+                      setSelections((prev) => ({
+                        ...prev,
+                        ...normalizedServerData,
                       }));
                     }
                   }
                 }
               }
             }
-            
-            // Update scores and player names if provided from server
+
             if (data.scores) {
               setScores(data.scores);
             }
             if (data.playerNames) {
-              // console.log('📝 [Sync] Updating player names from server:', data.playerNames);
-              setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
+              setPlayerNames((prevNames) => ({
+                ...prevNames,
+                ...data.playerNames,
+              }));
             }
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
-            
-            // Transition hiding is now handled by debounce logic above
-            
-            // Update timer state - if time is already up, show result after a brief delay
-            const shouldShowTimer = data.gameState === 'playing' && data.timeLeft > 0;
+
+            const shouldShowTimer =
+              data.gameState === "playing" && data.timeLeft > 0;
             setIsTimerRunning(shouldShowTimer);
-            
-            // If the question has already timed out, show results after a brief delay
+
             if (data.timeLeft <= 0 && data.showResult) {
               setTimeout(() => {
                 setShowResult(true);
@@ -1583,374 +1300,302 @@ useEffect(() => {
               }, 200);
             }
           } else {
-            // Same question, just sync timer and result state - but only if significantly different
-            // Don't sync timer/results during active gameplay to prevent mid-game disruption
-            // BUT always allow new questions to sync through
-            // IMPORTANT: Protect user selection until results are actually shown to prevent badge clearing
             const isActiveGameplay = !showResult;
-            
-            // Make reveal phase "sticky" - once entered, stay until next question
+
             const serverWantsReveal = data.showResult;
-            const alreadyInRevealForThisQuestion = showResult && revealPhaseQuestionId === data.currentQuestion?.id;
-            const isInRevealPhase = serverWantsReveal || alreadyInRevealForThisQuestion;
-            
-            console.log('🔍 [Sync] Second path - sticky reveal check:', {
-              showResult,
-              dataShowResult: data.showResult,
-              serverWantsReveal,
-              revealPhaseQuestionId,
-              currentQuestionId: data.currentQuestion?.id,
-              alreadyInReveal: alreadyInRevealForThisQuestion,
-              isInRevealPhase
-            });
-            
-            // Enter reveal phase if server says so (and track question ID)
+            const alreadyInRevealForThisQuestion =
+              showResult && revealPhaseQuestionId === data.currentQuestion?.id;
+            const isInRevealPhase =
+              serverWantsReveal || alreadyInRevealForThisQuestion;
+
             if (serverWantsReveal && !alreadyInRevealForThisQuestion) {
               setRevealPhaseQuestionId(data.currentQuestion?.id);
               setShowResult(true);
               setIsTimerRunning(false);
-              console.log('🎯 [Sync] Entering reveal phase for question:', data.currentQuestion?.id);
             }
-            
+
             if (!isActiveGameplay) {
               const timeDiff = Math.abs(timeLeft - data.timeLeft);
-              if (timeDiff > 3) { // Increased threshold to prevent flickering
-                // console.log(`🕒 Syncing timer: ${timeLeft}s → ${data.timeLeft}s`);
+              if (timeDiff > 3) {
                 setTimeLeft(data.timeLeft);
-                setIsTimerRunning(data.gameState === 'playing' && !data.showResult && data.timeLeft > 0);
+                setIsTimerRunning(
+                  data.gameState === "playing" &&
+                    !data.showResult &&
+                    data.timeLeft > 0,
+                );
               }
             } else {
-              // console.log('⏸️ Skipping timer sync - active gameplay in progress');
             }
-            
-            // Always sync selections and playerNames for same question (needed for reveal badges)
-            // But be careful not to overwrite local selection during active gameplay
-            // AND protect selections during reveal phase until server confirms them
+
             if (data.selections) {
-              // Use the sticky reveal phase logic defined above (don't redefine!)
-              const hasLocalSelection = mySelection !== null || currentSelectionRef.current !== null;
-              
-              // During reveal phase: Merge server selections with local selection
+              const hasLocalSelection =
+                mySelection !== null || currentSelectionRef.current !== null;
+
               if (isInRevealPhase) {
                 if (Object.keys(data.selections).length > 0) {
-                  // Server sent reveal data - merge with EXISTING selections + local selection
-                  // This preserves all badges (including friend's) that we've already received
-                  const localSelection = hasLocalSelection && currentUser?.id 
-                    ? (mySelection !== null ? mySelection : currentSelectionRef.current)
-                    : null;
-                  
-                  // Normalize BEFORE merging
-                  const normalizedServerData = normalizeServerSelections(data.selections);
-                  console.log('🔧 [Sync - Second Path] Reveal normalization:', {
-                    rawServer: data.selections,
-                    normalized: normalizedServerData,
-                    hasData: Object.keys(normalizedServerData).length > 0
-                  });
-                  
-                  setSelections(prev => {
+                  const localSelection =
+                    hasLocalSelection && currentUser?.id
+                      ? mySelection !== null
+                        ? mySelection
+                        : currentSelectionRef.current
+                      : null;
+
+                  const normalizedServerData = normalizeServerSelections(
+                    data.selections,
+                  );
+
+                  setSelections((prev) => {
                     const merged = {
-                      ...prev, // Keep existing selections (friend's badge)
-                      ...normalizedServerData, // Merge normalized server data
+                      ...prev,
+                      ...normalizedServerData,
                     };
-                    
-                    // Ensure our selection is always present if we have one
+
                     if (localSelection !== null && currentUser?.id) {
                       merged[currentUser.id] = localSelection;
                     }
-                    
-                    console.log('🏆 [Sync] Reveal phase - merged server + existing + local selections', {
-                      previousSelections: prev,
-                      normalizedServer: normalizedServerData,
-                      currentUserId: currentUser?.id,
-                      localSelection,
-                      mergedSelections: merged,
-                      mergedKeys: Object.keys(merged)
-                    });
-                    
+
                     return merged;
                   });
                 } else {
-                  // Server sent empty during reveal - keep what we have with local selection
                   if (hasLocalSelection && currentUser?.id) {
-                    const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
-                    setSelections(prev => ({
+                    const localSelection =
+                      mySelection !== null
+                        ? mySelection
+                        : currentSelectionRef.current;
+                    setSelections((prev) => ({
                       ...prev,
-                      [currentUser.id]: localSelection
+                      [currentUser.id]: localSelection,
                     }));
-                    console.log('🛡️ [Sync] Reveal phase - server sent empty, preserving existing + local', {
-                      currentUserId: currentUser.id,
-                      localSelection
-                    });
                   } else {
-                    console.log('🛡️ [Sync] Reveal phase - server sent empty, keeping current selections');
                   }
                 }
-              }
-              // During active gameplay: Preserve local selection with timeframe check
-              else if (isActiveGameplay && hasLocalSelection && currentUser?.id) {
-                // CRITICAL: Only merge if selection was made recently AND for THIS question
+              } else if (
+                isActiveGameplay &&
+                hasLocalSelection &&
+                currentUser?.id
+              ) {
                 const selectionQuestionId = window.lastSelectionQuestionId;
                 const currentQuestionId = data.currentQuestion?.id;
-                const localSelectionBelongsToThisQuestion = 
-                  window.lastSelectionTime && 
+                const localSelectionBelongsToThisQuestion =
+                  window.lastSelectionTime &&
                   selectionQuestionId === currentQuestionId &&
-                  (Date.now() - window.lastSelectionTime < MAX_TIME * 1000);
-                
+                  Date.now() - window.lastSelectionTime < MAX_TIME * 1000;
+
                 if (localSelectionBelongsToThisQuestion) {
-                  const localSelection = mySelection !== null ? mySelection : currentSelectionRef.current;
-                  setSelections(prev => {
+                  const localSelection =
+                    mySelection !== null
+                      ? mySelection
+                      : currentSelectionRef.current;
+                  setSelections((prev) => {
                     const merged = {
-                      ...prev, // Keep existing selections
-                      ...normalizeServerSelections(data.selections), // Merge server data (normalized)
+                      ...prev,
+                      ...normalizeServerSelections(data.selections),
                     };
                     merged[currentUser.id] = localSelection;
-                    
-                    console.log('🔄 [Sync] Active gameplay - merged local selection', {
-                      previousSelections: prev,
-                      serverSelections: data.selections,
-                      currentUserId: currentUser.id,
-                      localSelection,
-                      finalMerged: merged
-                    });
-                    
+
                     return merged;
                   });
                 } else {
-                  // No local selection or different question - check if server is sending NEW question data
-                  // CRITICAL FIX: If server sends empty selections {}, it means new question - DON'T preserve old badges
-                  const normalizedServerData = normalizeServerSelections(data.selections);
-                  const serverHasNoSelections = Object.keys(normalizedServerData).length === 0;
-                  
-                  console.log('🔄 [Sync] Active gameplay - no local selection, merging server data', {
-                    selectionQuestionId,
-                    currentQuestionId,
-                    serverSelections: data.selections,
-                    normalizedServerData,
-                    serverHasNoSelections
-                  });
-                  
+                  const normalizedServerData = normalizeServerSelections(
+                    data.selections,
+                  );
+                  const serverHasNoSelections =
+                    Object.keys(normalizedServerData).length === 0;
+
                   if (serverHasNoSelections) {
-                    // CRITICAL: Only clear if player hasn't made a selection for this question
-                    // Don't clear during active gameplay if player has a selection
-                    const hasMySelection = mySelection !== null || currentSelectionRef.current !== null;
-                    const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === data.currentQuestion?.id;
-                    
-                    // Check if player has answered (exists in selections) - important for HC card questions
-                    // CRITICAL FIX: Check ref FIRST before state (ref is set immediately, state updates later)
+                    const hasMySelection =
+                      mySelection !== null ||
+                      currentSelectionRef.current !== null;
+                    const mySelectionForThisQuestion =
+                      hasMySelection &&
+                      window.lastSelectionQuestionId ===
+                        data.currentQuestion?.id;
+
                     const myPlayerId = currentUser?.id;
-                    const hasAnsweredInRef = myPlayerId && hcCardAnswersRef.current[myPlayerId] !== undefined;
-                    const hasAnsweredInSelections = myPlayerId && selections[myPlayerId] !== undefined;
-                    const hasAnswered = hasAnsweredInRef || hasAnsweredInSelections;
-                    
+                    const hasAnsweredInRef =
+                      myPlayerId &&
+                      hcCardAnswersRef.current[myPlayerId] !== undefined;
+                    const hasAnsweredInSelections =
+                      myPlayerId && selections[myPlayerId] !== undefined;
+                    const hasAnswered =
+                      hasAnsweredInRef || hasAnsweredInSelections;
+
                     if (mySelectionForThisQuestion || hasAnswered) {
-                      // Player has made a selection for THIS question - preserve it even if server is empty
-                      console.log('🛡️ [Sync - Active] Player has selection - preserving despite empty server');
-                      // Keep current selections, ensure my selection is there
                       if (myPlayerId) {
-                        setSelections(prev => ({
+                        setSelections((prev) => ({
                           ...prev,
-                          [myPlayerId]: hasAnswered ? (prev[myPlayerId] || true) : (mySelection !== null ? mySelection : currentSelectionRef.current)
+                          [myPlayerId]: hasAnswered
+                            ? prev[myPlayerId] || true
+                            : mySelection !== null
+                              ? mySelection
+                              : currentSelectionRef.current,
                         }));
                       }
                     } else if (!isLocked) {
-                      // No local selection for this question - safe to clear (only if not locked)
-                      console.log('🆕 [Sync - Active] No local selection - allowing clear');
                       setSelections({});
                     } else {
-                      console.log('🔒 [Sync - Active] Selection is locked - keeping current selections');
                     }
                   } else {
-                    // Server has selection data - merge it
-                    setSelections(prev => ({
-                      ...prev, // Keep existing (friend's badges)
-                      ...normalizedServerData // Merge server data (normalized)
+                    setSelections((prev) => ({
+                      ...prev,
+                      ...normalizedServerData,
                     }));
                   }
                 }
-              }
-              // Not in gameplay or reveal - merge server data
-              else {
-                // CRITICAL FIX: If server sends empty selections {}, it means new question - DON'T preserve old badges
-                const normalizedServerData = normalizeServerSelections(data.selections);
-                const serverHasNoSelections = Object.keys(normalizedServerData).length === 0;
-                
-                console.log('🔄 [Sync] Not in active gameplay - merging server data', {
-                  serverSelections: data.selections,
-                  normalizedServerData,
-                  serverHasNoSelections
-                });
-                
+              } else {
+                const normalizedServerData = normalizeServerSelections(
+                  data.selections,
+                );
+                const serverHasNoSelections =
+                  Object.keys(normalizedServerData).length === 0;
+
                 if (serverHasNoSelections) {
-                  // CRITICAL: Only clear if player hasn't made a selection for this question
-                  // Don't clear if player has a selection
-                  const hasMySelection = mySelection !== null || currentSelectionRef.current !== null;
-                  const mySelectionForThisQuestion = hasMySelection && window.lastSelectionQuestionId === data.currentQuestion?.id;
-                  
-                  // Check if player has answered (exists in selections) - important for HC card questions
-                  // CRITICAL FIX: Check ref FIRST before state (ref is set immediately, state updates later)
+                  const hasMySelection =
+                    mySelection !== null ||
+                    currentSelectionRef.current !== null;
+                  const mySelectionForThisQuestion =
+                    hasMySelection &&
+                    window.lastSelectionQuestionId === data.currentQuestion?.id;
+
                   const myPlayerId = currentUser?.id;
-                  const hasAnsweredInRef = myPlayerId && hcCardAnswersRef.current[myPlayerId] !== undefined;
-                  const hasAnsweredInSelections = myPlayerId && selections[myPlayerId] !== undefined;
-                  const hasAnswered = hasAnsweredInRef || hasAnsweredInSelections;
-                  
+                  const hasAnsweredInRef =
+                    myPlayerId &&
+                    hcCardAnswersRef.current[myPlayerId] !== undefined;
+                  const hasAnsweredInSelections =
+                    myPlayerId && selections[myPlayerId] !== undefined;
+                  const hasAnswered =
+                    hasAnsweredInRef || hasAnsweredInSelections;
+
                   if (mySelectionForThisQuestion || hasAnswered) {
-                    // Player has made a selection for THIS question - preserve it even if server is empty
-                    console.log('🛡️ [Sync - Idle] Player has selection - preserving despite empty server');
-                    // Keep current selections, ensure my selection is there
                     if (myPlayerId) {
-                      setSelections(prev => ({
+                      setSelections((prev) => ({
                         ...prev,
-                        [myPlayerId]: hasAnswered ? (prev[myPlayerId] || true) : (mySelection !== null ? mySelection : currentSelectionRef.current)
+                        [myPlayerId]: hasAnswered
+                          ? prev[myPlayerId] || true
+                          : mySelection !== null
+                            ? mySelection
+                            : currentSelectionRef.current,
                       }));
                     }
                   } else if (!isLocked) {
-                    // No local selection for this question - safe to clear (only if not locked)
-                    console.log('🆕 [Sync - Idle] No local selection - allowing clear');
                     setSelections({});
                   } else {
-                    console.log('🔒 [Sync - Idle] Selection is locked - keeping current selections');
                   }
                 } else {
-                  // Server has selection data - merge it
-                  setSelections(prev => ({
-                    ...prev, // Keep existing selections
-                    ...normalizedServerData // Merge server data (normalized)
+                  setSelections((prev) => ({
+                    ...prev,
+                    ...normalizedServerData,
                   }));
                 }
               }
             }
             if (data.playerNames) {
-              setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
+              setPlayerNames((prevNames) => ({
+                ...prevNames,
+                ...data.playerNames,
+              }));
             }
             if (data.scores) {
               setScores(data.scores);
             }
           }
         } else {
-          // No current question - sync persisted data (scores, playerNames)
-          // console.log('📋 [Sync] No current question, updating persisted data');
           if (data.scores) {
             setScores(data.scores);
           }
           if (data.playerNames) {
-            // console.log('📝 [Sync] Updating player names (no question):', data.playerNames);
-            setPlayerNames(prevNames => ({ ...prevNames, ...data.playerNames }));
+            setPlayerNames((prevNames) => ({
+              ...prevNames,
+              ...data.playerNames,
+            }));
           }
           if (data.selections) {
             setSelections(data.selections);
           }
         }
-      } catch (error) {
-        // Silently handle sync errors to prevent noise
-        // console.log('⚠️ Sync error (non-critical):', error.message);
-      }
+      } catch (error) {}
     };
-    
-    // Expose syncGameState globally for immediate triggering
+
     window.syncGameStateFunc = syncGameState;
 
-    // Initial sync - wait longer to avoid conflict with main question fetch
     setTimeout(syncGameState, 3000);
-    
-    // Sync every 3000ms to reduce polling frequency and prevent constant question changes  
+
     const syncInterval = setInterval(syncGameState, 3000);
 
     return () => {
       clearInterval(syncInterval);
-      // Clean up global reference
+
       window.syncGameStateFunc = null;
     };
   }, [socket, socket?.connected, socket?.localMode, currentUser, roomId]);
 
-  // Remove the manual sync keyboard shortcut
   useEffect(() => {
     if (!currentQuestion) return;
     if (showResult) return;
 
-    // Don't reset timeLeft to MAX_TIME here - it should already be set correctly by checkForExistingGame or onNextQuestion
-    setServerScoredThisRound(false); // Reset server scoring flag for new question
+    setServerScoredThisRound(false);
     clearInterval(timerRef.current);
 
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current);
-          
-          // In multiplayer mode, request round completion from server
+
           if (socket && !socket.localMode) {
-            console.log('⏰ Time up! Requesting round completion from server...');
-            console.log('🔧 Request details:', {
-              url: `${API_BASE_URL}/game-event`,
-              roomId: roomId,
-              hasSocket: !!socket,
-              localMode: socket.localMode
-            });
-            
             const endRoundRequest = async () => {
               try {
-                console.log('📡 Sending end_round request to:', `${API_BASE_URL}/game-event`);
                 const response = await fetch(`${API_BASE_URL}/game-event`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    event: 'end_round',
+                    event: "end_round",
                     data: {
-                      roomId: roomId
-                    }
-                  })
+                      roomId: roomId,
+                    },
+                  }),
                 });
-                
-                console.log('📡 end_round response status:', response.status, response.ok);
-                
-                console.log('📡 end_round response status:', response.status, response.ok);
+
                 if (response.ok) {
                   const result = await response.json();
-                  console.log('📡 Round completion response:', result);
                   if (result && result.data && result.data.selections) {
-                    console.log('📊 Server scores:', result.data.scores);
-                    console.log('📊 Server selections:', result.data.selections);
                     setSelections(result.data.selections || {});
                     if (result.data.playerNames) {
                       setPlayerNames(result.data.playerNames);
-                      console.log('👥 Player names from server:', result.data.playerNames);
                     } else {
-                      console.log('⚠️ No playerNames received from server in end_round response');
                     }
                     if (result.data.scores) {
                       setScores(result.data.scores);
-                      setServerScoredThisRound(true); // Flag that server provided scores
-                      console.log('✅ Scores updated from server:', result.data.scores);
+                      setServerScoredThisRound(true);
                     }
                     setShowResult(true);
                   } else {
-                    // Fallback to local reveal with current user's selection
-                    console.log('⚠️ No server response, falling back to local reveal');
-                    console.log('🔧 Using local mySelection:', mySelection);
-                    console.log('🔧 Using ref selection:', currentSelectionRef.current);
-                    console.log('🔧 Current user ID:', currentUser?.id);
-                    
-                    // Create selections object from local data - try both state and ref
                     const localSelections = {};
-                    const selectionToUse = mySelection !== null ? mySelection : currentSelectionRef.current;
+                    const selectionToUse =
+                      mySelection !== null
+                        ? mySelection
+                        : currentSelectionRef.current;
                     if (selectionToUse !== null && currentUser?.id) {
                       localSelections[currentUser.id] = selectionToUse;
-                      console.log('🔧 Created local selections:', localSelections);
                     } else {
-                      console.log('🚨 No selection found in state or ref!');
                     }
                     setSelections(localSelections);
                     setShowResult(true);
                   }
                 } else {
-                  console.error('🚨 Server responded with error status:', response.status);
-                  throw new Error(`Server responded with status: ${response.status}`);
+                  console.error(
+                    "🚨 Server responded with error status:",
+                    response.status,
+                  );
+                  throw new Error(
+                    `Server responded with status: ${response.status}`,
+                  );
                 }
               } catch (error) {
-                console.log('⚠️ Failed to end round via server:', error);
-                console.log('⚠️ Error details:', error.message, error.stack);
-                // Fallback to local reveal
                 const localSelections = {};
-                const selectionToUse = mySelection !== null ? mySelection : currentSelectionRef.current;
+                const selectionToUse =
+                  mySelection !== null
+                    ? mySelection
+                    : currentSelectionRef.current;
                 if (selectionToUse !== null && currentUser?.id) {
                   localSelections[currentUser.id] = selectionToUse;
                 }
@@ -1958,14 +1603,12 @@ useEffect(() => {
                 setShowResult(true);
               }
             };
-            
+
             endRoundRequest();
           } else {
-            // Local mode - just show result
-            // console.log('🏠 Local mode - no server scoring');
             setShowResult(true);
           }
-          
+
           return 0;
         }
         return t - 1;
@@ -1973,257 +1616,199 @@ useEffect(() => {
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [currentQuestion?.id, showResult, socket, roomId]); // Use question ID instead of entire object to prevent timer restarts
+  }, [currentQuestion?.id, showResult, socket, roomId]);
 
-  // Use current user ID if available, fallback to "player1"
   const myPlayerId = currentUser?.id || "player1";
 
   const isCardMode = currentQuestion ? !!currentQuestion.isCard : false;
 
-  const correctLetter = !isCardMode && currentQuestion ? currentQuestion.answer : null;
-  const correctIndex = !isCardMode && currentQuestion
-    ? currentQuestion.options.findIndex((opt) => opt.startsWith(correctLetter))
-    : -1;
+  const correctLetter =
+    !isCardMode && currentQuestion ? currentQuestion.answer : null;
+  const correctIndex =
+    !isCardMode && currentQuestion
+      ? currentQuestion.options.findIndex((opt) =>
+          opt.startsWith(correctLetter),
+        )
+      : -1;
 
-  // Updated: Emit answer through socket with competitive flow
   const onSelectOption = (playerId, optionIndex) => {
-    if (showResult) return; // Can't select after results are shown
-    
-    // CRITICAL FIX: Prevent re-clicking the same option
-    if (mySelection === optionIndex) {
-      console.log(`⚠️ Already selected option ${optionIndex} - ignoring duplicate click`);
-      return; // Don't allow re-selecting the same option (no sound, no action)
-    }
-    
-    // NEW FIX: Allow switching to different option even if locked
-    // But the lock ensures they can't spam the same option
-    
-    console.log(`🎯 Attempting to select option ${optionIndex}`, {
-      showResult,
-      currentSelection: mySelection,
-      isLocked,
-      isInVoiceChannel,
-      voiceChannel: !!voiceChannel,
-      playerId,
-      socket: !!socket
-    });
+    if (showResult) return;
 
-    // Play click sound only when making a new selection or switching
+    if (mySelection === optionIndex) {
+      return;
+    }
+
     playClickSound();
-    
-    // Allow changing selection - update to new choice
-    setMySelection(optionIndex); // This also sets isLocked = true
-    currentSelectionRef.current = optionIndex; // Store in ref for persistence
-    
-    // Track selection time AND question ID for clearing protection
+
+    setMySelection(optionIndex);
+    currentSelectionRef.current = optionIndex;
+
     window.lastSelectionTime = Date.now();
     window.lastSelectionQuestionId = currentQuestion?.id;
-    
-    console.log(`🎯 You selected option ${optionIndex} (${mySelection !== null ? 'changed from ' + mySelection : 'new selection'})`);
-    console.log(`🔧 Stored selection in ref:`, optionIndex);
 
-    // Emit selection to server with retry logic
     const submitSelection = async () => {
       if (socket && !socket.localMode) {
         let attempts = 0;
         const maxAttempts = 3;
-        
+
         const trySubmit = async () => {
           try {
             const response = await fetch(`${API_BASE_URL}/game-event`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                event: 'select_option',
+                event: "select_option",
                 data: {
                   roomId: roomId,
                   playerId: playerId,
-                  playerName: currentUser?.global_name || currentUser?.username || 'Unknown Player',
+                  playerName:
+                    currentUser?.global_name ||
+                    currentUser?.username ||
+                    "Unknown Player",
                   optionIndex: optionIndex,
-                  timeTaken: MAX_TIME - timeLeft
-                }
-              })
+                  timeTaken: MAX_TIME - timeLeft,
+                },
+              }),
             });
-            
-
-
 
             if (response.ok) {
-              // console.log('📤 Option selection submitted successfully');
             } else {
-              throw new Error(`Server responded with status: ${response.status}`);
+              throw new Error(
+                `Server responded with status: ${response.status}`,
+              );
             }
           } catch (error) {
             attempts++;
-            // console.log(`⚠️ Selection submit attempt ${attempts} failed:`, error.message);
-            
+
             if (attempts < maxAttempts) {
-              // console.log(`🔄 Retrying selection submission in 1 second...`);
               setTimeout(trySubmit, 1000);
             } else {
-              // console.log('❌ Failed to submit selection after max attempts');
             }
           }
         };
-        
+
         await trySubmit();
       } else {
-        // console.log('🏠 Local mode - selection recorded locally');
-        // In local mode, immediately show result
         setTimeout(() => {
           setSelections({ [playerId]: optionIndex });
           setShowResult(true);
         }, 1000);
       }
     };
-    
+
     submitSelection();
 
-    // Record timing for scoring - ONLY on first answer to prevent point farming
-    // Players can change their selection, but the points are based on first answer time
     if (answerTimesRef.current[playerId] === undefined) {
       answerTimesRef.current = {
         ...answerTimesRef.current,
         [playerId]: timeLeft,
       };
-      console.log(`⏱️ Locked answer time for player ${playerId}: ${timeLeft}s remaining`);
     } else {
-      console.log(`🔒 Answer time already locked at ${answerTimesRef.current[playerId]}s - ignoring new time`);
     }
 
-    // unlock audio context & maybe start music because this was a user gesture
     if (musicEnabled) startBackgroundMusic();
     unlockAudioContext();
-    // playClickSound(); // REMOVED - now played earlier in the function, before state updates
   };
 
-  // New: submit typed answer for card questions (player can keep trying until time runs out)
   const onSubmitCardAnswer = async (playerId, text) => {
     if (showResult) return;
     if (!isCardMode) return;
-    if (selections[playerId] !== undefined) return; // already answered correctly - no sound, no action
+    if (selections[playerId] !== undefined) return;
 
     const attempt = (text || cardInput || "").trim();
     if (!attempt) return;
 
-    // Normalize comparison: case-insensitive, trim
     const expected = (currentQuestion.cardName || "").trim().toLowerCase();
     const given = attempt.toLowerCase();
 
     if (given === expected) {
-      // correct!
       const clickedTimeLeft = timeLeft;
 
       answerTimesRef.current = {
         ...answerTimesRef.current,
         [playerId]: clickedTimeLeft,
       };
-      
-      // CRITICAL: Set ref IMMEDIATELY before state updates to prevent sync from clearing
+
       hcCardAnswersRef.current = {
         ...hcCardAnswersRef.current,
         [playerId]: true,
       };
-      console.log('🎴 [HC Card] Ref set immediately for player:', playerId, hcCardAnswersRef.current);
 
       setSelections((prev) => {
-        console.log('🎴 [HC Card] Setting correct answer in selections:', {
-          playerId,
-          currentSelections: prev,
-          newSelections: { ...prev, [playerId]: true },
-          timestamp: Date.now()
-        });
         return { ...prev, [playerId]: true };
       });
       setCardLastWrong(false);
-      setIsLocked(true); // Lock the input when correct answer is entered
-      console.log('🔒 [HC Card] Lock state set to TRUE for player:', playerId);
-      // don't reveal immediately — follow the same reveal rules (either everyone or timer)
+      setIsLocked(true);
 
-      // NO SOUND - Silent lock like trivia buttons
-      // playClickSound(); // REMOVED - Should be silent when locking
-
-      // Send correct card answer to server
       try {
         const response = await fetch(`${API_BASE_URL}/game-event`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            event: 'select_option',
+            event: "select_option",
             data: {
               roomId: roomId,
               playerId: playerId,
-              playerName: currentUser?.global_name || currentUser?.username || 'Unknown Player',
-              cardAnswer: attempt, // Send the text answer for card questions
-              isCorrect: true, // Mark as correct since we validated it client-side
-              timeTaken: MAX_TIME - timeLeft
-            }
-          })
+              playerName:
+                currentUser?.global_name ||
+                currentUser?.username ||
+                "Unknown Player",
+              cardAnswer: attempt,
+              isCorrect: true,
+              timeTaken: MAX_TIME - timeLeft,
+            },
+          }),
         });
-        
-        if (response.ok) {
-          // console.log('📤 Card answer submitted successfully:', attempt);
-        } else {
-          // console.error('❌ Failed to submit card answer to server');
-        }
-      } catch (error) {
-        // console.error('❌ Error submitting card answer:', error);
-      }
 
-      // Don't reveal immediately - wait for timer to reach 0 just like trivia questions
-      // The timer logic will handle revealing when timeLeft reaches 0
+        if (response.ok) {
+        } else {
+        }
+      } catch (error) {}
     } else {
-      // wrong — allow keep trying until timer runs out
       setCardLastWrong(true);
-      // small audio cue
+
       playHoverSound();
     }
   };
 
-  // Award points once when results are revealed. Use the stored answer times.
   useEffect(() => {
     if (!showResult) return;
-    if (awardedDoneRef.current) return; // guard — only award once per question
+    if (awardedDoneRef.current) return;
     if (serverScoredThisRound) {
-      // console.log('🔒 Skipping client scoring - server already provided scores');
       awardedDoneRef.current = true;
       return;
     }
 
-    // console.log('🎯 Running client-side scoring calculation');
-    // calculate and award points
     setScores((prevScores) => {
       const newScores = { ...prevScores };
 
       const computePointsFromTime = (time) => {
         if (!time || time <= 0) return 0;
-        const x = Math.max(0, Math.min(1, time / MAX_TIME)); // normalized [0..1]
+        const x = Math.max(0, Math.min(1, time / MAX_TIME));
         const raw = MAX_POINTS * Math.pow(x, SCORING_EXPONENT);
         return Math.round(raw);
       };
 
       if (isCardMode) {
-        // In multiplayer, server handles card scoring (it validates correct answers)
-        // In local mode, award points client-side for correct answers
         if (socket?.localMode) {
           players.forEach(({ id }) => {
             if (selections[id] === true) {
               const timeAtAnswer = answerTimesRef.current[id];
-              const points = timeAtAnswer ? computePointsFromTime(timeAtAnswer) : 0;
+              const points = timeAtAnswer
+                ? computePointsFromTime(timeAtAnswer)
+                : 0;
               newScores[id] = (newScores[id] || 0) + points;
             }
           });
         } else {
-          // Multiplayer: Server already calculated scores, don't override
-          console.log('🔒 Card mode in multiplayer - server handles scoring');
         }
       } else {
-        // trivia mode (existing logic)
         players.forEach(({ id }) => {
-          // only award if the player's selection was correct
           if (selections[id] === correctIndex) {
             const timeAtAnswer = answerTimesRef.current[id];
-            const points = timeAtAnswer ? computePointsFromTime(timeAtAnswer) : 0;
+            const points = timeAtAnswer
+              ? computePointsFromTime(timeAtAnswer)
+              : 0;
             newScores[id] = (newScores[id] || 0) + points;
           }
         });
@@ -2232,79 +1817,67 @@ useEffect(() => {
       return newScores;
     });
 
-    // mark awarding done for this question so effect won't re-run awarding
     awardedDoneRef.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showResult]);
 
   const onNextQuestion = async () => {
-    // console.log('� Starting next question from server');
     setIsLoading(true);
-    
+
     try {
-      // Show transition only for the person who clicked Next Question
       setIsTransitioning(true);
       const attemptStartQuestion = async (retryCount = 0) => {
         const response = await fetch(`${API_BASE_URL}/start_question`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             roomId: roomId,
-            forceNew: true  // Next button always generates new question
-          })
+            forceNew: true,
+          }),
         });
-        
+
         const result = await response.json();
-        // console.log('📡 Next question response:', result);
-        
-        // If question generation is in progress (409), retry after a short delay
+
         if (response.status === 409 && retryCount < 2) {
-          // console.log(`⏳ Next: Question generation in progress, retrying in 300ms (attempt ${retryCount + 1}/2)`);
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
           return attemptStartQuestion(retryCount + 1);
         }
-        
-        // If rate limited (429), wait longer and retry
+
         if (response.status === 429 && retryCount < 1) {
-          // console.log(`🚫 Next: Rate limited, retrying in 1000ms (attempt ${retryCount + 1}/1)`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
           return attemptStartQuestion(retryCount + 1);
         }
-        
+
         return { response, result };
       };
-      
+
       const { response, result } = await attemptStartQuestion();
-      
+
       if (result && result.success && result.question) {
         const question = result.question;
         setCurrentQuestion(question);
         setShowResult(false);
-        setRevealPhaseQuestionId(null); // Clear reveal phase tracking for new question
+        setRevealPhaseQuestionId(null);
         setSelections({});
         setMySelection(null);
+        setIsLocked(false);
+        hcCardAnswersRef.current = {};
         currentSelectionRef.current = null;
-        window.lastSelectionTime = null; // Clear selection timestamp for new question
-        window.lastSelectionQuestionId = null; // Clear question ID
+        window.lastSelectionTime = null;
+        window.lastSelectionQuestionId = null;
         setTimeLeft(result.timeLeft || MAX_TIME);
         answerTimesRef.current = {};
         awardedDoneRef.current = false;
-        setIsTransitioning(false); // Hide transition for the person who clicked
-        // console.log('✅ Got next question from server:', question.isCard ? 'Card Question' : 'Regular Question');
-        
-        // Let regular sync polling handle updates - no need for manual trigger that causes double transitions
+        setServerScoredThisRound(false);
+        setIsTransitioning(false);
       } else {
-        // console.log('⚠️ Failed to get next question from server');
       }
-      
     } catch (error) {
-      // console.error('❌ Error getting next question:', error);
     } finally {
       setIsLoading(false);
-      setIsTransitioning(false); // Hide transition in case of error
+      setIsTransitioning(false);
     }
   };
-  // Build a sorted leaderboard from scores
+
   const sortedPlayers = useMemo(() => {
     return players
       .map((p) => ({ ...p, score: scores[p.id] || 0 }))
@@ -2314,7 +1887,6 @@ useEffect(() => {
       });
   }, [scores]);
 
-  // helper to get medal asset for top-3 ranks
   const getMedalForRank = (rankIdx) => {
     if (rankIdx === 0) return medalFirst;
     if (rankIdx === 1) return medalSecond;
@@ -2322,45 +1894,37 @@ useEffect(() => {
     return null;
   };
 
-  // FLIP animation using layout measurements — triggers whenever sortedPlayers changes.
   useLayoutEffect(() => {
-    // Capture new positions
     const newRects = {};
     sortedPlayers.forEach((p) => {
-      // there may be multiple leaderboard renderings; pick the first occurrence to measure
       const el = document.querySelector(`[data-player-id="${p.id}"]`);
       if (el) newRects[p.id] = el.getBoundingClientRect();
     });
 
     const prevRects = prevRectsRef.current || {};
 
-    // For each player that existed before and still exists now, compute delta
     sortedPlayers.forEach((p) => {
       const prev = prevRects[p.id];
       const next = newRects[p.id];
       if (!prev || !next) return;
       const deltaY = prev.top - next.top;
-      if (!deltaY) return; // no movement
+      if (!deltaY) return;
 
-      // Apply transform to all occurrences of this player's row (handles multiple leaderboards)
       const els = document.querySelectorAll(`[data-player-id="${p.id}"]`);
       els.forEach((el) => {
-        // set up initial transform to visually place it where it was
         el.style.transition = "none";
         el.style.transform = `translateY(${deltaY}px)`;
         el.style.willChange = "transform";
       });
 
-      // Force a reflow so the browser acknowledges the transform, then animate to 0
       requestAnimationFrame(() => {
         els.forEach((el) => {
-          // start animation
-          el.style.transition = "transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1)";
-          el.style.transform = ""; // animate to natural position
+          el.style.transition =
+            "transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1)";
+          el.style.transform = "";
         });
       });
 
-      // After animation, clean up inline styles (optional)
       setTimeout(() => {
         els.forEach((el) => {
           el.style.transition = "";
@@ -2369,20 +1933,17 @@ useEffect(() => {
       }, 520);
     });
 
-    // Save the newRects for the next run
     prevRectsRef.current = newRects;
   }, [sortedPlayers]);
 
-  // Animate displayScores when scores change (count up)
   useEffect(() => {
-    const duration = 600; // ms for the count animation
+    const duration = 600;
 
     Object.keys(scores).forEach((id) => {
       const start = displayScoresRef.current[id] || 0;
       const end = scores[id] || 0;
       if (start === end) return;
 
-      // cancel any previous frame for this id
       if (scoreAnimFramesRef.current[id]) {
         cancelAnimationFrame(scoreAnimFramesRef.current[id]);
         scoreAnimFramesRef.current[id] = null;
@@ -2402,7 +1963,7 @@ useEffect(() => {
           scoreAnimFramesRef.current[id] = requestAnimationFrame(step);
         } else {
           scoreAnimFramesRef.current[id] = null;
-          // briefly highlight increases
+
           if (end > start) {
             setScoreHighlight((h) => ({ ...h, [id]: true }));
             setTimeout(() => {
@@ -2419,17 +1980,14 @@ useEffect(() => {
       scoreAnimFramesRef.current[id] = requestAnimationFrame(step);
     });
 
-    // cleanup on unmount or scores change
     return () => {
       Object.values(scoreAnimFramesRef.current).forEach((f) => {
         if (f) cancelAnimationFrame(f);
       });
       scoreAnimFramesRef.current = {};
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scores]);
 
-  // Loading screen with themed design
   if (isLoading || isTransitioning) {
     return (
       <div
@@ -2469,65 +2027,80 @@ useEffect(() => {
             textShadow: "0 1px 2px rgba(0,0,0,0.8)",
           }}
         >
-          <h1 style={{ 
-            fontSize: 48, 
-            fontWeight: "bold", 
-            marginBottom: 30,
-            textAlign: "center",
-            color: "#FFE4B5"
-          }}>
-            Age of Empires III Quiz
-          </h1>
-          
-          <div style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 20
-          }}>
-            {/* Animated loading spinner */}
-            <div style={{
-              width: 60,
-              height: 60,
-              border: "4px solid rgba(255, 228, 181, 0.3)",
-              borderTop: "4px solid #FFE4B5",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite"
-            }}></div>
-            
-            <p style={{
-              fontSize: 20,
+          <h1
+            style={{
+              fontSize: 48,
+              fontWeight: "bold",
+              marginBottom: 30,
               textAlign: "center",
               color: "#FFE4B5",
-              margin: 0
-            }}>
-              {/* {isTransitioning ? "Loading next question..." : "Getting questions from server..."} */}
+            }}
+          >
+            Age of Empires III Quiz
+          </h1>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 20,
+            }}
+          >
+            {}
+            <div
+              style={{
+                width: 60,
+                height: 60,
+                border: "4px solid rgba(255, 228, 181, 0.3)",
+                borderTop: "4px solid #FFE4B5",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+              }}
+            ></div>
+
+            <p
+              style={{
+                fontSize: 20,
+                textAlign: "center",
+                color: "#FFE4B5",
+                margin: 0,
+              }}
+            >
+              {}
             </p>
-            
-            <p style={{
-              fontSize: 14,
-              textAlign: "center",
-              color: "rgba(255, 228, 181, 0.7)",
-              margin: 0,
-              fontStyle: "italic"
-            }}>
-              {isTransitioning ? "Preparing your next challenge" : "Preparing your Age of Empires III challenge"}
+
+            <p
+              style={{
+                fontSize: 14,
+                textAlign: "center",
+                color: "rgba(255, 228, 181, 0.7)",
+                margin: 0,
+                fontStyle: "italic",
+              }}
+            >
+              {isTransitioning
+                ? "Preparing your next challenge"
+                : "Preparing your Age of Empires III challenge"}
             </p>
           </div>
         </div>
-        
-        {/* Add CSS animation for spinner */}
+
+        {}
         <style jsx>{`
           @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
           }
         `}</style>
       </div>
     );
   }
 
-  // Completed screen - only show if we're not loading and really have no question
   if (!currentQuestion && !isLoading && !questionFetchInProgressRef.current) {
     return (
       <div
@@ -2572,33 +2145,30 @@ useEffect(() => {
             onMouseEnter={playHoverSound}
             onClick={async () => {
               playClickSound();
-              
-              // Reset scores for all players
+
               setScores(
                 players.reduce((acc, p) => {
                   acc[p.id] = 0;
                   return acc;
-                }, {})
+                }, {}),
               );
-              
-              // Reset per-question tracking
+
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
-              
-              // Get new question from server
+
               setIsLoading(true);
               try {
                 const response = await fetch(`${API_BASE_URL}/start_question`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     roomId: roomId,
-                    forceNew: true
-                  })
+                    forceNew: true,
+                  }),
                 });
 
                 const result = await response.json();
-                
+
                 if (result.success && result.question) {
                   setCurrentQuestion(result.question);
                   setTimeLeft(result.timeLeft || MAX_TIME);
@@ -2606,15 +2176,11 @@ useEffect(() => {
                   setSelections({});
                   setMySelection(null);
                   currentSelectionRef.current = null;
-                  // CRITICAL: Clear scores when restarting quiz
+
                   setScores({});
                   setDisplayScores({});
-                  // console.log('✅ Restarted with new question from server and cleared scores');
-                  
-                  // Let regular sync polling handle updates - no need for manual trigger
                 }
               } catch (error) {
-                // console.error('❌ Error restarting quiz:', error);
               } finally {
                 setIsLoading(false);
               }
@@ -2627,59 +2193,61 @@ useEffect(() => {
     );
   }
 
-  // Leaderboard drag handlers
   const handleLeaderboardMouseDown = (e) => {
-    if (e.target.closest('.leaderboard-title button')) return; // Don't drag when clicking collapse button
-    
-    e.preventDefault(); // Prevent text selection during drag
+    if (e.target.closest(".leaderboard-title button")) return;
+
+    e.preventDefault();
     setIsDraggingLeaderboard(true);
-    
+
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
-    
+
     let animationFrame = null;
     let lastX = null;
     let lastY = null;
-    
+
     const handleMouseMove = (moveEvent) => {
-      const newX = Math.max(0, Math.min(window.innerWidth - 280, moveEvent.clientX - offsetX));
-      const newY = Math.max(0, Math.min(window.innerHeight - 200, moveEvent.clientY - offsetY));
-      
-      // Only update if position actually changed (reduce unnecessary renders)
+      const newX = Math.max(
+        0,
+        Math.min(window.innerWidth - 280, moveEvent.clientX - offsetX),
+      );
+      const newY = Math.max(
+        0,
+        Math.min(window.innerHeight - 200, moveEvent.clientY - offsetY),
+      );
+
       if (newX !== lastX || newY !== lastY) {
         lastX = newX;
         lastY = newY;
-        
-        // Use requestAnimationFrame for smoother updates
+
         if (animationFrame) {
           cancelAnimationFrame(animationFrame);
         }
-        
+
         animationFrame = requestAnimationFrame(() => {
           setLeaderboardPosition({ x: newX, y: newY });
         });
       }
     };
-    
+
     const handleMouseUp = () => {
       setIsDraggingLeaderboard(false);
       if (animationFrame) {
         cancelAnimationFrame(animationFrame);
       }
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
   };
 
   const toggleLeaderboardCollapse = () => {
     setIsLeaderboardCollapsed(!isLeaderboardCollapsed);
   };
 
-  // Main quiz UI
   return (
     <div
       className="app-container"
@@ -2698,9 +2266,9 @@ useEffect(() => {
         boxSizing: "border-box",
       }}
     >
-      {/* Leaderboard sidebar */}
-      <aside 
-        className={`leaderboard-container ${isLeaderboardCollapsed ? 'collapsed' : ''} ${isDraggingLeaderboard ? 'dragging' : ''}`}
+      {}
+      <aside
+        className={`leaderboard-container ${isLeaderboardCollapsed ? "collapsed" : ""} ${isDraggingLeaderboard ? "dragging" : ""}`}
         aria-label="Leaderboard"
         style={{
           left: `${leaderboardPosition.x}px`,
@@ -2710,13 +2278,17 @@ useEffect(() => {
       >
         <div className="leaderboard-title">
           <span>Leaderboard</span>
-          <button 
+          <button
             className="collapse-toggle"
             onClick={toggleLeaderboardCollapse}
-            onMouseDown={(e) => e.stopPropagation()} // Prevent dragging when clicking button
-            aria-label={isLeaderboardCollapsed ? "Expand leaderboard" : "Collapse leaderboard"}
+            onMouseDown={(e) => e.stopPropagation()}
+            aria-label={
+              isLeaderboardCollapsed
+                ? "Expand leaderboard"
+                : "Collapse leaderboard"
+            }
           >
-            {isLeaderboardCollapsed ? '▲' : '▼'}
+            {isLeaderboardCollapsed ? "▲" : "▼"}
           </button>
         </div>
         {!isLeaderboardCollapsed && (
@@ -2730,25 +2302,23 @@ useEffect(() => {
                   className={`leaderboard-item ${p.id === myPlayerId ? "you" : ""} rank-${idx + 1}`}
                   aria-label={`${p.name} score ${p.score}`}
                 >
-                  {/* NEW: inner wrapper so FLIP's translate transforms on <li> do not override scale */}
+                  {}
                   <div className="leaderboard-row">
                     {medal ? (
-                      <img
-                        src={medal}
-                        alt={`#${idx + 1} medal`}
-                        // sizes controlled by CSS below to keep adjustments centralized
-                      />
+                      <img src={medal} alt={`#${idx + 1} medal`} />
                     ) : (
                       <span className="leaderboard-rank">{idx + 1}</span>
                     )}
-                    <span 
+                    <span
                       className="leaderboard-name"
                       data-length={p.name.length > 18 ? "long" : "normal"}
-                      title={p.name.length > 18 ? p.name : undefined} // Show full name on hover for long names
+                      title={p.name.length > 18 ? p.name : undefined}
                     >
                       {p.name}
                     </span>
-                    <span className={`leaderboard-score ${scoreHighlight[p.id] ? "score-bump" : ""}`}>
+                    <span
+                      className={`leaderboard-score ${scoreHighlight[p.id] ? "score-bump" : ""}`}
+                    >
                       {formatNumber(displayScores[p.id] ?? 0)}
                     </span>
                   </div>
@@ -2759,13 +2329,11 @@ useEffect(() => {
         )}
       </aside>
 
-      {/* Music toggle button (always visible) */}
+      {}
       <div style={{ position: "fixed", top: 12, right: 12, zIndex: 999 }}>
         <button
           onClick={toggleMusic}
-          onMouseEnter={() => {
-            // don't play hover sound for this toggle to avoid accidental audio starts
-          }}
+          onMouseEnter={() => {}}
           style={{
             width: 44,
             height: 44,
@@ -2776,7 +2344,11 @@ useEffect(() => {
             cursor: "pointer",
           }}
           aria-label={musicEnabled ? "Turn music off" : "Turn music on"}
-          title={musicEnabled ? "Music On (click to mute)" : "Music Off (click to enable)"}
+          title={
+            musicEnabled
+              ? "Music On (click to mute)"
+              : "Music Off (click to enable)"
+          }
         >
           <img
             src={musicEnabled ? soundOnIcon : soundOffIcon}
@@ -2818,280 +2390,347 @@ useEffect(() => {
             height: "auto",
             pointerEvents: "none",
             userSelect: "none",
-            transform: "translateY(-15px)"
+            transform: "translateY(-15px)",
           }}
         />
 
         <p className="timer">Time Left: {timeLeft}s</p>
 
-        {/* Only render question content if currentQuestion exists */}
+        {}
         {currentQuestion ? (
           <>
-            {/* Render differently when this question is a card-guess */}
+            {}
             {isCardMode ? (
-          <>
-            <h2 className="question">What HC card is this?</h2>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-              {/* image wrapper (position:relative) so overlay can be placed over the image */}
-              <div style={{ position: "relative", width: 160, height: 160 }}>
-                {cardImageUrl ? (
-                  <img
-                    src={cardImageUrl}
-                    alt="HC card"
-                    style={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: 8, boxShadow: "0 6px 18px rgba(0,0,0,0.6)" }}
-                  />
-                ) : (
-                  <div 
-                    style={{ 
-                      width: "100%", 
-                      height: "100%", 
-                      borderRadius: 8, 
-                      boxShadow: "0 6px 18px rgba(0,0,0,0.6)",
-                      background: "linear-gradient(135deg, #2c1810 0%, #4a3222 100%)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#d4b887",
-                      fontSize: "14px",
-                      textAlign: "center",
-                      border: "2px solid #8b6914"
-                    }}
-                  >
-                    Loading card...
-                  </div>
-                )}
-
-                {/* Overlayed correct answer (center bottom) — slightly transparent background for legibility */}
-                {showResult && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: "50%",
-                      bottom: 8,
-                      transform: "translateX(-50%)",
-                      background: "rgba(0, 0, 0, 0.6)",
-                      padding: "8px 10px",
-                      borderRadius: 6,
-                      color: "#ffd",
-                      textAlign: "center",
-                      maxWidth: "92%",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-                      pointerEvents: "none",
-                      fontSize: "0.77rem",
-                      width: "75%",
-                    }}
-                  >
-                    <div style={{ fontWeight: 700 }}>Correct Answer: {currentQuestion.cardName}</div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input
-                  className="card-input"
-                  value={cardInput}
-                  onChange={(e) => {
-                    setCardInput(e.target.value);
-                    setCardLastWrong(false);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      onSubmitCardAnswer(myPlayerId, e.target.value);
-                    }
-                  }}
-                  disabled={showResult || selections[myPlayerId] !== undefined}
-                  placeholder="Type the card name here..."
+              <>
+                <h2 className="question">What HC card is this?</h2>
+                <div
                   style={{
-                    width: 420,
-                    height: 48,
-                    padding: "8px 12px",
-                    borderRadius: 8,
-                    border: "none",
-                    outline: "none",
-                    fontSize: "1.4rem",
-                    fontFamily: `"Trajan Pro White", "Trajan Pro", serif`,
-                    color: "#ffffff",
-                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
-                    // background image switches to "over" when timer ends OR correct answer entered
-                    backgroundImage: `url(${(showResult || selections[myPlayerId] !== undefined) ? nicknameBgOver : nicknameBg})`,
-                    backgroundSize: "contain",
-                    backgroundRepeat: "no-repeat",
-                    backgroundPosition: "center",
-                    // make sure text sits above the image
-                    backgroundColor: "transparent",
-                    WebkitAppearance: "none",
-                    MozAppearance: "none",
-                    // Locked state visual feedback
-                    opacity: (showResult || selections[myPlayerId] !== undefined) ? 0.7 : 1,
-                    filter: (showResult || selections[myPlayerId] !== undefined) ? "brightness(0.85)" : "none",
-                    transition: "opacity 0.3s ease, filter 0.3s ease",
-                    pointerEvents: (showResult || selections[myPlayerId] !== undefined) ? "none" : "auto",
-                  }}
-                />
-
-                <button
-                  onClick={() => {
-                    if (!showResult && selections[myPlayerId] === undefined) {
-                      playClickSound();
-                    }
-                    onSubmitCardAnswer(myPlayerId, cardInput);
-                  }}
-                  onMouseEnter={(showResult || selections[myPlayerId] !== undefined) ? undefined : playHoverSound}
-                  disabled={showResult || selections[myPlayerId] !== undefined}
-                  style={{
-                    height: 48,
-                    padding: "8px 16px",
-                    borderRadius: 8,
-                    border: "none",
-                    cursor: (showResult || selections[myPlayerId] !== undefined) ? "default" : "pointer",
-                    backgroundImage: `url(${btnNormal})`,
-                    backgroundSize: "contain",
-                    backgroundRepeat: "no-repeat",
-                    backgroundPosition: "center",
-                    backgroundColor: "transparent",
-                    color: "white",
-                    textShadow: "0 1px 3px rgba(0,0,0,0.8)",
-                    fontSize: "1.4rem",
-                    width: 320,
-                    // Locked state visual feedback
-                    opacity: (showResult || selections[myPlayerId] !== undefined) ? 0.7 : 1,
-                    filter: (showResult || selections[myPlayerId] !== undefined) ? "brightness(0.85)" : "none",
-                    transition: "opacity 0.3s ease, filter 0.3s ease",
-                    pointerEvents: (showResult || selections[myPlayerId] !== undefined) ? "none" : "auto",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 12,
                   }}
                 >
-                  Submit!
-                </button>
-              </div>
-
-              {cardLastWrong && !showResult && (
-                <div style={{ color: "#ffb3b3", marginTop: 6 }}>Incorrect — try again.</div>
-              )}
-
-              {/* The previous "Correct: ..." block under the input was removed and is now overlayed on the image */}
-            </div>
-          </>
-        ) : (
-          // Trivia mode (existing UI)
-          <>
-            <h2 className="question">{currentQuestion.question}</h2>
-
-            <div className="options-grid">
-              {currentQuestion.options.map((opt, i) => {
-                const reveal = showResult;
-                const isMySelected = i === mySelection; // Use state mySelection, not selections[myPlayerId]
-                // Use ref for immediate badge rendering (avoids duplicate badges from stale state)
-                const isMySelectionInRef = currentSelectionRef.current === i;
-                // Also check if server has my selection for this option (backup check)
-                const isMySelectionOnServer = selections[myPlayerId] === i;
-                const isLocked = isMySelected || isMySelectionOnServer;
-
-                let backgroundImage = `url(${btnNormal})`;
-                let boxShadow = "none";
-                let opacity = 1;
-                let cursor = "pointer";
-                let pointerEvents = "auto";
-                let filter = "none";
-
-                if (reveal) {
-                  if (i === correctIndex) {
-                    backgroundImage = `url(${btnHover})`;
-                    boxShadow = "0 0 12px 4px gold";
-                  } else {
-                    backgroundImage = `url(${btnDisabled})`;
-                  }
-                } else if (isLocked) {
-                  backgroundImage = `url(${btnHover})`;
-                  // Show locked state visually - dimmed and disabled appearance
-                  opacity = 0.7;
-                  cursor = "default";
-                  pointerEvents = "none"; // Prevent all interactions
-                  filter = "brightness(0.85)"; // Dim the button
-                }
-
-                return (
-                  <button
-                    key={i}
-                    disabled={reveal} // Only disable after results are revealed
-                    className="option-button"
-                    style={{ 
-                      backgroundImage, 
-                      boxShadow,
-                      opacity,
-                      cursor: reveal ? "default" : cursor,
-                      pointerEvents: reveal ? "none" : pointerEvents,
-                      filter,
-                      transition: "opacity 0.3s ease, filter 0.3s ease"
-                    }}
-                    onMouseEnter={!isLocked && !reveal ? playHoverSound : undefined}
-                    onClick={() => {
-                      // Don't play sound or process click if locked
-                      if (isLocked) return;
-                      
-                      onSelectOption(myPlayerId, i);
-                    }}
+                  {}
+                  <div
+                    style={{ position: "relative", width: 160, height: 160 }}
                   >
-                    <span className="option-text">{opt}</span>
-                    
-                    {/* Show my name on my selected option (even before reveal) */}
-                    {/* Use ref for immediate rendering to avoid duplicate badges from state batching */}
-                    {!reveal && (isMySelected || isMySelectionInRef) && (
-                      <>
-                        {/* console.log(`🟢 Rendering green badge for option ${i}, reveal: ${reveal}, mySelection: ${mySelection}, serverSelection: ${selections[myPlayerId]}`) */}
-                        <span className="option-badge my-selection">
-                          {currentUser?.username || currentUser?.global_name || "You"}
-                        </span>
-                      </>
+                    {cardImageUrl ? (
+                      <img
+                        src={cardImageUrl}
+                        alt="HC card"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "contain",
+                          borderRadius: 8,
+                          boxShadow: "0 6px 18px rgba(0,0,0,0.6)",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          borderRadius: 8,
+                          boxShadow: "0 6px 18px rgba(0,0,0,0.6)",
+                          background:
+                            "linear-gradient(135deg, #2c1810 0%, #4a3222 100%)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#d4b887",
+                          fontSize: "14px",
+                          textAlign: "center",
+                          border: "2px solid #8b6914",
+                        }}
+                      >
+                        Loading card...
+                      </div>
                     )}
-                    
-                    {/* Show all player names after reveal */}
-                    {reveal && (() => {
-                      const playersForOption = Object.entries(selections)
-                        .filter(([playerId, optionIndex]) => optionIndex === i);
-                      
-                      // Only render badge if there are players for this option
-                      if (playersForOption.length === 0) {
-                        return null; // Don't render anything
+
+                    {}
+                    {showResult && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: "50%",
+                          bottom: 8,
+                          transform: "translateX(-50%)",
+                          background: "rgba(0, 0, 0, 0.6)",
+                          padding: "8px 10px",
+                          borderRadius: 6,
+                          color: "#ffd",
+                          textAlign: "center",
+                          maxWidth: "92%",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                          pointerEvents: "none",
+                          fontSize: "0.77rem",
+                          width: "75%",
+                        }}
+                      >
+                        <div style={{ fontWeight: 700 }}>
+                          Correct Answer: {currentQuestion.cardName}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div
+                    style={{ display: "flex", gap: 8, alignItems: "center" }}
+                  >
+                    <input
+                      className="card-input"
+                      value={cardInput}
+                      onChange={(e) => {
+                        setCardInput(e.target.value);
+                        setCardLastWrong(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          onSubmitCardAnswer(myPlayerId, e.target.value);
+                        }
+                      }}
+                      disabled={
+                        showResult || selections[myPlayerId] !== undefined
                       }
-                      
-                      const playerNames_display = playersForOption
-                        .map(([playerId]) => {
-                          // Try multiple sources for player name
-                          let playerName = playerNames[playerId]; // From server
-                          
-                          if (!playerName) {
-                            // Fallback to local players array
-                            const player = players.find(p => p.id === playerId);
-                            playerName = player?.name;
-                          }
-                          
-                          if (!playerName && playerId === currentUser?.id) {
-                            // Fallback to current user info
-                            playerName = currentUser?.username || currentUser?.global_name;
-                          }
-                          
-                          // Final fallback
-                          const finalName = playerName || `Player ${playerId.slice(-4)}`;
-                          return finalName;
-                        })
-                        .join(", ");
-                      
-                      return (
-                        <span className="option-badge">
-                          {playerNames_display}
-                        </span>
-                      );
-                    })()}
-                  </button>
-                );
-              })}
-            </div>
+                      placeholder="Type the card name here..."
+                      style={{
+                        width: 420,
+                        height: 48,
+                        padding: "8px 12px",
+                        borderRadius: 8,
+                        border: "none",
+                        outline: "none",
+                        fontSize: "1.4rem",
+                        fontFamily: `"Trajan Pro White", "Trajan Pro", serif`,
+                        color: "#ffffff",
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+
+                        backgroundImage: `url(${showResult || selections[myPlayerId] !== undefined ? nicknameBgOver : nicknameBg})`,
+                        backgroundSize: "contain",
+                        backgroundRepeat: "no-repeat",
+                        backgroundPosition: "center",
+
+                        backgroundColor: "transparent",
+                        WebkitAppearance: "none",
+                        MozAppearance: "none",
+
+                        opacity:
+                          showResult || selections[myPlayerId] !== undefined
+                            ? 0.7
+                            : 1,
+                        filter:
+                          showResult || selections[myPlayerId] !== undefined
+                            ? "brightness(0.85)"
+                            : "none",
+                        transition: "opacity 0.3s ease, filter 0.3s ease",
+                        pointerEvents:
+                          showResult || selections[myPlayerId] !== undefined
+                            ? "none"
+                            : "auto",
+                      }}
+                    />
+
+                    <button
+                      onClick={() => {
+                        if (
+                          !showResult &&
+                          selections[myPlayerId] === undefined
+                        ) {
+                          playClickSound();
+                        }
+                        onSubmitCardAnswer(myPlayerId, cardInput);
+                      }}
+                      onMouseEnter={
+                        showResult || selections[myPlayerId] !== undefined
+                          ? undefined
+                          : playHoverSound
+                      }
+                      disabled={
+                        showResult || selections[myPlayerId] !== undefined
+                      }
+                      style={{
+                        height: 48,
+                        padding: "8px 16px",
+                        borderRadius: 8,
+                        border: "none",
+                        cursor:
+                          showResult || selections[myPlayerId] !== undefined
+                            ? "default"
+                            : "pointer",
+                        backgroundImage: `url(${btnNormal})`,
+                        backgroundSize: "contain",
+                        backgroundRepeat: "no-repeat",
+                        backgroundPosition: "center",
+                        backgroundColor: "transparent",
+                        color: "white",
+                        textShadow: "0 1px 3px rgba(0,0,0,0.8)",
+                        fontSize: "1.4rem",
+                        width: 320,
+
+                        opacity:
+                          showResult || selections[myPlayerId] !== undefined
+                            ? 0.7
+                            : 1,
+                        filter:
+                          showResult || selections[myPlayerId] !== undefined
+                            ? "brightness(0.85)"
+                            : "none",
+                        transition: "opacity 0.3s ease, filter 0.3s ease",
+                        pointerEvents:
+                          showResult || selections[myPlayerId] !== undefined
+                            ? "none"
+                            : "auto",
+                      }}
+                    >
+                      Submit!
+                    </button>
+                  </div>
+
+                  {cardLastWrong && !showResult && (
+                    <div style={{ color: "#ffb3b3", marginTop: 6 }}>
+                      Incorrect — try again.
+                    </div>
+                  )}
+
+                  {}
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="question">{currentQuestion.question}</h2>
+
+                <div className="options-grid">
+                  {currentQuestion.options.map((opt, i) => {
+                    const reveal = showResult;
+                    const isMySelected = i === mySelection;
+
+                    const isMySelectionInRef =
+                      currentSelectionRef.current === i;
+
+                    const isMySelectionOnServer = selections[myPlayerId] === i;
+                    const isLocked = isMySelected || isMySelectionOnServer;
+
+                    let backgroundImage = `url(${btnNormal})`;
+                    let boxShadow = "none";
+                    let opacity = 1;
+                    let cursor = "pointer";
+                    let pointerEvents = "auto";
+                    let filter = "none";
+
+                    if (reveal) {
+                      if (i === correctIndex) {
+                        backgroundImage = `url(${btnHover})`;
+                        boxShadow = "0 0 12px 4px gold";
+                      } else {
+                        backgroundImage = `url(${btnDisabled})`;
+                      }
+                    } else if (isLocked) {
+                      backgroundImage = `url(${btnHover})`;
+
+                      opacity = 0.7;
+                      cursor = "default";
+                      pointerEvents = "none";
+                      filter = "brightness(0.85)";
+                    }
+
+                    return (
+                      <button
+                        key={i}
+                        disabled={reveal}
+                        className="option-button"
+                        style={{
+                          backgroundImage,
+                          boxShadow,
+                          opacity,
+                          cursor: reveal ? "default" : cursor,
+                          pointerEvents: reveal ? "none" : pointerEvents,
+                          filter,
+                          transition: "opacity 0.3s ease, filter 0.3s ease",
+                        }}
+                        onMouseEnter={
+                          !isLocked && !reveal ? playHoverSound : undefined
+                        }
+                        onClick={() => {
+                          if (isLocked) return;
+
+                          onSelectOption(myPlayerId, i);
+                        }}
+                      >
+                        <span className="option-text">{opt}</span>
+
+                        {}
+                        {}
+                        {!reveal && (isMySelected || isMySelectionInRef) && (
+                          <>
+                            {}
+                            <span className="option-badge my-selection">
+                              {currentUser?.username ||
+                                currentUser?.global_name ||
+                                "You"}
+                            </span>
+                          </>
+                        )}
+
+                        {}
+                        {reveal &&
+                          (() => {
+                            const playersForOption = Object.entries(
+                              selections,
+                            ).filter(
+                              ([playerId, optionIndex]) => optionIndex === i,
+                            );
+
+                            if (playersForOption.length === 0) {
+                              return null;
+                            }
+
+                            const playerNames_display = playersForOption
+                              .map(([playerId]) => {
+                                let playerName = playerNames[playerId];
+
+                                if (!playerName) {
+                                  const player = players.find(
+                                    (p) => p.id === playerId,
+                                  );
+                                  playerName = player?.name;
+                                }
+
+                                if (
+                                  !playerName &&
+                                  playerId === currentUser?.id
+                                ) {
+                                  playerName =
+                                    currentUser?.username ||
+                                    currentUser?.global_name;
+                                }
+
+                                const finalName =
+                                  playerName || `Player ${playerId.slice(-4)}`;
+                                return finalName;
+                              })
+                              .join(", ");
+
+                            return (
+                              <span className="option-badge">
+                                {playerNames_display}
+                              </span>
+                            );
+                          })()}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </>
-        )}
-        </>
         ) : (
           <div style={{ textAlign: "center", color: "#ccc", padding: "40px" }}>
-            {socket && !socket.localMode && socket.connected && isInVoiceChannel ? (
+            {socket &&
+            !socket.localMode &&
+            socket.connected &&
+            isInVoiceChannel ? (
               <div>
                 <p>Ready to start the quiz?</p>
                 <button
@@ -3119,21 +2758,22 @@ useEffect(() => {
                   onMouseEnter={() => playHoverSound()}
                   onClick={async () => {
                     playClickSound();
-                    // console.log('🎮 Starting first question in multiplayer mode');
-                    // Use the same HTTP endpoint as onNextQuestion for consistency
+
                     try {
-                      const response = await fetch(`${API_BASE_URL}/start_question`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          roomId: roomId,
-                          forceNew: false  // First question doesn't need forceNew
-                        })
-                      });
-                      
+                      const response = await fetch(
+                        `${API_BASE_URL}/start_question`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            roomId: roomId,
+                            forceNew: false,
+                          }),
+                        },
+                      );
+
                       const result = await response.json();
-                      // console.log('📡 Start question response:', result);
-                      
+
                       if (result && result.success && result.question) {
                         const question = result.question;
                         setCurrentQuestion(question);
@@ -3144,15 +2784,9 @@ useEffect(() => {
                         setTimeLeft(result.timeLeft || MAX_TIME);
                         answerTimesRef.current = {};
                         awardedDoneRef.current = false;
-                        // console.log('✅ First question loaded from server:', question.isCard ? 'Card Question' : 'Regular Question');
                       } else {
-                        // console.log('⚠️ No question in server response - staying in waiting state');
-                        // In multiplayer mode, do NOT fall back to local generation
                       }
-                    } catch (error) {
-                      // console.log('⚠️ Failed to get question from server:', error);
-                      // In multiplayer mode, do NOT fall back to local generation
-                    }
+                    } catch (error) {}
                   }}
                 >
                   Start Quiz
@@ -3165,7 +2799,7 @@ useEffect(() => {
         )}
       </div>
 
-      {/* Always render the button, but hide and disable when showResult is false */}
+      {}
       <button
         className="next-question-button"
         onMouseEnter={() => {
@@ -3203,7 +2837,7 @@ useEffect(() => {
         Next Question
       </button>
 
-      {/* Small inline style to improve animation smoothness for leaderboard items and score bump */}
+      {}
       <style>{`
         .leaderboard-container {
           position: fixed;

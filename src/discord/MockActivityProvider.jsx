@@ -3,7 +3,7 @@ import React, { createContext } from 'react';
 export const ActivityContext = createContext(null);
 
 export function ActivityProvider({ children }) {
-  // Skip Discord OAuth for now and use a mock context
+  
   const mockSdk = {
     commands: {
       setActivity: () => Promise.resolve(),
@@ -19,7 +19,7 @@ export function ActivityProvider({ children }) {
 
   const mockToken = 'mock-token';
 
-  // console.log('🎮 Using mock Discord SDK (OAuth bypassed)');
+  
 
   return (
     <ActivityContext.Provider value={{ 

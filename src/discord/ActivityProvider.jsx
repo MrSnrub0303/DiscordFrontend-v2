@@ -13,21 +13,21 @@ export function ActivityProvider({ children }) {
   const [debugLogs, setDebugLogs] = useState([]);
   const initializationRef = useRef(false);
 
-  // Add debug log function
+  
   const addDebugLog = (message) => {
     const timestamp = new Date().toLocaleTimeString();
     setDebugLogs(prev => [...prev.slice(-4), `[${timestamp}] ${message}`]);
-    // console.log(message);
+    
   };
 
-  // Debug logging
-  // console.log('ActivityProvider state:', { 
-    // sdkInitialized: !!sdk, 
-    // error, 
-    // ready, 
-    // hasToken: !!token,
-    // step: initializationStep
-  // });
+  
+  
+    
+    
+    
+    
+    
+  
 
   useEffect(() => {
     const initializeSDK = async () => {
@@ -35,27 +35,27 @@ export function ActivityProvider({ children }) {
         setInitializationStep('creating_sdk');
         addDebugLog('Initializing Discord SDK...');
         
-        // Check if we're running in Discord
+        
         if (typeof window === 'undefined') {
           throw new Error('Running in non-browser environment');
         }
 
-        // Verify Discord client ID
+        
         if (!DISCORD_CLIENT_ID) {
           throw new Error('DISCORD_CLIENT_ID is not defined in config');
         }
 
         addDebugLog(`Using Discord Client ID: ${DISCORD_CLIENT_ID}`);
         
-        // Create SDK instance
+        
         setInitializationStep('sdk_instance');
         const discordSdk = new DiscordSDK(DISCORD_CLIENT_ID);
         addDebugLog('SDK instance created');
         
-        // Set SDK immediately so we can show progress
+        
         setSdk(discordSdk);
         
-        // Wait for SDK to be ready with timeout
+        
         setInitializationStep('waiting_ready');
         addDebugLog('Waiting for SDK to be ready...');
         
@@ -67,13 +67,13 @@ export function ActivityProvider({ children }) {
         await Promise.race([readyPromise, timeoutPromise]);
         addDebugLog('SDK is ready');
         
-        // Add a small delay to ensure Discord is fully ready
+        
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         setInitializationStep('authorizing');
         addDebugLog('Starting authorization...');
         
-        // Get authentication token using Activity flow (no redirect URI needed)
+        
         const authResult = await discordSdk.commands.authorize({
           client_id: DISCORD_CLIENT_ID,
           response_type: 'code',
@@ -92,7 +92,7 @@ export function ActivityProvider({ children }) {
         addDebugLog('Exchanging code for token...');
         addDebugLog(`Making request to /api/token (via Discord proxy)`);
         
-        // Use relative URL - Discord will proxy to your mapped backend
+        
         const response = await fetch('/api/token', {
           method: 'POST',
           headers: {
@@ -122,14 +122,14 @@ export function ActivityProvider({ children }) {
         setInitializationStep('authenticating');
         addDebugLog('Authenticating with Discord...');
         
-        // Authenticate with Discord using the access token
+        
         const authResponse = await discordSdk.commands.authenticate({
           access_token: tokenData.access_token,
         });
         
         addDebugLog(`Authentication successful: ${authResponse ? 'YES' : 'NO'}`);
         
-        // Store authenticated user info in the SDK for later use
+        
         discordSdk.authenticated = authResponse;
         
         setToken(tokenData.access_token);
@@ -140,9 +140,9 @@ export function ActivityProvider({ children }) {
         
       } catch (error) {
         addDebugLog(`ERROR: ${error.message}`);
-        // console.error('Error initializing Discord SDK:', error);
         
-        // Enhanced error details
+        
+        
         let errorDetails = {
           message: error.message,
           name: error.name,
@@ -154,19 +154,19 @@ export function ActivityProvider({ children }) {
           url: window.location.href
         };
         
-        // console.log('Detailed error information:', errorDetails);
         
-        // Check for specific error types
+        
+        
         if (error.name === 'ActivityRejectedError') {
-          // console.log('Activity was rejected by Discord');
+          
           errorDetails.suggestion = 'Make sure your activity is approved and running in Discord';
         } else if (error.name === 'AuthorizationError') {
-          // console.log('Authorization failed - check client ID and scopes');
+          
           errorDetails.suggestion = 'Verify your Discord Client ID and application settings';
         } else if (error.code === 4002 || error.message.includes('Already authing')) {
-          // console.log('Multiple authentication attempts detected');
+          
           errorDetails.suggestion = 'Another authentication is in progress. Please wait or refresh the activity.';
-          // Reset initialization flag to allow retry after a delay
+          
           setTimeout(() => {
             initializationRef.current = false;
           }, 3000);
@@ -190,7 +190,7 @@ export function ActivityProvider({ children }) {
       }
     };
 
-    // Only initialize once, even with StrictMode
+    
     if (initializationRef.current) {
       addDebugLog('Already initialized, skipping...');
       return;
@@ -200,29 +200,29 @@ export function ActivityProvider({ children }) {
     addDebugLog('Starting initialization...');
     
     initializeSDK().catch((err) => {
-      // console.error('SDK initialization failed:', err);
-      initializationRef.current = false; // Reset on error to allow retry
+      
+      initializationRef.current = false; 
     });
 
-    // Cleanup
+    
     return () => {
       if (sdk) {
-        // Perform any necessary cleanup
-        // console.log('Cleaning up Discord SDK');
+        
+        
       }
     };
-  }, []); // Empty dependency array to run only once
+  }, []); 
 
-  // Handle activity lifecycle events (simplified without invalid event listeners)
+  
   useEffect(() => {
     if (!sdk || !ready) return;
 
     const handleStart = async () => {
       try {
         addDebugLog('Activity lifecycle: starting...');
-        // Basic activity initialization without invalid event listeners
+        
       } catch (err) {
-        // console.error('Error during activity start:', err);
+        
       }
     };
 
@@ -270,7 +270,7 @@ export function ActivityProvider({ children }) {
     );
   }
 
-  // Always provide the context, whether ready or not
+  
   return (
     <ActivityContext.Provider value={{ sdk, token, ready }}>
       {children}

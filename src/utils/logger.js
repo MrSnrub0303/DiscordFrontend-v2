@@ -1,12 +1,9 @@
-/**
- * Production-safe logging utility
- * Automatically strips sensitive information in production mode
- */
+
 
 const isProd = import.meta.env.PROD;
 const isDebug = import.meta.env.VITE_DEBUG === 'true';
 
-// Sensitive patterns to redact
+
 const SENSITIVE_PATTERNS = [
   /discord\.com/gi,
   /oauth/gi,
@@ -17,7 +14,7 @@ const SENSITIVE_PATTERNS = [
   /bearer/gi
 ];
 
-// Function to sanitize sensitive data
+
 function sanitizeData(data) {
   if (isProd && !isDebug) {
     if (typeof data === 'string') {
@@ -39,7 +36,7 @@ function sanitizeData(data) {
             lowerKey.includes('key')) {
           sanitized[key] = '[REDACTED]';
         } else if (lowerKey.includes('id') && typeof data[key] === 'string' && data[key].length > 10) {
-          // Partially redact long IDs (keep first 4 chars)
+          
           sanitized[key] = data[key].substring(0, 4) + '***';
         } else {
           sanitized[key] = data[key];
@@ -52,11 +49,11 @@ function sanitizeData(data) {
   return data;
 }
 
-// Production-safe logger
+
 export const logger = {
   log: (...args) => {
     if (isProd && !isDebug) {
-      // In production, only log if explicitly debug mode
+      
       return;
     }
     const sanitizedArgs = args.map(sanitizeData);
@@ -64,13 +61,13 @@ export const logger = {
   },
   
   error: (...args) => {
-    // Always log errors, but sanitize them
+    
     const sanitizedArgs = args.map(sanitizeData);
     console.error(...sanitizedArgs);
   },
   
   warn: (...args) => {
-    // Always log warnings, but sanitize them
+    
     const sanitizedArgs = args.map(sanitizeData);
     console.warn(...sanitizedArgs);
   },
@@ -92,7 +89,7 @@ export const logger = {
   }
 };
 
-// For production-safe user/room ID logging
+
 export const safeLog = {
   user: (message, userId) => {
     if (isProd && !isDebug) {
