@@ -341,6 +341,8 @@ export default function App() {
 
   const lastClearedQuestionRef = useRef(null);
 
+  const previousQuestionIdRef = useRef(null);
+
   const activityRestartedRef = useRef(false);
   const lastReadyStateRef = useRef(null);
   const hasInitializedRef = useRef(false);
@@ -1627,6 +1629,21 @@ export default function App() {
 
     return () => clearInterval(timerRef.current);
   }, [currentQuestion?.id, showResult, socket, roomId]);
+
+  useEffect(() => {
+    const currentId = currentQuestion?.id;
+
+    if (!currentId) {
+      previousQuestionIdRef.current = null;
+      return;
+    }
+
+    if (previousQuestionIdRef.current !== currentId) {
+      previousQuestionIdRef.current = currentId;
+
+      setShowResult(false);
+    }
+  }, [currentQuestion?.id]);
 
   const myPlayerId = currentUser?.id || "player1";
 
