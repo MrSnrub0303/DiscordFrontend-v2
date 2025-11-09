@@ -341,8 +341,6 @@ export default function App() {
 
   const lastClearedQuestionRef = useRef(null);
 
-  const previousQuestionIdRef = useRef(null);
-
   const activityRestartedRef = useRef(false);
   const lastReadyStateRef = useRef(null);
   const hasInitializedRef = useRef(false);
@@ -1060,18 +1058,8 @@ export default function App() {
         "optionIndex" in selection
       ) {
         normalized[playerId] = selection.optionIndex;
-      } else if (
-        selection &&
-        typeof selection === "object" &&
-        ("cardAnswer" in selection || "isCorrect" in selection)
-      ) {
-        if (selection.isCorrect === true) {
-          normalized[playerId] = true;
-        }
       } else if (typeof selection === "number") {
         normalized[playerId] = selection;
-      } else if (selection === "correct") {
-        normalized[playerId] = true;
       }
     }
     return normalized;
@@ -1629,21 +1617,6 @@ export default function App() {
 
     return () => clearInterval(timerRef.current);
   }, [currentQuestion?.id, showResult, socket, roomId]);
-
-  useEffect(() => {
-    const currentId = currentQuestion?.id;
-
-    if (!currentId) {
-      previousQuestionIdRef.current = null;
-      return;
-    }
-
-    if (previousQuestionIdRef.current !== currentId) {
-      previousQuestionIdRef.current = currentId;
-
-      setShowResult(false);
-    }
-  }, [currentQuestion?.id]);
 
   const myPlayerId = currentUser?.id || "player1";
 
