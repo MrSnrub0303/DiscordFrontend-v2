@@ -599,6 +599,27 @@ export default function App() {
     }
   }, [currentQuestion?.id, currentQuestion?.isCard, currentQuestion?.cardName]);
 
+  useEffect(() => {
+    if (!currentQuestion?.id) return;
+
+    setIsLocked(false);
+    setMySelectionState(null);
+
+    const myId = currentUser?.id || "player1";
+    setSelections((prev) => {
+      if (!prev || prev[myId] === undefined) {
+        return prev || {};
+      }
+
+      const next = { ...prev };
+      delete next[myId];
+      return next;
+    });
+
+    hcCardAnswersRef.current = {};
+    answerTimesRef.current = {};
+  }, [currentQuestion?.id, currentUser?.id]);
+
   useEffect(() => {}, [mySelection]);
 
   const prevRectsRef = useRef({});
