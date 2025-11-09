@@ -335,6 +335,23 @@ export default function App() {
 
   const currentSelectionRef = useRef(null);
 
+  const currentQuestionIdRef = useRef(null);
+  useEffect(() => {
+    currentQuestionIdRef.current = currentQuestion?.id || null;
+  }, [currentQuestion?.id]);
+
+  const beginRevealPhase = (explicitQuestionId) => {
+    let resolvedQuestionId =
+      explicitQuestionId ?? currentQuestionIdRef.current ?? null;
+
+    if (resolvedQuestionId == null && currentQuestion?.id) {
+      resolvedQuestionId = currentQuestion.id;
+    }
+
+  setRevealPhaseQuestionId(resolvedQuestionId ?? null);
+    setShowResult(true);
+  };
+
   const answerTimesRef = useRef({});
 
   const hcCardAnswersRef = useRef({});
@@ -409,6 +426,24 @@ export default function App() {
       currentSelectionRef.current = null;
       window.lastSelectionTime = null;
       window.lastSelectionQuestionId = null;
+      hcCardAnswersRef.current = {};
+      answerTimesRef.current = {};
+      awardedDoneRef.current = false;
+      setRevealPhaseQuestionId(null);
+
+      if (scoreAnimFramesRef.current) {
+        Object.values(scoreAnimFramesRef.current).forEach((frame) => {
+          if (frame) cancelAnimationFrame(frame);
+        });
+        scoreAnimFramesRef.current = {};
+      }
+
+      setScores({});
+      setDisplayScores({});
+      setScoreHighlight({});
+      displayScoresRef.current = {};
+
+      setPlayers([]);
     }
   }, [ready, socket, roomId]);
 
@@ -425,6 +460,7 @@ export default function App() {
         const isInRevealPhase = showResult || gameState.showResult;
 
         if (!isInRevealPhase) {
+          setRevealPhaseQuestionId(null);
           setSelections({});
           setMySelection(null);
           currentSelectionRef.current = null;
@@ -461,6 +497,7 @@ export default function App() {
 
         setCurrentQuestion(data.question);
         setShowResult(false);
+        setRevealPhaseQuestionId(null);
 
         if (isNewQuestion) {
           setSelections({});
@@ -480,7 +517,7 @@ export default function App() {
     socket.on("round_complete", (data) => {
       if (data.selections) {
         setSelections(data.selections);
-        setShowResult(true);
+        beginRevealPhase(currentQuestionIdRef.current);
 
         if (data.scores) {
           setScores(data.scores);
@@ -1175,8 +1212,7 @@ export default function App() {
                   serverWantsReveal || alreadyInRevealForThisQuestion;
 
                 if (serverWantsReveal && !alreadyInRevealForThisQuestion) {
-                  setRevealPhaseQuestionId(data.currentQuestion?.id);
-                  setShowResult(true);
+                  beginRevealPhase(data.currentQuestion?.id);
                 }
 
                 const myPlayerId = currentUser?.id;
@@ -1295,7 +1331,7 @@ export default function App() {
 
             if (data.timeLeft <= 0 && data.showResult) {
               setTimeout(() => {
-                setShowResult(true);
+                beginRevealPhase(data.currentQuestion?.id);
                 setIsTimerRunning(false);
               }, 200);
             }
@@ -1309,8 +1345,7 @@ export default function App() {
               serverWantsReveal || alreadyInRevealForThisQuestion;
 
             if (serverWantsReveal && !alreadyInRevealForThisQuestion) {
-              setRevealPhaseQuestionId(data.currentQuestion?.id);
-              setShowResult(true);
+              beginRevealPhase(data.currentQuestion?.id);
               setIsTimerRunning(false);
             }
 
@@ -1567,7 +1602,7 @@ export default function App() {
                       setScores(result.data.scores);
                       setServerScoredThisRound(true);
                     }
-                    setShowResult(true);
+                    beginRevealPhase(currentQuestionIdRef.current);
                   } else {
                     const localSelections = {};
                     const selectionToUse =
@@ -1579,7 +1614,7 @@ export default function App() {
                     } else {
                     }
                     setSelections(localSelections);
-                    setShowResult(true);
+                    beginRevealPhase(currentQuestionIdRef.current);
                   }
                 } else {
                   console.error(
@@ -1600,13 +1635,13 @@ export default function App() {
                   localSelections[currentUser.id] = selectionToUse;
                 }
                 setSelections(localSelections);
-                setShowResult(true);
+                beginRevealPhase(currentQuestionIdRef.current);
               }
             };
 
             endRoundRequest();
           } else {
-            setShowResult(true);
+            beginRevealPhase(currentQuestionIdRef.current);
           }
 
           return 0;
@@ -1630,6 +1665,11 @@ export default function App() {
           opt.startsWith(correctLetter),
         )
       : -1;
+
+  const revealActive =
+    !!currentQuestion?.id &&
+    showResult &&
+    revealPhaseQuestionId === currentQuestion.id;
 
   const onSelectOption = (playerId, optionIndex) => {
     if (showResult) return;
@@ -1689,9 +1729,10 @@ export default function App() {
 
         await trySubmit();
       } else {
+        const pendingQuestionId = currentQuestionIdRef.current;
         setTimeout(() => {
           setSelections({ [playerId]: optionIndex });
-          setShowResult(true);
+          beginRevealPhase(pendingQuestionId);
         }, 1000);
       }
     };
@@ -2450,7 +2491,7 @@ export default function App() {
                     )}
 
                     {}
-                    {showResult && (
+                    {revealActive && (
                       <div
                         style={{
                           position: "absolute",
@@ -2603,7 +2644,8 @@ export default function App() {
 
                 <div className="options-grid">
                   {currentQuestion.options.map((opt, i) => {
-                    const reveal = showResult;
+                    const reveal = revealActive;
+                    const disableInteractions = showResult;
                     const isMySelected = i === mySelection;
 
                     const isMySelectionInRef =
@@ -2626,6 +2668,12 @@ export default function App() {
                       } else {
                         backgroundImage = `url(${btnDisabled})`;
                       }
+                    } else if (disableInteractions) {
+                      backgroundImage = `url(${btnDisabled})`;
+                      cursor = "default";
+                      pointerEvents = "none";
+                      opacity = 0.85;
+                      filter = "brightness(0.9)";
                     } else if (isLocked) {
                       backgroundImage = `url(${btnHover})`;
 
@@ -2638,19 +2686,23 @@ export default function App() {
                     return (
                       <button
                         key={i}
-                        disabled={reveal}
+                        disabled={disableInteractions}
                         className="option-button"
                         style={{
                           backgroundImage,
                           boxShadow,
                           opacity,
-                          cursor: reveal ? "default" : cursor,
-                          pointerEvents: reveal ? "none" : pointerEvents,
+                          cursor: disableInteractions ? "default" : cursor,
+                          pointerEvents: disableInteractions
+                            ? "none"
+                            : pointerEvents,
                           filter,
                           transition: "opacity 0.3s ease, filter 0.3s ease",
                         }}
                         onMouseEnter={
-                          !isLocked && !reveal ? playHoverSound : undefined
+                          !isLocked && !disableInteractions
+                            ? playHoverSound
+                            : undefined
                         }
                         onClick={() => {
                           if (isLocked) return;
