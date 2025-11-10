@@ -46,8 +46,6 @@ const MAX_POINTS = 150;
 
 const SCORING_EXPONENT = 2;
 
-const LAST_SECOND_REWARD_TIME = Math.max(1, Math.ceil(MAX_TIME * 0.1));
-
 const formatNumber = (n) => {
   if (n === null || n === undefined) return "0";
   const num = Number(n);
@@ -287,11 +285,6 @@ export default function App() {
   });
   const [isDraggingLeaderboard, setIsDraggingLeaderboard] = useState(false);
 
-  const currentUserRef = useRef(currentUser);
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-  }, [currentUser]);
-
   useEffect(() => {
     const setInitialPosition = () => {
       setLeaderboardPosition({
@@ -314,21 +307,11 @@ export default function App() {
   const [cardLastWrong, setCardLastWrong] = useState(false);
   const [cardImageUrl, setCardImageUrl] = useState(null);
 
-  const cardInputRef = useRef(cardInput);
-  useEffect(() => {
-    cardInputRef.current = cardInput;
-  }, [cardInput]);
-
   const [displayScores, setDisplayScores] = useState({});
   const displayScoresRef = useRef(displayScores);
   useEffect(() => {
     displayScoresRef.current = displayScores;
   }, [displayScores]);
-
-  const selectionsRef = useRef(selections);
-  useEffect(() => {
-    selectionsRef.current = selections;
-  }, [selections]);
 
   const [musicEnabled, setMusicEnabled] = useState(true);
 
@@ -368,11 +351,6 @@ export default function App() {
   setRevealPhaseQuestionId(resolvedQuestionId ?? null);
     setShowResult(true);
   };
-
-  const myPlayerIdRef = useRef(currentUser?.id || "player1");
-  useEffect(() => {
-    myPlayerIdRef.current = currentUser?.id || "player1";
-  }, [currentUser?.id]);
 
   const answerTimesRef = useRef({});
 
@@ -1653,79 +1631,6 @@ export default function App() {
         if (t <= 1) {
           clearInterval(timerRef.current);
 
-          const attemptAutoAward = () => {
-            if (!currentQuestion?.isCard) return;
-
-            const myId = myPlayerIdRef.current;
-            if (!myId) return;
-
-            const currentUserSnapshot = currentUserRef.current;
-
-            const alreadySubmitted =
-              selectionsRef.current[myId] !== undefined ||
-              hcCardAnswersRef.current[myId];
-            if (alreadySubmitted) return;
-
-            const expected = (currentQuestion.cardName || "")
-              .trim()
-              .toLowerCase();
-            if (!expected) return;
-
-            const typed = (cardInputRef.current || "").trim().toLowerCase();
-            if (!typed || typed !== expected) return;
-
-            safeLog.game("⚡ Last-second HC card auto-submit for", myId);
-
-            answerTimesRef.current = {
-              ...answerTimesRef.current,
-              [myId]: LAST_SECOND_REWARD_TIME,
-            };
-
-            hcCardAnswersRef.current = {
-              ...hcCardAnswersRef.current,
-              [myId]: true,
-            };
-
-            setSelections((prev) => ({
-              ...prev,
-              [myId]: true,
-            }));
-            setIsLocked(true);
-            setCardLastWrong(false);
-
-            if (socket && !socket.localMode) {
-              (async () => {
-                try {
-                  await fetch(`${API_BASE_URL}/game-event`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      event: "select_option",
-                      data: {
-                        roomId,
-                        playerId: myId,
-                        playerName:
-                          currentUserSnapshot?.global_name ||
-                          currentUserSnapshot?.username ||
-                          "Unknown Player",
-                        cardAnswer: cardInputRef.current || expected,
-                        isCorrect: true,
-                        timeTaken: MAX_TIME - LAST_SECOND_REWARD_TIME,
-                      },
-                    }),
-                  });
-                } catch (err) {
-                  safeLog.game(
-                    "⚠️ Failed to record last-second card answer",
-                    err?.message || err,
-                  );
-                }
-              })();
-            }
-          };
-
-          attemptAutoAward();
-
           if (socket && !socket.localMode) {
             const endRoundRequest = async () => {
               try {
@@ -1791,7 +1696,6 @@ export default function App() {
 
             endRoundRequest();
           } else {
-            attemptAutoAward();
             beginRevealPhase(currentQuestionIdRef.current);
           }
 
@@ -1824,10 +1728,6 @@ export default function App() {
 
   const onSelectOption = (playerId, optionIndex) => {
     if (showResult) return;
-
-    if (mySelection === optionIndex) {
-      return;
-    }
 
     playClickSound();
 
@@ -1901,6 +1801,29 @@ export default function App() {
     if (musicEnabled) startBackgroundMusic();
     unlockAudioContext();
   };
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const localSelection =
+      mySelection !== null ? mySelection : currentSelectionRef.current;
+
+    setSelections((prev) => {
+      if (!prev) {
+        return localSelection !== null ? { [currentUser.id]: localSelection } : {};
+      }
+
+      const next = { ...prev };
+
+      if (localSelection === null || localSelection === undefined) {
+        delete next[currentUser.id];
+      } else {
+        next[currentUser.id] = localSelection;
+      }
+
+      return next;
+    });
+  }, [mySelection, currentUser?.id]);
 
   const onSubmitCardAnswer = async (playerId, text) => {
     if (showResult) return;
