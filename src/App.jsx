@@ -1729,6 +1729,10 @@ export default function App() {
   const onSelectOption = (playerId, optionIndex) => {
     if (showResult) return;
 
+    if (mySelection === optionIndex) {
+      return;
+    }
+
     playClickSound();
 
     setMySelection(optionIndex);
@@ -1801,29 +1805,6 @@ export default function App() {
     if (musicEnabled) startBackgroundMusic();
     unlockAudioContext();
   };
-
-  useEffect(() => {
-    if (!currentUser?.id) return;
-
-    const localSelection =
-      mySelection !== null ? mySelection : currentSelectionRef.current;
-
-    setSelections((prev) => {
-      if (!prev) {
-        return localSelection !== null ? { [currentUser.id]: localSelection } : {};
-      }
-
-      const next = { ...prev };
-
-      if (localSelection === null || localSelection === undefined) {
-        delete next[currentUser.id];
-      } else {
-        next[currentUser.id] = localSelection;
-      }
-
-      return next;
-    });
-  }, [mySelection, currentUser?.id]);
 
   const onSubmitCardAnswer = async (playerId, text) => {
     if (showResult) return;
