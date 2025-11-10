@@ -1738,6 +1738,12 @@ export default function App() {
     setMySelection(optionIndex);
     currentSelectionRef.current = optionIndex;
 
+    setSelections((prev) => {
+      const next = { ...prev };
+      next[playerId] = optionIndex;
+      return next;
+    });
+
     window.lastSelectionTime = Date.now();
     window.lastSelectionQuestionId = currentQuestion?.id;
 
