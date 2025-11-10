@@ -1259,7 +1259,14 @@ export default function App() {
                       ...normalizedServerData,
                     };
 
-                    merged[myPlayerId] = effectiveLocalSelection;
+                    if (
+                      effectiveLocalSelection !== null &&
+                      effectiveLocalSelection !== undefined
+                    ) {
+                      merged[myPlayerId] = effectiveLocalSelection;
+                    } else {
+                      delete merged[myPlayerId];
+                    }
 
                     return merged;
                   });
@@ -1284,7 +1291,14 @@ export default function App() {
                         ...normalizeServerSelections(data.selections),
                       };
 
-                      merged[myPlayerId] = effectiveLocalSelection;
+                      if (
+                        effectiveLocalSelection !== null &&
+                        effectiveLocalSelection !== undefined
+                      ) {
+                        merged[myPlayerId] = effectiveLocalSelection;
+                      } else {
+                        delete merged[myPlayerId];
+                      }
 
                       return merged;
                     });
@@ -1418,10 +1432,21 @@ export default function App() {
                       mySelection !== null
                         ? mySelection
                         : currentSelectionRef.current;
-                    setSelections((prev) => ({
-                      ...prev,
-                      [currentUser.id]: localSelection,
-                    }));
+                    if (localSelection !== null && localSelection !== undefined) {
+                      setSelections((prev) => ({
+                        ...prev,
+                        [currentUser.id]: localSelection,
+                      }));
+                    } else {
+                      setSelections((prev) => {
+                        if (!prev || !(currentUser.id in prev)) {
+                          return prev || {};
+                        }
+                        const next = { ...prev };
+                        delete next[currentUser.id];
+                        return next;
+                      });
+                    }
                   } else {
                   }
                 }
@@ -1447,7 +1472,11 @@ export default function App() {
                       ...prev,
                       ...normalizeServerSelections(data.selections),
                     };
-                    merged[currentUser.id] = localSelection;
+                    if (localSelection !== null && localSelection !== undefined) {
+                      merged[currentUser.id] = localSelection;
+                    } else {
+                      delete merged[currentUser.id];
+                    }
 
                     return merged;
                   });
