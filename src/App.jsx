@@ -1,4 +1,11 @@
-import { useState, useEffect, useRef, useMemo, useLayoutEffect } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useLayoutEffect,
+  useCallback,
+} from "react";
 import "./App.css";
 import questions from "./questions.json";
 import { useDiscordActivity } from "./discord/useDiscordActivity";
@@ -246,7 +253,14 @@ export default function App() {
 
   const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [selections, setSelections] = useState({});
+  const [selectionState, setSelectionState] = useState({
+    questionId: null,
+    entries: {},
+  });
+  const selections =
+    currentQuestion?.id && selectionState.questionId === currentQuestion.id
+      ? selectionState.entries
+      : {};
   const [mySelection, setMySelectionState] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
 
@@ -259,7 +273,7 @@ export default function App() {
       hcCardAnswersRef.current = {};
 
       const playerId = currentUser?.id || "player1";
-      setSelections((prevSelections) => {
+      updateSelections((prevSelections) => {
         if (!prevSelections || prevSelections[playerId] === undefined) {
           return prevSelections || {};
         }
@@ -340,6 +354,31 @@ export default function App() {
     currentQuestionIdRef.current = currentQuestion?.id || null;
   }, [currentQuestion?.id]);
 
+  const updateSelections = useCallback(
+    (updater, questionIdOverride) => {
+      const targetQuestionId =
+        questionIdOverride !== undefined
+          ? questionIdOverride
+          : currentQuestionIdRef.current ?? currentQuestion?.id ?? null;
+
+      setSelectionState((prev) => {
+        const baseEntries =
+          prev.questionId === targetQuestionId ? prev.entries : {};
+
+        const nextEntries =
+          typeof updater === "function"
+            ? updater(baseEntries)
+            : updater || {};
+
+        return {
+          questionId: targetQuestionId,
+          entries: nextEntries,
+        };
+      });
+    },
+    [currentQuestion]
+  );
+
   const beginRevealPhase = (explicitQuestionId) => {
     let resolvedQuestionId =
       explicitQuestionId ?? currentQuestionIdRef.current ?? null;
@@ -348,7 +387,7 @@ export default function App() {
       resolvedQuestionId = currentQuestion.id;
     }
 
-  setRevealPhaseQuestionId(resolvedQuestionId ?? null);
+    setRevealPhaseQuestionId(resolvedQuestionId ?? null);
     setShowResult(true);
   };
 
@@ -421,7 +460,7 @@ export default function App() {
       setTimeLeft(MAX_TIME);
       setShowResult(false);
       setCurrentQuestion(null);
-      setSelections({});
+    setSelectionState({ questionId: null, entries: {} });
       setMySelection(null);
       currentSelectionRef.current = null;
       window.lastSelectionTime = null;
@@ -461,7 +500,7 @@ export default function App() {
 
         if (!isInRevealPhase) {
           setRevealPhaseQuestionId(null);
-          setSelections({});
+          updateSelections({}, gameState.currentQuestion?.id ?? null);
           setMySelection(null);
           currentSelectionRef.current = null;
           window.lastSelectionTime = null;
@@ -475,13 +514,20 @@ export default function App() {
       } else {
         const currentLocalSelection =
           mySelection !== null ? mySelection : currentSelectionRef.current;
-        if (currentLocalSelection !== null && playerName) {
-          setSelections({
-            ...(gameState.selections || {}),
-            [playerName]: currentLocalSelection,
-          });
+        const myId = currentUser?.id;
+        if (currentLocalSelection !== null && myId) {
+          updateSelections(() => {
+            const merged = {
+              ...normalizeServerSelections(gameState.selections || {}),
+            };
+            merged[myId] = currentLocalSelection;
+            return merged;
+          }, gameState.currentQuestion?.id ?? null);
         } else {
-          setSelections(gameState.selections || {});
+          updateSelections(
+            () => normalizeServerSelections(gameState.selections || {}),
+            gameState.currentQuestion?.id ?? null,
+          );
         }
       }
 
@@ -500,7 +546,7 @@ export default function App() {
         setRevealPhaseQuestionId(null);
 
         if (isNewQuestion) {
-          setSelections({});
+          updateSelections({}, data.question.id ?? null);
           setMySelection(null);
           currentSelectionRef.current = null;
           window.lastSelectionTime = null;
@@ -516,7 +562,10 @@ export default function App() {
 
     socket.on("round_complete", (data) => {
       if (data.selections) {
-        setSelections(data.selections);
+        updateSelections(
+          () => normalizeServerSelections(data.selections),
+          currentQuestionIdRef.current ?? null,
+        );
         beginRevealPhase(currentQuestionIdRef.current);
 
         if (data.scores) {
@@ -611,15 +660,18 @@ export default function App() {
     setMySelectionState(null);
 
     const myId = currentUser?.id || "player1";
-    setSelections((prev) => {
-      if (!prev || prev[myId] === undefined) {
-        return prev || {};
-      }
+    updateSelections(
+      (prev) => {
+        if (!prev || prev[myId] === undefined) {
+          return prev || {};
+        }
 
-      const next = { ...prev };
-      delete next[myId];
-      return next;
-    });
+        const next = { ...prev };
+        delete next[myId];
+        return next;
+      },
+      currentQuestion?.id ?? null,
+    );
 
     hcCardAnswersRef.current = {};
     answerTimesRef.current = {};
@@ -1086,7 +1138,7 @@ export default function App() {
 
             setCurrentQuestion(null);
             setShowResult(false);
-            setSelections({});
+            updateSelections({}, null);
             setMySelection(null);
             currentSelectionRef.current = null;
             window.lastSelectionTime = null;
@@ -1196,7 +1248,7 @@ export default function App() {
               window.lastSelectionQuestionId = null;
               setRevealPhaseQuestionId(null);
               setShowResult(false);
-              setSelections({});
+              updateSelections({}, serverQuestionId ?? null);
               answerTimesRef.current = {};
               awardedDoneRef.current = false;
               setServerScoredThisRound(false);
@@ -1222,7 +1274,10 @@ export default function App() {
               const normalizedServerData = normalizeServerSelections(
                 data.selections || {},
               );
-              setSelections(normalizedServerData);
+              updateSelections(
+                normalizedServerData,
+                data.currentQuestion?.id ?? null,
+              );
             } else if (!currentQuestion || currentQuestionId === serverQuestionId) {
               if (data.selections) {
                 const currentLocalSelection =
@@ -1258,7 +1313,7 @@ export default function App() {
                     data.selections,
                   );
 
-                  setSelections((prev) => {
+                  updateSelections((prev) => {
                     const merged = {
                       ...prev,
                       ...normalizedServerData,
@@ -1274,7 +1329,7 @@ export default function App() {
                     }
 
                     return merged;
-                  });
+                  }, data.currentQuestion?.id ?? null);
                 } else {
                   const selectionQuestionId = window.lastSelectionQuestionId;
                   const currentQuestionId = data.currentQuestion?.id;
@@ -1290,7 +1345,7 @@ export default function App() {
                     effectiveLocalSelection !== null;
 
                   if (hasValidSelection) {
-                    setSelections((prev) => {
+                    updateSelections((prev) => {
                       const merged = {
                         ...prev,
                         ...normalizeServerSelections(data.selections),
@@ -1306,7 +1361,7 @@ export default function App() {
                       }
 
                       return merged;
-                    });
+                    }, data.currentQuestion?.id ?? null);
                   } else {
                     const normalizedServerData = normalizeServerSelections(
                       data.selections,
@@ -1330,23 +1385,29 @@ export default function App() {
                         hasAnsweredInRef || hasAnsweredInSelections;
 
                       if (mySelectionForThisQuestion || hasAnswered) {
-                        setSelections((prev) => ({
-                          ...prev,
-                          [myPlayerId]: hasAnswered
-                            ? prev[myPlayerId] || true
-                            : mySelection !== null
-                              ? mySelection
-                              : currentSelectionRef.current,
-                        }));
+                        updateSelections(
+                          (prev) => ({
+                            ...prev,
+                            [myPlayerId]: hasAnswered
+                              ? prev[myPlayerId] || true
+                              : mySelection !== null
+                                ? mySelection
+                                : currentSelectionRef.current,
+                          }),
+                          data.currentQuestion?.id ?? null,
+                        );
                       } else if (!isLocked) {
-                        setSelections({});
+                        updateSelections({}, data.currentQuestion?.id ?? null);
                       } else {
                       }
                     } else {
-                      setSelections((prev) => ({
-                        ...prev,
-                        ...normalizedServerData,
-                      }));
+                      updateSelections(
+                        (prev) => ({
+                          ...prev,
+                          ...normalizedServerData,
+                        }),
+                        data.currentQuestion?.id ?? null,
+                      );
                     }
                   }
                 }
@@ -1419,7 +1480,7 @@ export default function App() {
                     data.selections,
                   );
 
-                  setSelections((prev) => {
+                  updateSelections((prev) => {
                     const merged = {
                       ...prev,
                       ...normalizedServerData,
@@ -1430,7 +1491,7 @@ export default function App() {
                     }
 
                     return merged;
-                  });
+                  }, data.currentQuestion?.id ?? null);
                 } else {
                   if (hasLocalSelection && currentUser?.id) {
                     const localSelection =
@@ -1438,19 +1499,25 @@ export default function App() {
                         ? mySelection
                         : currentSelectionRef.current;
                     if (localSelection !== null && localSelection !== undefined) {
-                      setSelections((prev) => ({
-                        ...prev,
-                        [currentUser.id]: localSelection,
-                      }));
+                      updateSelections(
+                        (prev) => ({
+                          ...prev,
+                          [currentUser.id]: localSelection,
+                        }),
+                        data.currentQuestion?.id ?? null,
+                      );
                     } else {
-                      setSelections((prev) => {
-                        if (!prev || !(currentUser.id in prev)) {
-                          return prev || {};
-                        }
-                        const next = { ...prev };
-                        delete next[currentUser.id];
-                        return next;
-                      });
+                      updateSelections(
+                        (prev) => {
+                          if (!prev || !(currentUser.id in prev)) {
+                            return prev || {};
+                          }
+                          const next = { ...prev };
+                          delete next[currentUser.id];
+                          return next;
+                        },
+                        data.currentQuestion?.id ?? null,
+                      );
                     }
                   } else {
                   }
@@ -1472,7 +1539,7 @@ export default function App() {
                     mySelection !== null
                       ? mySelection
                       : currentSelectionRef.current;
-                  setSelections((prev) => {
+                  updateSelections((prev) => {
                     const merged = {
                       ...prev,
                       ...normalizeServerSelections(data.selections),
@@ -1484,7 +1551,7 @@ export default function App() {
                     }
 
                     return merged;
-                  });
+                  }, data.currentQuestion?.id ?? null);
                 } else {
                   const normalizedServerData = normalizeServerSelections(
                     data.selections,
@@ -1512,24 +1579,30 @@ export default function App() {
 
                     if (mySelectionForThisQuestion || hasAnswered) {
                       if (myPlayerId) {
-                        setSelections((prev) => ({
-                          ...prev,
-                          [myPlayerId]: hasAnswered
-                            ? prev[myPlayerId] || true
-                            : mySelection !== null
-                              ? mySelection
-                              : currentSelectionRef.current,
-                        }));
+                        updateSelections(
+                          (prev) => ({
+                            ...prev,
+                            [myPlayerId]: hasAnswered
+                              ? prev[myPlayerId] || true
+                              : mySelection !== null
+                                ? mySelection
+                                : currentSelectionRef.current,
+                          }),
+                          data.currentQuestion?.id ?? null,
+                        );
                       }
                     } else if (!isLocked) {
-                      setSelections({});
+                      updateSelections({}, data.currentQuestion?.id ?? null);
                     } else {
                     }
                   } else {
-                    setSelections((prev) => ({
-                      ...prev,
-                      ...normalizedServerData,
-                    }));
+                    updateSelections(
+                      (prev) => ({
+                        ...prev,
+                        ...normalizedServerData,
+                      }),
+                      data.currentQuestion?.id ?? null,
+                    );
                   }
                 }
               } else {
@@ -1558,24 +1631,30 @@ export default function App() {
 
                   if (mySelectionForThisQuestion || hasAnswered) {
                     if (myPlayerId) {
-                      setSelections((prev) => ({
-                        ...prev,
-                        [myPlayerId]: hasAnswered
-                          ? prev[myPlayerId] || true
-                          : mySelection !== null
-                            ? mySelection
-                            : currentSelectionRef.current,
-                      }));
+                      updateSelections(
+                        (prev) => ({
+                          ...prev,
+                          [myPlayerId]: hasAnswered
+                            ? prev[myPlayerId] || true
+                            : mySelection !== null
+                              ? mySelection
+                              : currentSelectionRef.current,
+                        }),
+                        data.currentQuestion?.id ?? null,
+                      );
                     }
                   } else if (!isLocked) {
-                    setSelections({});
+                    updateSelections({}, data.currentQuestion?.id ?? null);
                   } else {
                   }
                 } else {
-                  setSelections((prev) => ({
-                    ...prev,
-                    ...normalizedServerData,
-                  }));
+                  updateSelections(
+                    (prev) => ({
+                      ...prev,
+                      ...normalizedServerData,
+                    }),
+                    data.currentQuestion?.id ?? null,
+                  );
                 }
               }
             }
@@ -1600,7 +1679,10 @@ export default function App() {
             }));
           }
           if (data.selections) {
-            setSelections(data.selections);
+            updateSelections(
+              normalizeServerSelections(data.selections),
+              currentQuestionIdRef.current ?? null,
+            );
           }
         }
       } catch (error) {}
@@ -1648,7 +1730,17 @@ export default function App() {
                 if (response.ok) {
                   const result = await response.json();
                   if (result && result.data && result.data.selections) {
-                    setSelections(result.data.selections || {});
+                    const resolvedQuestionId =
+                      result.data.questionId ??
+                      currentQuestionIdRef.current ??
+                      currentQuestion?.id ??
+                      null;
+                    updateSelections(
+                      normalizeServerSelections(
+                        result.data.selections || {},
+                      ),
+                      resolvedQuestionId,
+                    );
                     if (result.data.playerNames) {
                       setPlayerNames(result.data.playerNames);
                     } else {
@@ -1668,7 +1760,12 @@ export default function App() {
                       localSelections[currentUser.id] = selectionToUse;
                     } else {
                     }
-                    setSelections(localSelections);
+                    updateSelections(
+                      localSelections,
+                      currentQuestionIdRef.current ??
+                        currentQuestion?.id ??
+                        null,
+                    );
                     beginRevealPhase(currentQuestionIdRef.current);
                   }
                 } else {
@@ -1689,7 +1786,12 @@ export default function App() {
                 if (selectionToUse !== null && currentUser?.id) {
                   localSelections[currentUser.id] = selectionToUse;
                 }
-                setSelections(localSelections);
+                updateSelections(
+                  localSelections,
+                  currentQuestionIdRef.current ??
+                    currentQuestion?.id ??
+                    null,
+                );
                 beginRevealPhase(currentQuestionIdRef.current);
               }
             };
@@ -1738,11 +1840,14 @@ export default function App() {
     setMySelection(optionIndex);
     currentSelectionRef.current = optionIndex;
 
-    setSelections((prev) => {
-      const next = { ...prev };
-      next[playerId] = optionIndex;
-      return next;
-    });
+    updateSelections(
+      (prev) => {
+        const next = { ...prev };
+        next[playerId] = optionIndex;
+        return next;
+      },
+      currentQuestionIdRef.current ?? currentQuestion?.id ?? null,
+    );
 
     window.lastSelectionTime = Date.now();
     window.lastSelectionQuestionId = currentQuestion?.id;
@@ -1792,7 +1897,10 @@ export default function App() {
       } else {
         const pendingQuestionId = currentQuestionIdRef.current;
         setTimeout(() => {
-          setSelections({ [playerId]: optionIndex });
+          updateSelections(
+            { [playerId]: optionIndex },
+            pendingQuestionId ?? null,
+          );
           beginRevealPhase(pendingQuestionId);
         }, 1000);
       }
@@ -1836,9 +1944,10 @@ export default function App() {
         [playerId]: true,
       };
 
-      setSelections((prev) => {
-        return { ...prev, [playerId]: true };
-      });
+      updateSelections(
+        (prev) => ({ ...prev, [playerId]: true }),
+        currentQuestionIdRef.current ?? currentQuestion?.id ?? null,
+      );
       setCardLastWrong(false);
       setIsLocked(true);
 
@@ -1959,7 +2068,7 @@ export default function App() {
         setCurrentQuestion(question);
         setShowResult(false);
         setRevealPhaseQuestionId(null);
-        setSelections({});
+        updateSelections({}, question?.id ?? null);
         setMySelection(null);
         setIsLocked(false);
         hcCardAnswersRef.current = {};
@@ -2275,7 +2384,7 @@ export default function App() {
                   setCurrentQuestion(result.question);
                   setTimeLeft(result.timeLeft || MAX_TIME);
                   setShowResult(false);
-                  setSelections({});
+                  updateSelections({}, result.question?.id ?? null);
                   setMySelection(null);
                   currentSelectionRef.current = null;
 
@@ -2891,7 +3000,7 @@ export default function App() {
                         const question = result.question;
                         setCurrentQuestion(question);
                         setShowResult(false);
-                        setSelections({});
+                        updateSelections({}, question?.id ?? null);
                         setMySelection(null);
                         currentSelectionRef.current = null;
                         setTimeLeft(result.timeLeft || MAX_TIME);
