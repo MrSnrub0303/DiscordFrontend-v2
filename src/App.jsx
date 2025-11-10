@@ -585,7 +585,7 @@ export default function App() {
 
       setCardImageUrl(null);
 
-      safeLog.game(
+      console.log(
         "🎴 HC card answer:",
         (currentQuestion.cardName || "").trim() || "<unknown>"
       );
