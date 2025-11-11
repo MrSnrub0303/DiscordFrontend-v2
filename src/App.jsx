@@ -264,7 +264,12 @@ export default function App() {
   const [mySelection, setMySelectionState] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
 
-  const setMySelection = (value) => {
+  const setMySelection = (value, questionIdOverride) => {
+    const resolvedQuestionId =
+      questionIdOverride ??
+      currentQuestionIdRef.current ??
+      currentQuestion?.id ??
+      null;
     if (value !== null) {
       setIsLocked(true);
     } else {
@@ -281,7 +286,7 @@ export default function App() {
         const nextSelections = { ...prevSelections };
         delete nextSelections[playerId];
         return nextSelections;
-      });
+      }, resolvedQuestionId);
     }
     setMySelectionState(value);
   };
@@ -460,8 +465,9 @@ export default function App() {
       setTimeLeft(MAX_TIME);
       setShowResult(false);
       setCurrentQuestion(null);
-    setSelectionState({ questionId: null, entries: {} });
-      setMySelection(null);
+      setSelectionState({ questionId: null, entries: {} });
+      setMySelection(null, currentQuestionIdRef.current ?? null);
+    currentQuestionIdRef.current = null;
       currentSelectionRef.current = null;
       window.lastSelectionTime = null;
       window.lastSelectionQuestionId = null;
@@ -496,12 +502,13 @@ export default function App() {
       setCurrentQuestion(gameState.currentQuestion);
 
       if (isNewQuestion) {
+        currentQuestionIdRef.current = gameState.currentQuestion?.id ?? null;
         const isInRevealPhase = showResult || gameState.showResult;
 
         if (!isInRevealPhase) {
           setRevealPhaseQuestionId(null);
           updateSelections({}, gameState.currentQuestion?.id ?? null);
-          setMySelection(null);
+          setMySelection(null, gameState.currentQuestion?.id ?? null);
           currentSelectionRef.current = null;
           window.lastSelectionTime = null;
           window.lastSelectionQuestionId = null;
@@ -541,13 +548,14 @@ export default function App() {
         const isNewQuestion =
           !currentQuestion || currentQuestion.id !== data.question.id;
 
+        currentQuestionIdRef.current = data.question.id ?? null;
         setCurrentQuestion(data.question);
         setShowResult(false);
         setRevealPhaseQuestionId(null);
 
         if (isNewQuestion) {
           updateSelections({}, data.question.id ?? null);
-          setMySelection(null);
+          setMySelection(null, data.question.id ?? null);
           currentSelectionRef.current = null;
           window.lastSelectionTime = null;
           window.lastSelectionQuestionId = null;
@@ -656,24 +664,10 @@ export default function App() {
   useEffect(() => {
     if (!currentQuestion?.id) return;
 
-    setIsLocked(false);
-    setMySelectionState(null);
-
-    const myId = currentUser?.id || "player1";
-    updateSelections(
-      (prev) => {
-        if (!prev || prev[myId] === undefined) {
-          return prev || {};
-        }
-
-        const next = { ...prev };
-        delete next[myId];
-        return next;
-      },
-      currentQuestion?.id ?? null,
-    );
-
-    hcCardAnswersRef.current = {};
+    setMySelection(null, currentQuestion?.id ?? null);
+    currentSelectionRef.current = null;
+    window.lastSelectionTime = null;
+    window.lastSelectionQuestionId = null;
     answerTimesRef.current = {};
   }, [currentQuestion?.id, currentUser?.id]);
 
@@ -1121,9 +1115,10 @@ export default function App() {
               setCurrentQuestion(question);
               setTimeLeft(timeLeft);
               setShowResult(showResult);
+              currentQuestionIdRef.current = question?.id ?? null;
 
               if (!isSameQuestion) {
-                setMySelection(null);
+                setMySelection(null, question?.id ?? null);
                 currentSelectionRef.current = null;
                 window.lastSelectionTime = null;
                 window.lastSelectionQuestionId = null;
@@ -1139,7 +1134,8 @@ export default function App() {
             setCurrentQuestion(null);
             setShowResult(false);
             updateSelections({}, null);
-            setMySelection(null);
+            setMySelection(null, currentQuestionIdRef.current ?? null);
+            currentQuestionIdRef.current = null;
             currentSelectionRef.current = null;
             window.lastSelectionTime = null;
             window.lastSelectionQuestionId = null;
@@ -1240,7 +1236,7 @@ export default function App() {
 
             if (isActualQuestionChange) {
               lastClearedQuestionRef.current = serverQuestionId;
-              setMySelection(null);
+              setMySelection(null, serverQuestionId ?? null);
               setIsLocked(false);
               currentSelectionRef.current = null;
               hcCardAnswersRef.current = {};
@@ -1265,6 +1261,7 @@ export default function App() {
               hcCardAnswersRef.current = {};
             }
 
+            currentQuestionIdRef.current = data.currentQuestion?.id ?? null;
             setCurrentQuestion(data.currentQuestion);
             setTimeLeft(data.timeLeft);
 
@@ -1837,7 +1834,9 @@ export default function App() {
 
     playClickSound();
 
-    setMySelection(optionIndex);
+    const activeQuestionId =
+      currentQuestionIdRef.current ?? currentQuestion?.id ?? null;
+    setMySelection(optionIndex, activeQuestionId);
     currentSelectionRef.current = optionIndex;
 
     updateSelections(
@@ -1846,11 +1845,11 @@ export default function App() {
         next[playerId] = optionIndex;
         return next;
       },
-      currentQuestionIdRef.current ?? currentQuestion?.id ?? null,
+      activeQuestionId,
     );
 
     window.lastSelectionTime = Date.now();
-    window.lastSelectionQuestionId = currentQuestion?.id;
+    window.lastSelectionQuestionId = activeQuestionId;
 
     const submitSelection = async () => {
       if (socket && !socket.localMode) {
@@ -2063,19 +2062,25 @@ export default function App() {
 
       const { response, result } = await attemptStartQuestion();
 
-      if (result && result.success && result.question) {
-        const question = result.question;
+      const nextQuestion = result?.question ?? result?.data?.question;
+
+      if (result && result.success && nextQuestion) {
+        const question = nextQuestion;
+        currentQuestionIdRef.current = question?.id ?? null;
         setCurrentQuestion(question);
         setShowResult(false);
         setRevealPhaseQuestionId(null);
-        updateSelections({}, question?.id ?? null);
-        setMySelection(null);
+        const serverSelections = normalizeServerSelections(
+          result?.data?.selections || result?.selections || {},
+        );
+        updateSelections(serverSelections, question?.id ?? null);
+        setMySelection(null, question?.id ?? null);
         setIsLocked(false);
         hcCardAnswersRef.current = {};
         currentSelectionRef.current = null;
         window.lastSelectionTime = null;
         window.lastSelectionQuestionId = null;
-        setTimeLeft(result.timeLeft || MAX_TIME);
+        setTimeLeft(result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME);
         answerTimesRef.current = {};
         awardedDoneRef.current = false;
         setServerScoredThisRound(false);
@@ -2380,12 +2385,20 @@ export default function App() {
 
                 const result = await response.json();
 
-                if (result.success && result.question) {
-                  setCurrentQuestion(result.question);
-                  setTimeLeft(result.timeLeft || MAX_TIME);
+                const restartQuestion = result?.question ?? result?.data?.question;
+
+                if (result.success && restartQuestion) {
+                  currentQuestionIdRef.current = restartQuestion?.id ?? null;
+                  setCurrentQuestion(restartQuestion);
+                  setTimeLeft(
+                    result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME,
+                  );
                   setShowResult(false);
-                  updateSelections({}, result.question?.id ?? null);
-                  setMySelection(null);
+                  const serverSelections = normalizeServerSelections(
+                    result?.data?.selections || result?.selections || {},
+                  );
+                  updateSelections(serverSelections, restartQuestion?.id ?? null);
+                  setMySelection(null, restartQuestion?.id ?? null);
                   currentSelectionRef.current = null;
 
                   setScores({});
@@ -2996,14 +3009,23 @@ export default function App() {
 
                       const result = await response.json();
 
-                      if (result && result.success && result.question) {
-                        const question = result.question;
+                      const startQuestion =
+                        result?.question ?? result?.data?.question;
+
+                      if (result && result.success && startQuestion) {
+                        const question = startQuestion;
+                        currentQuestionIdRef.current = question?.id ?? null;
                         setCurrentQuestion(question);
                         setShowResult(false);
-                        updateSelections({}, question?.id ?? null);
-                        setMySelection(null);
+                        const serverSelections = normalizeServerSelections(
+                          result?.data?.selections || result?.selections || {},
+                        );
+                        updateSelections(serverSelections, question?.id ?? null);
+                        setMySelection(null, question?.id ?? null);
                         currentSelectionRef.current = null;
-                        setTimeLeft(result.timeLeft || MAX_TIME);
+                        setTimeLeft(
+                          result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME,
+                        );
                         answerTimesRef.current = {};
                         awardedDoneRef.current = false;
                       } else {
