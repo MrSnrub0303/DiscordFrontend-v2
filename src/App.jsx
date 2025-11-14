@@ -19,7 +19,7 @@ import btnHover from "./assets/combobox_button_hover.png";
 import btnDisabled from "./assets/combobox_button_disabled.png";
 import btnMainMenuDisabled from "./assets/button_mainmenu_disabled.png";
 import restartButtonBg from "./assets/button.webp";
-import restartScreenBg from "./assets/aoe3-discord-app.png";
+import restartScreenBg from "./assets/background.webp";
 
 import nicknameBg from "./assets/uiskirmishnickname_textentry.png";
 import nicknameBgOver from "./assets/uiskirmishnickname_textentry_over.png";
