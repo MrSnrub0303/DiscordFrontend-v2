@@ -18,6 +18,8 @@ import btnNormal from "./assets/combobox_button_normal.png";
 import btnHover from "./assets/combobox_button_hover.png";
 import btnDisabled from "./assets/combobox_button_disabled.png";
 import btnMainMenuDisabled from "./assets/button_mainmenu_disabled.png";
+import restartButtonBg from "./assets/button.webp";
+import restartScreenBg from "./assets/aoe3-discord-app.png";
 
 import nicknameBg from "./assets/uiskirmishnickname_textentry.png";
 import nicknameBgOver from "./assets/uiskirmishnickname_textentry_over.png";
@@ -2322,44 +2324,47 @@ export default function App() {
       <div
         className="app-container"
         style={{
-          backgroundImage: `url(${marbleBg})`,
+          backgroundImage: `url(${restartScreenBg})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           height: "100vh",
           width: "100vw",
           display: "flex",
-          justifyContent: "center",
+          flexDirection: "column",
+          justifyContent: "flex-end",
           alignItems: "center",
-          padding: 20,
+          padding: "0 32px 96px",
           boxSizing: "border-box",
         }}
       >
-        <div
-          className="wood-panel"
+        <button
+          className="restart-button"
+          aria-label="Restart quiz"
           style={{
-            backgroundImage: `url(${woodPanelBg})`,
+            width: 360,
+            height: 65,
+            backgroundImage: `url(${restartButtonBg})`,
             backgroundSize: "contain",
             backgroundRepeat: "no-repeat",
             backgroundPosition: "center",
-            padding: 60,
-            boxSizing: "border-box",
-            width: 850,
-            maxWidth: "95vw",
-            minHeight: 600,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            overflow: "hidden",
+            backgroundColor: "transparent",
+            border: "none",
+            borderRadius: 12,
             color: "white",
-            textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+            fontFamily: '"Trajan Pro Bold", serif',
+            fontWeight: 600,
+            fontSize: "1.7rem",
+            cursor: "pointer",
+            outline: "none",
+            filter: "drop-shadow(0 0 8px gold)",
+            userSelect: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
-        >
-          <h1 className="title">Quiz Completed!</h1>
-          <button
-            className="restart-button"
-            onMouseEnter={playHoverSound}
-            onClick={async () => {
+          onMouseEnter={playHoverSound}
+          onClick={async () => {
               playClickSound();
 
               setScores(
@@ -2409,10 +2414,7 @@ export default function App() {
                 setIsLoading(false);
               }
             }}
-          >
-            Restart Quiz
-          </button>
-        </div>
+          ></button>
       </div>
     );
   }
