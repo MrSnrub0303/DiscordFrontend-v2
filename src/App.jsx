@@ -2207,12 +2207,13 @@ export default function App() {
   }, [scores]);
 
   if (isLoading || isTransitioning) {
+    const isInGameLoading = questionFetchInProgressRef.current || !!currentQuestion;
     return (
       <div
         className="app-container"
         style={{
           backgroundImage: `url(${restartScreenBg})`,
-          backgroundSize: "cover",
+          backgroundSize: isInGameLoading ? "cover" : "contain",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           height: "100vh",
