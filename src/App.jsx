@@ -12,7 +12,6 @@ import { useDiscordActivity } from "./discord/useDiscordActivity";
 import { DiscordProxySocket } from "./socket";
 import { safeLog } from "./utils/logger";
 
-import marbleBg from "./assets/marblebg2.png";
 import woodPanelBg from "./assets/sendresource_bg.png";
 import btnNormal from "./assets/combobox_button_normal.png";
 import btnHover from "./assets/combobox_button_hover.png";
@@ -20,6 +19,7 @@ import btnDisabled from "./assets/combobox_button_disabled.png";
 import btnMainMenuDisabled from "./assets/button_mainmenu_disabled.png";
 import restartButtonBg from "./assets/button.webp";
 import restartScreenBg from "./assets/background.webp";
+import quizScreenBg from "./assets/background_two.webp";
 
 import nicknameBg from "./assets/uiskirmishnickname_textentry.png";
 import nicknameBgOver from "./assets/uiskirmishnickname_textentry_over.png";
@@ -2405,7 +2405,7 @@ export default function App() {
     <div
       className="app-container"
       style={{
-        backgroundImage: `url(${marbleBg})`,
+        backgroundImage: `url(${quizScreenBg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
