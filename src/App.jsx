@@ -2212,7 +2212,7 @@ export default function App() {
         className="app-container"
         style={{
           backgroundImage: `url(${restartScreenBg})`,
-          backgroundSize: "contain",
+          backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           height: "100vh",
