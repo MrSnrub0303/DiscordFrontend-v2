@@ -2211,110 +2211,37 @@ export default function App() {
       <div
         className="app-container"
         style={{
-          backgroundImage: `url(${marbleBg})`,
-          backgroundSize: "cover",
+          backgroundImage: `url(${restartScreenBg})`,
+          backgroundSize: "contain",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           height: "100vh",
           width: "100vw",
           display: "flex",
-          justifyContent: "center",
+          flexDirection: "column",
+          justifyContent: "flex-end",
           alignItems: "center",
-          padding: 20,
+          padding: "0 32px 96px",
           boxSizing: "border-box",
         }}
       >
-        <div
-          className="wood-panel"
+        <p
           style={{
-            backgroundImage: `url(${woodPanelBg})`,
-            backgroundSize: "contain",
-            backgroundRepeat: "no-repeat",
-            backgroundPosition: "center",
-            padding: 60,
-            boxSizing: "border-box",
-            width: 600,
-            maxWidth: "95vw",
-            minHeight: 400,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-            color: "white",
-            textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+            fontSize: 16,
+            textAlign: "center",
+            color: "rgba(255, 228, 181, 0.85)",
+            margin: 0,
+            padding: "12px 24px",
+            backgroundColor: "rgba(0, 0, 0, 0.45)",
+            borderRadius: 12,
+            fontFamily: '"Trajan Pro Bold", serif',
+            letterSpacing: 1,
           }}
         >
-          <h1
-            style={{
-              fontSize: 48,
-              fontWeight: "bold",
-              marginBottom: 30,
-              textAlign: "center",
-              color: "#FFE4B5",
-            }}
-          >
-            Age of Empires III Quiz
-          </h1>
-
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 20,
-            }}
-          >
-            {}
-            <div
-              style={{
-                width: 60,
-                height: 60,
-                border: "4px solid rgba(255, 228, 181, 0.3)",
-                borderTop: "4px solid #FFE4B5",
-                borderRadius: "50%",
-                animation: "spin 1s linear infinite",
-              }}
-            ></div>
-
-            <p
-              style={{
-                fontSize: 20,
-                textAlign: "center",
-                color: "#FFE4B5",
-                margin: 0,
-              }}
-            >
-              {}
-            </p>
-
-            <p
-              style={{
-                fontSize: 14,
-                textAlign: "center",
-                color: "rgba(255, 228, 181, 0.7)",
-                margin: 0,
-                fontStyle: "italic",
-              }}
-            >
-              {isTransitioning
-                ? "Preparing your next challenge"
-                : "Preparing your Age of Empires III challenge"}
-            </p>
-          </div>
-        </div>
-
-        {}
-        <style jsx>{`
-          @keyframes spin {
-            0% {
-              transform: rotate(0deg);
-            }
-            100% {
-              transform: rotate(360deg);
-            }
-          }
-        `}</style>
+          {isTransitioning
+            ? "Preparing your next challenge"
+            : "Preparing your Age of Empires III challenge"}
+        </p>
       </div>
     );
   }
@@ -2325,7 +2252,7 @@ export default function App() {
         className="app-container"
         style={{
           backgroundImage: `url(${restartScreenBg})`,
-          backgroundSize: "cover",
+          backgroundSize: "contain",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           height: "100vh",
