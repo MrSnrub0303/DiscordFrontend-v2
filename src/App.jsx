@@ -2212,7 +2212,7 @@ export default function App() {
       <div
         className="app-container"
         style={{
-          backgroundImage: `url(${restartScreenBg})`,
+          backgroundImage: `url(${isInGameLoading ? quizScreenBg : restartScreenBg})`,
           backgroundSize: isInGameLoading ? "cover" : "contain",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
