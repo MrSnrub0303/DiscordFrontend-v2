@@ -47,8 +47,8 @@ const API_BASE_URL = "/api";
 
 const MAX_TIME = 20;
 
-const NORMAL_VOLUME = 0.6;
-const FADED_VOLUME = 0.08;
+const NORMAL_VOLUME = 0.3;
+const FADED_VOLUME = 0.04;
 const FADE_DURATION = 800;
 
 const MAX_POINTS = 150;
