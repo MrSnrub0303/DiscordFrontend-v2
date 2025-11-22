@@ -381,27 +381,7 @@ export default function App() {
           Boolean(activeQuestion) && !isInRevealPhase && canControlQuestions;
 
         if (shouldSyncQuestionToServer) {
-          try {
-            await fetch(`${API_BASE_URL}/sync_local_question`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                roomId: channelId,
-                question: activeQuestion,
-                timeLeft: remainingSeconds,
-                playerId: currentPlayerId,
-              }),
-            });
-            console.log(
-              "Synced active question into promoted room",
-              channelId,
-            );
-          } catch (error) {
-            console.log(
-              "Failed to sync question before promoting room",
-              channelId,
-            );
-          }
+          await syncLocalQuestionToServer(channelId);
         } else if (activeQuestion && !canControlQuestions) {
           console.log(
             "Skipped syncing local question because user is not host",
@@ -438,7 +418,14 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [channelId, instanceId, currentUser?.id, roomId, canControlQuestions]);
+  }, [
+    channelId,
+    instanceId,
+    currentUser?.id,
+    roomId,
+    canControlQuestions,
+    syncLocalQuestionToServer,
+  ]);
 
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
@@ -533,7 +520,70 @@ export default function App() {
         };
       });
     },
-    [currentQuestion]
+    [currentQuestion],
+  );
+
+  const syncLocalQuestionToServer = useCallback(
+    async (targetRoomIdOverride) => {
+      const targetRoomId = targetRoomIdOverride || channelId || roomId;
+      const activeQuestion = currentQuestionDataRef.current;
+      if (
+        !targetRoomId ||
+        !activeQuestion ||
+        showResultRef.current ||
+        !canControlQuestions ||
+        !currentPlayerId
+      ) {
+        return false;
+      }
+
+      const remainingSeconds = Math.max(
+        0,
+        Math.round(timeLeftRef.current ?? MAX_TIME),
+      );
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/sync_local_question`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomId: targetRoomId,
+            question: activeQuestion,
+            timeLeft: remainingSeconds,
+            playerId: currentPlayerId,
+          }),
+        });
+
+        let data = null;
+        try {
+          data = await response.json();
+        } catch (jsonError) {}
+
+        if (data?.hostPlayerId !== undefined) {
+          setHostPlayerId(data.hostPlayerId || null);
+        }
+
+        if (!response.ok || !data?.success) {
+          console.log(
+            "Failed to sync question to server",
+            targetRoomId,
+            data?.error || response.statusText,
+          );
+          return false;
+        }
+
+        console.log("Synced active question into promoted room", targetRoomId);
+        return true;
+      } catch (error) {
+        console.log(
+          "Failed to sync question before promoting room",
+          targetRoomId,
+          error,
+        );
+        return false;
+      }
+    },
+    [channelId, roomId, currentPlayerId, canControlQuestions],
   );
 
   const beginRevealPhase = (explicitQuestionId) => {
@@ -1308,7 +1358,7 @@ export default function App() {
     const initializeQuestion = async () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      const getQuestionFromServer = async () => {
+      const getQuestionFromServer = async (allowSyncAttempt = true) => {
         if (questionFetchInProgressRef.current) {
           return;
         }
@@ -1331,7 +1381,9 @@ export default function App() {
             );
             const gameStateData = await gameStateResponse.json();
 
-            setHostPlayerId(gameStateData.hostPlayerId || null);
+            if (gameStateData.hostPlayerId !== undefined) {
+              setHostPlayerId(gameStateData.hostPlayerId || null);
+            }
 
             if (gameStateData.success && gameStateData.currentQuestion) {
               const question = gameStateData.currentQuestion;
@@ -1360,6 +1412,22 @@ export default function App() {
               return;
             }
 
+            const shouldSyncLocalQuestion =
+              allowSyncAttempt &&
+              canControlQuestions &&
+              currentQuestionDataRef.current &&
+              !showResultRef.current;
+
+            if (shouldSyncLocalQuestion) {
+              const synced = await syncLocalQuestionToServer(roomId);
+              if (synced) {
+                questionFetchInProgressRef.current = false;
+                setIsLoading(false);
+                await getQuestionFromServer(false);
+                return;
+              }
+            }
+
             setCurrentQuestion(null);
             setShowResult(false);
             updateSelections({}, null);
@@ -1370,7 +1438,6 @@ export default function App() {
             window.lastSelectionQuestionId = null;
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
-            setHostPlayerId(gameStateData.hostPlayerId || null);
           } catch (error) {}
         } finally {
           setTimeout(() => {
@@ -1386,7 +1453,7 @@ export default function App() {
     };
 
     initializeQuestion();
-  }, [roomId]);
+  }, [roomId, canControlQuestions, syncLocalQuestionToServer]);
 
   const normalizeServerSelections = (serverSelections) => {
     if (!serverSelections || typeof serverSelections !== "object") return {};
@@ -1427,6 +1494,18 @@ export default function App() {
         const data = await response.json();
 
         setHostPlayerId(data.hostPlayerId || null);
+
+        if (
+          (!data.currentQuestion || !data.currentQuestion.id) &&
+          canControlQuestions &&
+          currentQuestionDataRef.current &&
+          !showResultRef.current
+        ) {
+          const synced = await syncLocalQuestionToServer(roomId);
+          if (synced) {
+            return;
+          }
+        }
 
         if (data.success && data.currentQuestion) {
           const currentQuestionId = currentQuestion?.id;
@@ -1946,6 +2025,8 @@ export default function App() {
     roomId,
     startJoinCountdown,
     clearJoinCountdown,
+    canControlQuestions,
+    syncLocalQuestionToServer,
   ]);
 
   useEffect(() => {
