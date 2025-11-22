@@ -365,6 +365,69 @@ export default function App() {
     timeLeftRef.current = timeLeft;
   }, [timeLeft]);
 
+  const syncLocalQuestionToServer = useCallback(
+    async (targetRoomIdOverride) => {
+      const targetRoomId = targetRoomIdOverride || channelId || roomId;
+      const activeQuestion = currentQuestionDataRef.current;
+      if (
+        !targetRoomId ||
+        !activeQuestion ||
+        showResultRef.current ||
+        !canControlQuestions ||
+        !currentPlayerId
+      ) {
+        return false;
+      }
+
+      const remainingSeconds = Math.max(
+        0,
+        Math.round(timeLeftRef.current ?? MAX_TIME),
+      );
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/sync_local_question`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomId: targetRoomId,
+            question: activeQuestion,
+            timeLeft: remainingSeconds,
+            playerId: currentPlayerId,
+          }),
+        });
+
+        let data = null;
+        try {
+          data = await response.json();
+        } catch (jsonError) {}
+
+        if (data?.hostPlayerId !== undefined) {
+          setHostPlayerId(data.hostPlayerId || null);
+        }
+
+        if (!response.ok || !data?.success) {
+          console.log(
+            "Failed to sync question to server",
+            targetRoomId,
+            data?.error || response.statusText,
+          );
+          return false;
+        }
+
+        console.log("Synced active question into promoted room", targetRoomId);
+        return true;
+      } catch (error) {
+        console.log(
+          "Failed to sync question before promoting room",
+          targetRoomId,
+          error,
+        );
+        return false;
+      }
+    },
+    [channelId, roomId, currentPlayerId, canControlQuestions],
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -521,69 +584,6 @@ export default function App() {
       });
     },
     [currentQuestion],
-  );
-
-  const syncLocalQuestionToServer = useCallback(
-    async (targetRoomIdOverride) => {
-      const targetRoomId = targetRoomIdOverride || channelId || roomId;
-      const activeQuestion = currentQuestionDataRef.current;
-      if (
-        !targetRoomId ||
-        !activeQuestion ||
-        showResultRef.current ||
-        !canControlQuestions ||
-        !currentPlayerId
-      ) {
-        return false;
-      }
-
-      const remainingSeconds = Math.max(
-        0,
-        Math.round(timeLeftRef.current ?? MAX_TIME),
-      );
-
-      try {
-        const response = await fetch(`${API_BASE_URL}/sync_local_question`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            roomId: targetRoomId,
-            question: activeQuestion,
-            timeLeft: remainingSeconds,
-            playerId: currentPlayerId,
-          }),
-        });
-
-        let data = null;
-        try {
-          data = await response.json();
-        } catch (jsonError) {}
-
-        if (data?.hostPlayerId !== undefined) {
-          setHostPlayerId(data.hostPlayerId || null);
-        }
-
-        if (!response.ok || !data?.success) {
-          console.log(
-            "Failed to sync question to server",
-            targetRoomId,
-            data?.error || response.statusText,
-          );
-          return false;
-        }
-
-        console.log("Synced active question into promoted room", targetRoomId);
-        return true;
-      } catch (error) {
-        console.log(
-          "Failed to sync question before promoting room",
-          targetRoomId,
-          error,
-        );
-        return false;
-      }
-    },
-    [channelId, roomId, currentPlayerId, canControlQuestions],
   );
 
   const beginRevealPhase = (explicitQuestionId) => {
