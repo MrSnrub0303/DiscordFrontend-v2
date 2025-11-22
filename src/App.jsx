@@ -56,6 +56,35 @@ const MAX_POINTS = 150;
 
 const SCORING_EXPONENT = 2;
 
+const SOLO_ROOM_KEY_PREFIX = "aoe3-quiz-solo-room";
+
+const ensureSoloRoomId = (userId) => {
+  if (typeof window === "undefined") {
+    return `solo-${userId || "guest"}`;
+  }
+
+  const storageKey = userId
+    ? `${SOLO_ROOM_KEY_PREFIX}:${userId}`
+    : SOLO_ROOM_KEY_PREFIX;
+
+  try {
+    const existing = window.localStorage.getItem(storageKey);
+    if (existing) {
+      return existing;
+    }
+
+    const randomPart =
+      window.crypto?.randomUUID?.() ??
+      Math.random().toString(36).slice(2, 10);
+    const generated = `solo-${userId || "guest"}-${randomPart}`;
+    window.localStorage.setItem(storageKey, generated);
+    return generated;
+  } catch (error) {
+    const fallbackRandom = Math.random().toString(36).slice(2, 10);
+    return `solo-${userId || "guest"}-${fallbackRandom}`;
+  }
+};
+
 const formatNumber = (n) => {
   if (n === null || n === undefined) return "0";
   const num = Number(n);
@@ -243,20 +272,15 @@ export default function App() {
     ready,
   } = useDiscordActivity();
 
-  let roomId = channelId;
-
-  if (!roomId && instanceId) {
-    const instanceParts = instanceId.split("-");
-    if (instanceParts.length >= 4) {
-      roomId = instanceParts[instanceParts.length - 1];
-    } else {
-      roomId = instanceId;
+  const roomId = useMemo(() => {
+    if (channelId) {
+      return channelId;
     }
-  }
-
-  if (!roomId) {
-    roomId = "fallback-quiz-room";
-  }
+    if (instanceId) {
+      return instanceId;
+    }
+    return ensureSoloRoomId(currentUser?.id ?? null);
+  }, [channelId, instanceId, currentUser?.id]);
 
   safeLog.room("🏠 Using room ID:", roomId);
 
