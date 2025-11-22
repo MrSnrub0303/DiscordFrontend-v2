@@ -761,7 +761,7 @@ export default function App() {
   useEffect(() => {
     if (!socket || !currentUser) return;
 
-    socket.on("gameState", (gameState) => {
+    const handleGameState = (gameState) => {
       const isNewQuestion =
         currentQuestion?.id !== gameState.currentQuestion?.id;
 
@@ -810,9 +810,21 @@ export default function App() {
       setShowResult(gameState.showResult);
       setTimeLeft(gameState.timeLeft);
       setScores(gameState.scores);
+    };
+
+    socket.on("gameState", handleGameState);
+    socket.on("game_state", handleGameState);
+
+    socket.on("you_joined", (data) => {
+      if (data?.hostPlayerId !== undefined) {
+        setHostPlayerId(data.hostPlayerId || null);
+      }
     });
 
     socket.on("question_started", (data) => {
+      if (data?.hostPlayerId !== undefined) {
+        setHostPlayerId(data.hostPlayerId || null);
+      }
       if (data.question) {
         const isNewQuestion =
           !currentQuestion || currentQuestion.id !== data.question.id;
@@ -868,6 +880,9 @@ export default function App() {
     });
 
     socket.on("room_state", (data) => {
+      if (data?.hostPlayerId !== undefined) {
+        setHostPlayerId(data.hostPlayerId || null);
+      }
       if (data.scores) {
         setScores(data.scores);
         setDisplayScores(data.scores);
