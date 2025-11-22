@@ -90,30 +90,4 @@ export const logger = {
 };
 
 
-export const safeLog = {
-  user: (message, userId) => {
-    if (isProd && !isDebug) {
-      logger.log(message, 'user_***');
-    } else {
-      logger.log(message, userId);
-    }
-  },
-  
-  room: (message, roomId) => {
-    if (isProd && !isDebug) {
-      logger.log(message, 'room_***');
-    } else {
-      logger.log(message, roomId);
-    }
-  },
-  
-  event: (event, data = {}) => {
-    if (isProd && !isDebug) {
-      logger.log(`🎮 ${event}`, '[data_redacted]');
-    } else {
-      logger.log(`🎮 ${event}`, data);
-    }
-  }
-};
-
 export default logger;

@@ -10,7 +10,6 @@ import "./App.css";
 import questions from "./questions.json";
 import { useDiscordActivity } from "./discord/useDiscordActivity";
 import { DiscordProxySocket } from "./socket";
-import { safeLog } from "./utils/logger";
 
 import woodPanelBg from "./assets/sendresource_bg.png";
 import btnNormal from "./assets/combobox_button_normal.png";
@@ -303,7 +302,7 @@ export default function App() {
 
 
   useEffect(() => {
-    safeLog.room("🏠 Using room ID:", roomId);
+    console.log("🏠 Using room ID:", roomId);
   }, [roomId]);
 
   const [availableQuestions, setAvailableQuestions] = useState([...questions]);
@@ -393,18 +392,18 @@ export default function App() {
                 playerId: currentPlayerId,
               }),
             });
-            safeLog.room(
+            console.log(
               "Synced active question into promoted room",
               channelId,
             );
           } catch (error) {
-            safeLog.room(
+            console.log(
               "Failed to sync question before promoting room",
               channelId,
             );
           }
         } else if (activeQuestion && !canControlQuestions) {
-          safeLog.room(
+          console.log(
             "Skipped syncing local question because user is not host",
             channelId,
           );
@@ -2300,7 +2299,7 @@ export default function App() {
 
   const onNextQuestion = async () => {
     if (!canControlQuestions) {
-      safeLog.room("Ignoring next-question trigger because user is not host");
+      console.log("Ignoring next-question trigger because user is not host");
       return;
     }
 
@@ -2578,7 +2577,7 @@ export default function App() {
           onMouseEnter={playHoverSound}
           onClick={async () => {
             if (!canControlQuestions) {
-              safeLog.room("Non-host attempted to restart quiz; ignoring");
+              console.log("Non-host attempted to restart quiz; ignoring");
               return;
             }
 
@@ -3252,7 +3251,7 @@ export default function App() {
                   onMouseEnter={() => playHoverSound()}
                   onClick={async () => {
                     if (!canControlQuestions) {
-                      safeLog.room(
+                      console.log(
                         "Ignored start request from non-host participant",
                       );
                       return;
