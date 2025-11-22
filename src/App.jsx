@@ -299,21 +299,6 @@ export default function App() {
 
   const [roomId, setRoomId] = useState(initialRoomId);
 
-  useEffect(() => {
-    if (channelId && roomId !== channelId) {
-      setRoomId(channelId);
-      return;
-    }
-
-    if (!roomId) {
-      const derivedInstanceId = deriveInstanceRoomId(instanceId);
-      if (derivedInstanceId) {
-        setRoomId(derivedInstanceId);
-        return;
-      }
-      setRoomId(ensureSoloRoomId(currentUser?.id ?? null));
-    }
-  }, [channelId, instanceId, currentUser?.id, roomId]);
 
   useEffect(() => {
     safeLog.room("🏠 Using room ID:", roomId);
@@ -360,6 +345,88 @@ export default function App() {
   };
   const [timeLeft, setTimeLeft] = useState(MAX_TIME);
   const [showResult, setShowResult] = useState(false);
+
+  const currentQuestionDataRef = useRef(null);
+  useEffect(() => {
+    currentQuestionDataRef.current = currentQuestion;
+  }, [currentQuestion]);
+
+  const showResultRef = useRef(showResult);
+  useEffect(() => {
+    showResultRef.current = showResult;
+  }, [showResult]);
+
+  const timeLeftRef = useRef(MAX_TIME);
+  useEffect(() => {
+    timeLeftRef.current = timeLeft;
+  }, [timeLeft]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const promoteToChannelIfNeeded = async () => {
+      if (channelId && roomId !== channelId) {
+        const activeQuestion = currentQuestionDataRef.current;
+        const isInRevealPhase = showResultRef.current;
+        const remainingSeconds = Math.max(
+          0,
+          Math.round(timeLeftRef.current ?? MAX_TIME),
+        );
+
+        if (activeQuestion && !isInRevealPhase) {
+          try {
+            await fetch(`${API_BASE_URL}/sync_local_question`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                roomId: channelId,
+                question: activeQuestion,
+                timeLeft: remainingSeconds,
+              }),
+            });
+            safeLog.room(
+              "Synced active question into promoted room",
+              channelId,
+            );
+          } catch (error) {
+            safeLog.room(
+              "Failed to sync question before promoting room",
+              channelId,
+            );
+          }
+        }
+
+        if (!cancelled) {
+          setRoomId(channelId);
+        }
+
+        return true;
+      }
+
+      return false;
+    };
+
+    promoteToChannelIfNeeded().then((promoted) => {
+      if (cancelled || promoted) {
+        return;
+      }
+
+      if (!roomId) {
+        const derivedInstanceId = deriveInstanceRoomId(instanceId);
+        if (derivedInstanceId) {
+          setRoomId(derivedInstanceId);
+          return;
+        }
+
+        setRoomId(ensureSoloRoomId(currentUser?.id ?? null));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [channelId, instanceId, currentUser?.id, roomId]);
+
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
   const [playerNames, setPlayerNames] = useState({});
