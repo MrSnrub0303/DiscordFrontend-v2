@@ -286,20 +286,38 @@ export default function App() {
     ready,
   } = useDiscordActivity();
 
-  const roomId = useMemo(() => {
+  const initialRoomId = useMemo(() => {
     if (channelId) {
       return channelId;
     }
-
     const derivedInstanceId = deriveInstanceRoomId(instanceId);
     if (derivedInstanceId) {
       return derivedInstanceId;
     }
-
     return ensureSoloRoomId(currentUser?.id ?? null);
   }, [channelId, instanceId, currentUser?.id]);
 
-  safeLog.room("🏠 Using room ID:", roomId);
+  const [roomId, setRoomId] = useState(initialRoomId);
+
+  useEffect(() => {
+    if (channelId && roomId !== channelId) {
+      setRoomId(channelId);
+      return;
+    }
+
+    if (!roomId) {
+      const derivedInstanceId = deriveInstanceRoomId(instanceId);
+      if (derivedInstanceId) {
+        setRoomId(derivedInstanceId);
+        return;
+      }
+      setRoomId(ensureSoloRoomId(currentUser?.id ?? null));
+    }
+  }, [channelId, instanceId, currentUser?.id, roomId]);
+
+  useEffect(() => {
+    safeLog.room("🏠 Using room ID:", roomId);
+  }, [roomId]);
 
   const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
