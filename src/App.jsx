@@ -373,7 +373,10 @@ export default function App() {
           Math.round(timeLeftRef.current ?? MAX_TIME),
         );
 
-        if (activeQuestion && !isInRevealPhase) {
+        const shouldSyncQuestionToServer =
+          Boolean(activeQuestion) && !isInRevealPhase && isHost;
+
+        if (shouldSyncQuestionToServer) {
           try {
             await fetch(`${API_BASE_URL}/sync_local_question`, {
               method: "POST",
@@ -394,6 +397,11 @@ export default function App() {
               channelId,
             );
           }
+        } else if (activeQuestion && !isHost) {
+          safeLog.room(
+            "Skipped syncing local question because user is not host",
+            channelId,
+          );
         }
 
         if (!cancelled) {
@@ -425,7 +433,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [channelId, instanceId, currentUser?.id, roomId]);
+  }, [channelId, instanceId, currentUser?.id, roomId, isHost]);
 
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
