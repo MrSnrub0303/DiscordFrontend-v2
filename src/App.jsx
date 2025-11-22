@@ -46,6 +46,7 @@ import { getCardImageUrl } from "./utils/cardImages";
 const API_BASE_URL = "/api";
 
 const MAX_TIME = 20;
+const JOIN_COUNTDOWN_SECONDS = 3;
 
 const NORMAL_VOLUME = 0.3;
 const FADED_VOLUME = 0.04;
@@ -220,6 +221,12 @@ const getCardImagePath = (cardName) => {
   return new URL(`./assets/cards/${fileName}.png`, import.meta.url).href;
 };
 
+const createJoinCountdownState = () => ({
+  active: false,
+  remaining: JOIN_COUNTDOWN_SECONDS,
+  questionId: null,
+});
+
 export default function App() {
   const [players, setPlayers] = useState([]);
 
@@ -335,6 +342,10 @@ export default function App() {
   }, [displayScores]);
 
   const [musicEnabled, setMusicEnabled] = useState(true);
+  const [joinCountdown, setJoinCountdown] = useState(createJoinCountdownState);
+  const joinCountdownTimerRef = useRef(null);
+  const autoEndGuardRef = useRef(true);
+  const locallyStartedQuestionIdRef = useRef(null);
 
   const [socketStateVersion, setSocketStateVersion] = useState(0);
 
@@ -396,7 +407,71 @@ export default function App() {
 
     setRevealPhaseQuestionId(resolvedQuestionId ?? null);
     setShowResult(true);
+    autoEndGuardRef.current = true;
   };
+
+  const clearJoinCountdown = useCallback(() => {
+    if (joinCountdownTimerRef.current) {
+      clearInterval(joinCountdownTimerRef.current);
+      joinCountdownTimerRef.current = null;
+    }
+    setJoinCountdown(createJoinCountdownState());
+    autoEndGuardRef.current = true;
+  }, []);
+
+  const startJoinCountdown = useCallback(
+    (questionId) => {
+      if (!questionId) return;
+
+      if (joinCountdownTimerRef.current) {
+        clearInterval(joinCountdownTimerRef.current);
+        joinCountdownTimerRef.current = null;
+      }
+
+      setJoinCountdown({
+        active: true,
+        remaining: JOIN_COUNTDOWN_SECONDS,
+        questionId,
+      });
+      autoEndGuardRef.current = false;
+      setIsTimerRunning(false);
+
+      joinCountdownTimerRef.current = setInterval(() => {
+        setJoinCountdown((prev) => {
+          if (!prev.active || prev.questionId !== questionId) {
+            return prev;
+          }
+
+          if (prev.remaining <= 1) {
+            if (joinCountdownTimerRef.current) {
+              clearInterval(joinCountdownTimerRef.current);
+              joinCountdownTimerRef.current = null;
+            }
+            autoEndGuardRef.current = true;
+            return createJoinCountdownState();
+          }
+
+          return {
+            ...prev,
+            remaining: prev.remaining - 1,
+          };
+        });
+      }, 1000);
+    },
+    [setIsTimerRunning],
+  );
+
+  useEffect(() => {
+    if (showResult || !currentQuestion) {
+      clearJoinCountdown();
+    }
+  }, [showResult, currentQuestion, clearJoinCountdown]);
+
+  useEffect(() => {
+    if (!currentQuestion) {
+      locallyStartedQuestionIdRef.current = null;
+    }
+  }, [currentQuestion]);
 
   const answerTimesRef = useRef({});
 
@@ -551,9 +626,12 @@ export default function App() {
           !currentQuestion || currentQuestion.id !== data.question.id;
 
         currentQuestionIdRef.current = data.question.id ?? null;
+        locallyStartedQuestionIdRef.current = data.question.id ?? null;
         setCurrentQuestion(data.question);
         setShowResult(false);
         setRevealPhaseQuestionId(null);
+        clearJoinCountdown();
+        autoEndGuardRef.current = true;
 
         if (isNewQuestion) {
           updateSelections({}, data.question.id ?? null);
@@ -818,6 +896,11 @@ export default function App() {
 
       if (transitionDebounceRef.current) {
         clearTimeout(transitionDebounceRef.current);
+      }
+
+      if (joinCountdownTimerRef.current) {
+        clearInterval(joinCountdownTimerRef.current);
+        joinCountdownTimerRef.current = null;
       }
     };
   }, []);
@@ -1269,6 +1352,16 @@ export default function App() {
 
             setShowResult(data.showResult);
 
+            if (questionChangedThisSync && serverQuestionId) {
+              if (locallyStartedQuestionIdRef.current === serverQuestionId) {
+                clearJoinCountdown();
+              } else {
+                startJoinCountdown(serverQuestionId);
+              }
+            } else if (data.showResult) {
+              clearJoinCountdown();
+            }
+
             if (questionChangedThisSync) {
               const normalizedServerData = normalizeServerSelections(
                 data.selections || {},
@@ -1698,11 +1791,20 @@ export default function App() {
 
       window.syncGameStateFunc = null;
     };
-  }, [socket, socket?.connected, socket?.localMode, currentUser, roomId]);
+  }, [
+    socket,
+    socket?.connected,
+    socket?.localMode,
+    currentUser,
+    roomId,
+    startJoinCountdown,
+    clearJoinCountdown,
+  ]);
 
   useEffect(() => {
     if (!currentQuestion) return;
     if (showResult) return;
+    if (joinCountdown.active) return;
 
     setServerScoredThisRound(false);
     clearInterval(timerRef.current);
@@ -1711,6 +1813,10 @@ export default function App() {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current);
+
+          if (!autoEndGuardRef.current) {
+            return 0;
+          }
 
           if (socket && !socket.localMode) {
             const endRoundRequest = async () => {
@@ -1807,7 +1913,7 @@ export default function App() {
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [currentQuestion?.id, showResult, socket, roomId]);
+  }, [currentQuestion?.id, showResult, joinCountdown.active, socket, roomId]);
 
   const myPlayerId = currentUser?.id || "player1";
 
@@ -2069,9 +2175,12 @@ export default function App() {
       if (result && result.success && nextQuestion) {
         const question = nextQuestion;
         currentQuestionIdRef.current = question?.id ?? null;
+        locallyStartedQuestionIdRef.current = question?.id ?? null;
         setCurrentQuestion(question);
         setShowResult(false);
         setRevealPhaseQuestionId(null);
+        clearJoinCountdown();
+        autoEndGuardRef.current = true;
         const serverSelections = normalizeServerSelections(
           result?.data?.selections || result?.selections || {},
         );
@@ -2322,11 +2431,14 @@ export default function App() {
 
                 if (result.success && restartQuestion) {
                   currentQuestionIdRef.current = restartQuestion?.id ?? null;
+                  locallyStartedQuestionIdRef.current = restartQuestion?.id ?? null;
                   setCurrentQuestion(restartQuestion);
                   setTimeLeft(
                     result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME,
                   );
                   setShowResult(false);
+                  clearJoinCountdown();
+                  autoEndGuardRef.current = true;
                   const serverSelections = normalizeServerSelections(
                     result?.data?.selections || result?.selections || {},
                   );
@@ -2420,6 +2532,30 @@ export default function App() {
         boxSizing: "border-box",
       }}
     >
+      {joinCountdown.active && (
+        <div
+          className="join-countdown-overlay"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.55)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1200,
+            color: "#fff4d6",
+            textShadow: "0 2px 6px rgba(0, 0, 0, 0.6)",
+            pointerEvents: "none",
+            fontFamily: '"Trajan Pro Bold", serif',
+          }}
+        >
+          <p style={{ fontSize: 22, marginBottom: 4 }}>Joining mid-round</p>
+          <p style={{ fontSize: 42, margin: 0 }}>
+            Syncing in {joinCountdown.remaining}s
+          </p>
+        </div>
+      )}
       {}
       <aside
         className={`leaderboard-container ${isLeaderboardCollapsed ? "collapsed" : ""} ${isDraggingLeaderboard ? "dragging" : ""}`}
