@@ -286,6 +286,8 @@ export default function App() {
     ready,
   } = useDiscordActivity();
 
+  const currentPlayerId = currentUser?.id ?? null;
+
   const initialRoomId = useMemo(() => {
     if (channelId) {
       return channelId;
@@ -345,6 +347,9 @@ export default function App() {
   };
   const [timeLeft, setTimeLeft] = useState(MAX_TIME);
   const [showResult, setShowResult] = useState(false);
+  const [hostPlayerId, setHostPlayerId] = useState(null);
+  const canControlQuestions =
+    !!currentPlayerId && (!hostPlayerId || hostPlayerId === currentPlayerId);
 
   const currentQuestionDataRef = useRef(null);
   useEffect(() => {
@@ -374,7 +379,7 @@ export default function App() {
         );
 
         const shouldSyncQuestionToServer =
-          Boolean(activeQuestion) && !isInRevealPhase && isHost;
+          Boolean(activeQuestion) && !isInRevealPhase && canControlQuestions;
 
         if (shouldSyncQuestionToServer) {
           try {
@@ -385,6 +390,7 @@ export default function App() {
                 roomId: channelId,
                 question: activeQuestion,
                 timeLeft: remainingSeconds,
+                playerId: currentPlayerId,
               }),
             });
             safeLog.room(
@@ -397,7 +403,7 @@ export default function App() {
               channelId,
             );
           }
-        } else if (activeQuestion && !isHost) {
+        } else if (activeQuestion && !canControlQuestions) {
           safeLog.room(
             "Skipped syncing local question because user is not host",
             channelId,
@@ -433,7 +439,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [channelId, instanceId, currentUser?.id, roomId, isHost]);
+  }, [channelId, instanceId, currentUser?.id, roomId, canControlQuestions]);
 
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
@@ -711,6 +717,9 @@ export default function App() {
         currentQuestion?.id !== gameState.currentQuestion?.id;
 
       setCurrentQuestion(gameState.currentQuestion);
+      if (gameState.hostPlayerId !== undefined) {
+        setHostPlayerId(gameState.hostPlayerId || null);
+      }
 
       if (isNewQuestion) {
         currentQuestionIdRef.current = gameState.currentQuestion?.id ?? null;
@@ -988,7 +997,7 @@ export default function App() {
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         event: "reset_scores",
-                        data: { roomId },
+                        data: { roomId, playerId: currentPlayerId },
                       }),
                     });
                     activityRestartedRef.current = false;
@@ -1323,6 +1332,8 @@ export default function App() {
             );
             const gameStateData = await gameStateResponse.json();
 
+            setHostPlayerId(gameStateData.hostPlayerId || null);
+
             if (gameStateData.success && gameStateData.currentQuestion) {
               const question = gameStateData.currentQuestion;
               const timeLeft = gameStateData.timeLeft;
@@ -1360,6 +1371,7 @@ export default function App() {
             window.lastSelectionQuestionId = null;
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
+            setHostPlayerId(gameStateData.hostPlayerId || null);
           } catch (error) {}
         } finally {
           setTimeout(() => {
@@ -1414,6 +1426,8 @@ export default function App() {
       try {
         const response = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const data = await response.json();
+
+        setHostPlayerId(data.hostPlayerId || null);
 
         if (data.success && data.currentQuestion) {
           const currentQuestionId = currentQuestion?.id;
@@ -1952,6 +1966,10 @@ export default function App() {
             return 0;
           }
 
+          if (!canControlQuestions) {
+            return 0;
+          }
+
           if (socket && !socket.localMode) {
             const endRoundRequest = async () => {
               try {
@@ -1962,6 +1980,7 @@ export default function App() {
                     event: "end_round",
                     data: {
                       roomId: roomId,
+                      playerId: currentPlayerId,
                     },
                   }),
                 });
@@ -2047,9 +2066,16 @@ export default function App() {
     }, 1000);
 
     return () => clearInterval(timerRef.current);
-  }, [currentQuestion?.id, showResult, joinCountdown.active, socket, roomId]);
+  }, [
+    currentQuestion?.id,
+    showResult,
+    joinCountdown.active,
+    socket,
+    roomId,
+    canControlQuestions,
+  ]);
 
-  const myPlayerId = currentUser?.id || "player1";
+  const myPlayerId = currentPlayerId || "player1";
 
   const isCardMode = currentQuestion ? !!currentQuestion.isCard : false;
 
@@ -2273,6 +2299,11 @@ export default function App() {
   }, [showResult]);
 
   const onNextQuestion = async () => {
+    if (!canControlQuestions) {
+      safeLog.room("Ignoring next-question trigger because user is not host");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -2284,6 +2315,7 @@ export default function App() {
           body: JSON.stringify({
             roomId: roomId,
             forceNew: true,
+            playerId: currentPlayerId,
           }),
         });
 
@@ -2304,12 +2336,21 @@ export default function App() {
 
       const { response, result } = await attemptStartQuestion();
 
+      const resolvedHostId =
+        result?.hostPlayerId ?? result?.data?.hostPlayerId;
+      if (resolvedHostId !== undefined) {
+        setHostPlayerId(resolvedHostId || null);
+      }
+
       const nextQuestion = result?.question ?? result?.data?.question;
 
       if (result && result.success && nextQuestion) {
         const question = nextQuestion;
         currentQuestionIdRef.current = question?.id ?? null;
         locallyStartedQuestionIdRef.current = question?.id ?? null;
+        if (resolvedHostId === undefined) {
+          setHostPlayerId(hostPlayerId ?? currentPlayerId ?? null);
+        }
         setCurrentQuestion(question);
         setShowResult(false);
         setRevealPhaseQuestionId(null);
@@ -2536,6 +2577,11 @@ export default function App() {
           }}
           onMouseEnter={playHoverSound}
           onClick={async () => {
+            if (!canControlQuestions) {
+              safeLog.room("Non-host attempted to restart quiz; ignoring");
+              return;
+            }
+
               playClickSound();
 
               setScores(
@@ -2556,16 +2602,26 @@ export default function App() {
                   body: JSON.stringify({
                     roomId: roomId,
                     forceNew: true,
+                    playerId: currentPlayerId,
                   }),
                 });
 
                 const result = await response.json();
+
+                const resolvedHostId =
+                  result?.hostPlayerId ?? result?.data?.hostPlayerId;
+                if (resolvedHostId !== undefined) {
+                  setHostPlayerId(resolvedHostId || null);
+                }
 
                 const restartQuestion = result?.question ?? result?.data?.question;
 
                 if (result.success && restartQuestion) {
                   currentQuestionIdRef.current = restartQuestion?.id ?? null;
                   locallyStartedQuestionIdRef.current = restartQuestion?.id ?? null;
+                  if (resolvedHostId === undefined) {
+                    setHostPlayerId(hostPlayerId ?? currentPlayerId ?? null);
+                  }
                   setCurrentQuestion(restartQuestion);
                   setTimeLeft(
                     result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME,
@@ -3170,6 +3226,7 @@ export default function App() {
                 <p>Ready to start the quiz?</p>
                 <button
                   className="next-question-button"
+                  disabled={!canControlQuestions}
                   style={{
                     marginTop: 16,
                     width: 360,
@@ -3185,13 +3242,22 @@ export default function App() {
                     fontFamily: '"Trajan Pro Bold", serif',
                     fontWeight: 600,
                     fontSize: "1.7rem",
-                    cursor: "pointer",
+                    cursor: canControlQuestions ? "pointer" : "not-allowed",
                     outline: "none",
-                    filter: "drop-shadow(0 0 8px gold)",
+                    filter: canControlQuestions
+                      ? "drop-shadow(0 0 8px gold)"
+                      : "grayscale(0.6)",
                     userSelect: "none",
                   }}
                   onMouseEnter={() => playHoverSound()}
                   onClick={async () => {
+                    if (!canControlQuestions) {
+                      safeLog.room(
+                        "Ignored start request from non-host participant",
+                      );
+                      return;
+                    }
+
                     playClickSound();
 
                     try {
@@ -3203,11 +3269,18 @@ export default function App() {
                           body: JSON.stringify({
                             roomId: roomId,
                             forceNew: false,
+                            playerId: currentPlayerId,
                           }),
                         },
                       );
 
                       const result = await response.json();
+
+                      const resolvedHostId =
+                        result?.hostPlayerId ?? result?.data?.hostPlayerId;
+                      if (resolvedHostId !== undefined) {
+                        setHostPlayerId(resolvedHostId || null);
+                      }
 
                       const startQuestion =
                         result?.question ?? result?.data?.question;
@@ -3215,6 +3288,11 @@ export default function App() {
                       if (result && result.success && startQuestion) {
                         const question = startQuestion;
                         currentQuestionIdRef.current = question?.id ?? null;
+                        if (resolvedHostId === undefined) {
+                          setHostPlayerId(
+                            hostPlayerId ?? currentPlayerId ?? null,
+                          );
+                        }
                         setCurrentQuestion(question);
                         setShowResult(false);
                         const serverSelections = normalizeServerSelections(
@@ -3235,6 +3313,11 @@ export default function App() {
                 >
                   Start Quiz
                 </button>
+                {!canControlQuestions && (
+                  <p style={{ marginTop: 8, color: "#ffb347" }}>
+                    Waiting for the host to start…
+                  </p>
+                )}
               </div>
             ) : (
               <p>No question loaded. Wait for the host to start the quiz.</p>
@@ -3247,10 +3330,10 @@ export default function App() {
       <button
         className="next-question-button"
         onMouseEnter={() => {
-          if (showResult) playHoverSound();
+          if (showResult && canControlQuestions) playHoverSound();
         }}
         onClick={() => {
-          if (showResult) {
+          if (showResult && canControlQuestions) {
             playClickSound();
             onNextQuestion();
           }
@@ -3270,16 +3353,24 @@ export default function App() {
           fontFamily: '"Trajan Pro Bold", serif',
           fontWeight: 600,
           fontSize: "1.7rem",
-          cursor: showResult ? "pointer" : "default",
+          cursor: showResult && canControlQuestions ? "pointer" : "default",
           outline: "none",
-          filter: showResult ? "drop-shadow(0 0 8px gold)" : "none",
-          visibility: showResult ? "visible" : "hidden",
-          pointerEvents: showResult ? "auto" : "none",
+          filter:
+            showResult && canControlQuestions
+              ? "drop-shadow(0 0 8px gold)"
+              : "none",
+          visibility: showResult && canControlQuestions ? "visible" : "hidden",
+          pointerEvents: showResult && canControlQuestions ? "auto" : "none",
           userSelect: "none",
         }}
       >
         Next Question
       </button>
+      {showResult && !canControlQuestions && (
+        <p style={{ marginTop: 8, color: "#ffb347" }}>
+          Waiting for the host to pick the next question…
+        </p>
+      )}
 
       {}
       <style>{`
