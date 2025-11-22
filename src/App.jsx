@@ -85,6 +85,20 @@ const ensureSoloRoomId = (userId) => {
   }
 };
 
+const deriveInstanceRoomId = (instanceId) => {
+  if (!instanceId) {
+    return null;
+  }
+
+  const parts = instanceId.split("-");
+  if (parts.length >= 4) {
+    const tail = parts[parts.length - 1];
+    return tail || instanceId;
+  }
+
+  return instanceId;
+};
+
 const formatNumber = (n) => {
   if (n === null || n === undefined) return "0";
   const num = Number(n);
@@ -276,9 +290,12 @@ export default function App() {
     if (channelId) {
       return channelId;
     }
-    if (instanceId) {
-      return instanceId;
+
+    const derivedInstanceId = deriveInstanceRoomId(instanceId);
+    if (derivedInstanceId) {
+      return derivedInstanceId;
     }
+
     return ensureSoloRoomId(currentUser?.id ?? null);
   }, [channelId, instanceId, currentUser?.id]);
 
