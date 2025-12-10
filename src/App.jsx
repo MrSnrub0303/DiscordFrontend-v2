@@ -42,7 +42,8 @@ import revealSoundFile from "./assets/chatreceived.wav";
 
 import { getCardImageUrl } from "./utils/cardImages";
 
-const API_BASE_URL = "/api";
+const API_BASE_URL =
+  (import.meta.env?.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 
 const MAX_TIME = 20;
 const JOIN_COUNTDOWN_SECONDS = 3;
