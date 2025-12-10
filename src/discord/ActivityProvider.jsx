@@ -179,15 +179,26 @@ export function ActivityProvider({ children }) {
         } else if (error.message.includes('DISCORD_CLIENT_ID')) {
           errorDetails.suggestion = 'Check your config file and ensure DISCORD_CLIENT_ID is properly set';
         } else if (error.message.includes('Token exchange failed')) {
-          errorDetails.suggestion = 'Check that your backend server is running and accessible at https://discordbackend-xggi.onrender.com';
+          if (error.message.includes('500')) {
+            errorDetails.message = 'Unstable Network - Server Error';
+            errorDetails.suggestion = 'The backend server encountered an error. This might be due to network issues or server configuration. Please try again.';
+          } else if (error.message.includes('503') || error.message.includes('502')) {
+            errorDetails.message = 'Unstable Network - Service Unavailable';
+            errorDetails.suggestion = 'The server is temporarily unavailable. Please wait a moment and try again.';
+          } else {
+            errorDetails.message = 'Unstable Network';
+            errorDetails.suggestion = 'Check that your backend server is running and accessible at https://discordbackend-xggi.onrender.com';
+          }
         } else if (error.message.includes('fetch')) {
-          errorDetails.suggestion = 'Network error - check your proxy settings and backend server';
+          errorDetails.message = 'Unstable Network';
+          errorDetails.suggestion = 'Network connection issue - please check your internet connection and try again.';
         } else if (error.message.includes('authenticate')) {
           errorDetails.suggestion = 'Authentication failed - the access token may be invalid';
         } else if (error.message.includes('already running')) {
           errorDetails.suggestion = 'Another instance is already running. Try closing and reopening the activity.';
         } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-          errorDetails.suggestion = 'Cannot reach backend server. Check if your servers are running and accessible.';
+          errorDetails.message = 'Unstable Network';
+          errorDetails.suggestion = 'Cannot reach backend server. Please check your internet connection.';
         }
         
         setError(errorDetails);

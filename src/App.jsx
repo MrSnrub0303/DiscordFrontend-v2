@@ -2672,8 +2672,19 @@ export default function App() {
           }}
           onMouseEnter={playHoverSound}
           onClick={async () => {
+            console.log('🎮 Start button clicked', {
+              canControlQuestions,
+              currentPlayerId,
+              hostPlayerId,
+              isHost,
+            });
+            
             if (!canControlQuestions) {
-              console.log("Non-host attempted to restart quiz; ignoring");
+              console.warn("⚠️ Non-host attempted to restart quiz", {
+                currentPlayerId,
+                hostPlayerId,
+                message: "This player is not the host and cannot start the quiz"
+              });
               return;
             }
 
