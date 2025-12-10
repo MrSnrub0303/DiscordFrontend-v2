@@ -146,6 +146,18 @@ export function useDiscordActivity() {
             global_name: context.sdk.authenticated.user.global_name,
             accessToken: context.token
           });
+        } else {
+          // Fallback for solo/guest mode when Discord auth fails
+          console.warn('[Discord] Authentication failed, using guest mode');
+          const guestId = 'guest-' + Math.random().toString(36).substring(2, 15);
+          setCurrentUser({
+            id: guestId,
+            username: 'Guest',
+            avatar: null,
+            global_name: 'Guest Player',
+            accessToken: null,
+            isGuest: true
+          });
         }
       }
     };
@@ -157,16 +169,25 @@ export function useDiscordActivity() {
     throw new Error('useDiscordActivity must be used within an ActivityProvider');
   }
 
+  // Ensure currentUser is never null for solo mode
+  const effectiveCurrentUser = currentUser || {
+    id: 'guest-' + Math.random().toString(36).substring(2, 15),
+    username: 'Guest',
+    avatar: null,
+    global_name: 'Guest Player',
+    isGuest: true
+  };
+
   return {
     ...context,
     voiceChannel,
     participants,
-    currentUser,
+    currentUser: effectiveCurrentUser,
     instanceId,
     channelId: context?.sdk?.channelId,
     isHost: true, 
     
     
-    isInVoiceChannel: !!(currentUser && context?.sdk?.channelId)
+    isInVoiceChannel: !!(effectiveCurrentUser && context?.sdk?.channelId)
   };
 }
