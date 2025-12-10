@@ -57,13 +57,17 @@ export function ActivityProvider({ children }) {
         
         
         setInitializationStep('waiting_ready');
-        addDebugLog('Waiting for SDK to be ready...');
-        
+        const ticketPresent = new URLSearchParams(window.location.search).has('discord_proxy_ticket');
+        addDebugLog(`Waiting for SDK to be ready (ticket present: ${ticketPresent})...`);
+
         const readyPromise = discordSdk.ready();
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('SDK ready timeout after 15 seconds')), 15000)
+          setTimeout(
+            () => reject(new Error('SDK ready timeout after 30 seconds')),
+            30000,
+          )
         );
-        
+
         await Promise.race([readyPromise, timeoutPromise]);
         addDebugLog('SDK is ready');
         
