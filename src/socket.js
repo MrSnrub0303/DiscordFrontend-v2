@@ -26,8 +26,9 @@ class DiscordProxySocket {
   
   async connect() {
     try {
-      
-      
+      // Use AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
       
       const response = await fetch(`${this.serverUrl}/health`, {
         method: 'GET',
@@ -35,18 +36,16 @@ class DiscordProxySocket {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        timeout: 10000 
+        signal: controller.signal
       });
       
-      
-      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.text();
-        
+        console.log('✅ Server connection successful');
         this.connected = true;
         this.localMode = false;
-        
         this._notifyStateChange();
         return true;
       } else {
@@ -54,33 +53,10 @@ class DiscordProxySocket {
         throw new Error(`Server responded with status: ${response.status}, body: ${errorText}`);
       }
     } catch (error) {
+      console.log('⚠️ Server unavailable, using local mode:', error.message);
       
-      
-      
-      
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      try {
-        const retryResponse = await fetch(`${this.serverUrl}/health`, {
-          method: 'GET',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          }
-        });
-        
-        if (retryResponse.ok) {
-          
-          this.connected = true;
-          this.localMode = false;
-          this._notifyStateChange();
-          return true;
-        }
-      } catch (retryError) {
-        
-      }
-      
-      
+      // Immediately fall back to local mode without retry
+      // ERR_INSUFFICIENT_RESOURCES means Discord proxy has resource limits
       this.localMode = true;
       this.connected = true;
       this._notifyStateChange();
