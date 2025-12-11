@@ -1112,6 +1112,27 @@ export default function App() {
     };
   }, []);
 
+  const getAvatarUrl = (user) => {
+    if (user.avatar) {
+      return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`;
+    }
+    
+    // Handle guest users (IDs starting with 'guest-')
+    if (typeof user.id === 'string' && user.id.startsWith('guest-')) {
+      // Use a default avatar for guests
+      return `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`;
+    }
+    
+    // Discord snowflake IDs can be converted to BigInt
+    try {
+      const defaultAvatarIndex = (BigInt(user.id) >> 22n) % 6n;
+      return `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
+    } catch {
+      // Fallback if BigInt conversion fails
+      return `https://cdn.discordapp.com/embed/avatars/0.png`;
+    }
+  };
+
   useEffect(() => {
     if (participants && participants.length > 0 && currentUser) {
       const discordPlayers = participants.map((participant) => {
@@ -1119,36 +1140,21 @@ export default function App() {
 
         const displayName = user.global_name || user.username || "Discord User";
 
-        let avatarUrl = "";
-        if (user.avatar) {
-          avatarUrl = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`;
-        } else {
-          const defaultAvatarIndex = (BigInt(user.id) >> 22n) % 6n;
-          avatarUrl = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
-        }
-
         return {
           id: user.id,
           name: displayName,
-          avatar: avatarUrl,
+          avatar: getAvatarUrl(user),
         };
       });
 
       if (currentUser && !discordPlayers.find((p) => p.id === currentUser.id)) {
         const currentUserDisplayName =
           currentUser.global_name || currentUser.username || "You";
-        let currentUserAvatar = "";
-        if (currentUser.avatar) {
-          currentUserAvatar = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png?size=256`;
-        } else {
-          const defaultAvatarIndex = (BigInt(currentUser.id) >> 22n) % 6n;
-          currentUserAvatar = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
-        }
 
         discordPlayers.unshift({
           id: currentUser.id,
           name: currentUserDisplayName,
-          avatar: currentUserAvatar,
+          avatar: getAvatarUrl(currentUser),
         });
       }
 
@@ -1163,18 +1169,11 @@ export default function App() {
       if (currentUser) {
         const currentUserDisplayName =
           currentUser.global_name || currentUser.username || "You";
-        let currentUserAvatar = "";
-        if (currentUser.avatar) {
-          currentUserAvatar = `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png?size=256`;
-        } else {
-          const defaultAvatarIndex = (BigInt(currentUser.id) >> 22n) % 6n;
-          currentUserAvatar = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
-        }
 
         const singlePlayer = {
           id: currentUser.id,
           name: currentUserDisplayName,
-          avatar: currentUserAvatar,
+          avatar: getAvatarUrl(currentUser),
         };
         setPlayers([singlePlayer]);
         setScores({ [singlePlayer.id]: 0 });
