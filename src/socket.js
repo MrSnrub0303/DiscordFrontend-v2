@@ -7,6 +7,7 @@ class DiscordProxySocket {
     this.localMode = true;
     this.eventCallbacks = new Map();
     this.stateChangeCallback = null; 
+    this.connecting = false; // Add flag to prevent concurrent connections
     
     this.serverUrl = '/api';
   }
@@ -25,6 +26,14 @@ class DiscordProxySocket {
   }
   
   async connect() {
+    // Prevent multiple simultaneous connection attempts
+    if (this.connecting || this.connected) {
+      console.log('⚠️ Connection already in progress or established, skipping');
+      return this.connected;
+    }
+    
+    this.connecting = true;
+    
     try {
       // Use AbortController for timeout
       const controller = new AbortController();
@@ -61,6 +70,8 @@ class DiscordProxySocket {
       this.connected = true;
       this._notifyStateChange();
       return false;
+    } finally {
+      this.connecting = false;
     }
   }
   

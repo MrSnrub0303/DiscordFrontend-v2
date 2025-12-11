@@ -671,6 +671,7 @@ export default function App() {
   const activityRestartedRef = useRef(false);
   const lastReadyStateRef = useRef(null);
   const hasInitializedRef = useRef(false);
+  const socketInitializingRef = useRef(false);
 
   const clickSound = useRef(null);
   const hoverSound = useRef(null);
@@ -1032,7 +1033,11 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (currentUser?.username && !socket) {
+    // Only initialize socket once when user is ready
+    // Don't re-initialize on roomId changes
+    if (currentUser?.username && !socket && !socketInitializingRef.current) {
+      socketInitializingRef.current = true;
+      
       const initSocket = async () => {
         try {
           const newSocket = new DiscordProxySocket();
@@ -1080,16 +1085,19 @@ export default function App() {
             };
 
             await joinRoom();
-          } else {
           }
 
           setSocket(newSocket);
-        } catch (error) {}
+        } catch (error) {
+          console.error("Failed to initialize socket:", error);
+        } finally {
+          socketInitializingRef.current = false;
+        }
       };
 
       initSocket();
     }
-  }, [currentUser, roomId, socket]);
+  }, [currentUser?.username, socket]);
 
   useEffect(() => {
     return () => {
