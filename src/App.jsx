@@ -672,8 +672,8 @@ export default function App() {
   const lastReadyStateRef = useRef(null);
   const hasInitializedRef = useRef(false);
 
-  const clickSound = useRef(new Audio(clickSoundFile));
-  const hoverSound = useRef(new Audio(hoverSoundFile));
+  const clickSound = useRef(null);
+  const hoverSound = useRef(null);
 
   const audioCtxRef = useRef(null);
   const revealBufferRef = useRef(null);
@@ -1181,7 +1181,25 @@ export default function App() {
     }
   }, [participants, currentUser]);
 
+  // Initialize all audio objects once on mount
   useEffect(() => {
+    // Initialize UI sound effects
+    try {
+      if (!clickSound.current) {
+        clickSound.current = new Audio(clickSoundFile);
+        clickSound.current.preload = "auto";
+        clickSound.current.volume = 0.5;
+      }
+      if (!hoverSound.current) {
+        hoverSound.current = new Audio(hoverSoundFile);
+        hoverSound.current.preload = "auto";
+        hoverSound.current.volume = 0.3;
+      }
+    } catch (err) {
+      console.error("Failed to initialize UI sounds:", err);
+    }
+
+    // Initialize background music
     try {
       const files = [someOfAKindFile, revolootinFile, kothFile];
       const created = files.map((f, i) => {
@@ -1205,8 +1223,11 @@ export default function App() {
       });
 
       bg.current.tracks = created;
-    } catch (err) {}
+    } catch (err) {
+      console.error("Failed to initialize background music:", err);
+    }
 
+    // Initialize AudioContext for reveal sounds
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       audioCtxRef.current = new AudioCtx();
@@ -1218,15 +1239,36 @@ export default function App() {
           const decoded =
             await audioCtxRef.current.decodeAudioData(arrayBuffer);
           revealBufferRef.current = decoded;
-        } catch (err) {}
+        } catch (err) {
+          console.error("Failed to load reveal sound:", err);
+        }
       })();
-    } catch (e) {}
+    } catch (e) {
+      console.error("Failed to initialize AudioContext:", e);
+    }
 
     return () => {
+      // Clean up UI sounds
+      try {
+        if (clickSound.current) {
+          clickSound.current.pause();
+          clickSound.current.src = "";
+          clickSound.current = null;
+        }
+        if (hoverSound.current) {
+          hoverSound.current.pause();
+          hoverSound.current.src = "";
+          hoverSound.current = null;
+        }
+      } catch (e) {}
+
+      // Clean up fade timer
       if (fadeTimerRef.current) {
         clearInterval(fadeTimerRef.current);
         fadeTimerRef.current = null;
       }
+
+      // Clean up background music
       bg.current.tracks.forEach((a) => {
         try {
           if (a._onEnded) a.removeEventListener("ended", a._onEnded);
@@ -1236,6 +1278,7 @@ export default function App() {
       });
       bg.current.tracks = [];
 
+      // Clean up AudioContext
       try {
         if (audioCtxRef.current && audioCtxRef.current.close) {
           audioCtxRef.current.close();
@@ -1359,13 +1402,17 @@ export default function App() {
 
     unlockAudioContext();
 
-    clickSound.current.currentTime = 0;
-    clickSound.current.play().catch(() => {});
+    if (clickSound.current) {
+      clickSound.current.currentTime = 0;
+      clickSound.current.play().catch(() => {});
+    }
   };
 
   const playHoverSound = () => {
-    hoverSound.current.currentTime = 0;
-    hoverSound.current.play().catch(() => {});
+    if (hoverSound.current) {
+      hoverSound.current.currentTime = 0;
+      hoverSound.current.play().catch(() => {});
+    }
   };
 
   useEffect(() => {
