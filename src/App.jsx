@@ -945,6 +945,9 @@ export default function App() {
     let cancelled = false;
     let pollTimer = null;
 
+    let consecutiveErrors = 0;
+    const maxErrorStreak = 5;
+
     const poll = async () => {
       if (cancelled) return;
       try {
@@ -959,10 +962,20 @@ export default function App() {
             timeLeft: data.timeLeft ?? MAX_TIME,
             scores: data.scores || {},
           });
+          consecutiveErrors = 0;
+        } else {
+          consecutiveErrors += 1;
         }
       } catch (error) {
+        consecutiveErrors += 1;
       } finally {
-        pollTimer = setTimeout(poll, 4000);
+        if (consecutiveErrors >= maxErrorStreak) {
+          return; // stop polling after too many consecutive errors to avoid log spam
+        }
+
+        const delayBase = 30000;
+        const delay = Math.min(120000, delayBase * Math.max(1, consecutiveErrors || 1));
+        pollTimer = setTimeout(poll, delay);
       }
     };
 
@@ -2098,9 +2111,9 @@ export default function App() {
 
     window.syncGameStateFunc = syncGameState;
 
-    setTimeout(syncGameState, 5000);
+    setTimeout(syncGameState, 12000);
 
-    const syncInterval = setInterval(syncGameState, 5000);
+    const syncInterval = setInterval(syncGameState, 12000);
 
     return () => {
       clearInterval(syncInterval);
