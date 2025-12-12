@@ -962,7 +962,7 @@ export default function App() {
         }
       } catch (error) {
       } finally {
-        pollTimer = setTimeout(poll, 1500);
+        pollTimer = setTimeout(poll, 4000);
       }
     };
 
@@ -2098,9 +2098,9 @@ export default function App() {
 
     window.syncGameStateFunc = syncGameState;
 
-    setTimeout(syncGameState, 3000);
+    setTimeout(syncGameState, 5000);
 
-    const syncInterval = setInterval(syncGameState, 3000);
+    const syncInterval = setInterval(syncGameState, 5000);
 
     return () => {
       clearInterval(syncInterval);
