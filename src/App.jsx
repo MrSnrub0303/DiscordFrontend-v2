@@ -759,10 +759,8 @@ export default function App() {
     }
   }, [ready, socket, roomId]);
 
-  useEffect(() => {
-    if (!socket || !currentUser) return;
-
-    const handleGameState = (gameState) => {
+  const applyGameState = useCallback(
+    (gameState) => {
       const isNewQuestion =
         currentQuestion?.id !== gameState.currentQuestion?.id;
 
@@ -811,10 +809,21 @@ export default function App() {
       setShowResult(gameState.showResult);
       setTimeLeft(gameState.timeLeft);
       setScores(gameState.scores);
-    };
+    },
+    [
+      currentQuestion?.id,
+      currentUser?.id,
+      mySelection,
+      showResult,
+      updateSelections,
+    ],
+  );
 
-    socket.on("gameState", handleGameState);
-    socket.on("game_state", handleGameState);
+  useEffect(() => {
+    if (!socket || !currentUser) return;
+
+    socket.on("gameState", applyGameState);
+    socket.on("game_state", applyGameState);
 
     socket.on("you_joined", (data) => {
       if (data?.hostPlayerId !== undefined) {
@@ -922,6 +931,43 @@ export default function App() {
       }
     };
   }, [socket, currentUser, isHost]);
+
+  // Poll game state when no realtime socket is available (local/proxy mode)
+  useEffect(() => {
+    const shouldPoll = !socket || socket.localMode;
+    if (!roomId || !shouldPoll) return undefined;
+
+    let cancelled = false;
+    let pollTimer = null;
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const resp = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
+        const data = await resp.json();
+        if (data?.success) {
+          applyGameState({
+            currentQuestion: data.currentQuestion || null,
+            hostPlayerId: data.hostPlayerId,
+            selections: data.selections || {},
+            showResult: data.showResult || false,
+            timeLeft: data.timeLeft ?? MAX_TIME,
+            scores: data.scores || {},
+          });
+        }
+      } catch (error) {
+      } finally {
+        pollTimer = setTimeout(poll, 1500);
+      }
+    };
+
+    poll();
+
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearTimeout(pollTimer);
+    };
+  }, [roomId, socket, socket?.localMode, applyGameState]);
 
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
