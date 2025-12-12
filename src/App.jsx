@@ -42,7 +42,12 @@ import revealSoundFile from "./assets/chatreceived.wav";
 
 import { getCardImageUrl } from "./utils/cardImages";
 
-const API_BASE_URL = "/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  (API_BASE_URL.startsWith("http")
+    ? API_BASE_URL
+    : window.location.origin);
 
 const MAX_TIME = 20;
 const JOIN_COUNTDOWN_SECONDS = 3;
@@ -1093,8 +1098,7 @@ export default function App() {
     socketInitializingRef.current = true;
 
     const initSocket = () => {
-      const serverUrl = window.location.origin;
-      const newSocket = io(serverUrl, {
+      const newSocket = io(SOCKET_URL, {
         withCredentials: true,
         transports: ["websocket"],
         auth: {
