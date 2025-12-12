@@ -9,7 +9,7 @@ import {
 import "./App.css";
 import questions from "./questions.json";
 import { useDiscordActivity } from "./discord/useDiscordActivity";
-import { DiscordProxySocket } from "./socket";
+import { io } from "socket.io-client";
 
 import woodPanelBg from "./assets/sendresource_bg.png";
 import btnNormal from "./assets/combobox_button_normal.png";
@@ -725,7 +725,7 @@ export default function App() {
       setIsTimerRunning(false);
       setIsTransitioning(false);
 
-      if (socket && roomId) {
+      if (socket?.connected && roomId) {
         socket.emit("activity_ended", { roomId });
       }
 
@@ -917,7 +917,7 @@ export default function App() {
       setPlayers((prev) => prev.filter((p) => p.id !== playerId));
     });
 
-    if (socket.connected && !socket.localMode) {
+    if (socket.connected) {
       socket.emit("join", {
         id: currentUser.id,
         name: currentUser.username,
@@ -932,9 +932,9 @@ export default function App() {
     };
   }, [socket, currentUser, isHost]);
 
-  // Poll game state when no realtime socket is available (local/proxy mode)
+  // Poll game state when no realtime socket is available
   useEffect(() => {
-    const shouldPoll = !socket || socket.localMode;
+    const shouldPoll = !socket || !socket.connected;
     if (!roomId || !shouldPoll) return undefined;
 
     let cancelled = false;
@@ -967,7 +967,7 @@ export default function App() {
       cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [roomId, socket, socket?.localMode, applyGameState]);
+  }, [roomId, socket, applyGameState]);
 
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
@@ -1079,71 +1079,48 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Only initialize socket once when user is ready
-    // Don't re-initialize on roomId changes
-    if (currentUser?.username && !socket && !socketInitializingRef.current) {
-      socketInitializingRef.current = true;
-      
-      const initSocket = async () => {
-        try {
-          const newSocket = new DiscordProxySocket();
-
-          newSocket.onStateChange(() => {
-            setSocketStateVersion((prev) => prev + 1);
-          });
-
-          const connected = await newSocket.connect();
-
-          if (connected && !newSocket.localMode) {
-            let joinAttempts = 0;
-            const maxAttempts = 3;
-
-            const joinRoom = async () => {
-              try {
-                await newSocket.emit("join_room", {
-                  room: roomId,
-                  username: currentUser.username,
-                });
-
-                if (activityRestartedRef.current) {
-                  try {
-                    await fetch(`${API_BASE_URL}/game-event`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        event: "reset_scores",
-                        data: { roomId, playerId: currentPlayerId },
-                      }),
-                    });
-                    activityRestartedRef.current = false;
-                  } catch (error) {
-                    console.error("❌ Failed to reset scores:", error);
-                  }
-                }
-              } catch (error) {
-                joinAttempts++;
-
-                if (joinAttempts < maxAttempts) {
-                  setTimeout(joinRoom, 2000);
-                } else {
-                }
-              }
-            };
-
-            await joinRoom();
-          }
-
-          setSocket(newSocket);
-        } catch (error) {
-          console.error("Failed to initialize socket:", error);
-        } finally {
-          socketInitializingRef.current = false;
-        }
-      };
-
-      initSocket();
+    // Only initialize socket once when user is ready and authenticated
+    if (
+      !currentUser?.username ||
+      !currentUser?.accessToken ||
+      !channelId ||
+      socket ||
+      socketInitializingRef.current
+    ) {
+      return;
     }
-  }, [currentUser?.username, socket]);
+
+    socketInitializingRef.current = true;
+
+    const initSocket = () => {
+      const serverUrl = window.location.origin;
+      const newSocket = io(serverUrl, {
+        withCredentials: true,
+        transports: ["websocket"],
+        auth: {
+          token: currentUser.accessToken,
+          channelId,
+          reconnecting: false,
+        },
+      });
+
+      // maintain compatibility with previous localMode checks
+      newSocket.localMode = false;
+
+      newSocket.on("connect", () => {
+        setSocketStateVersion((prev) => prev + 1);
+      });
+
+      newSocket.on("disconnect", () => {
+        setSocketStateVersion((prev) => prev + 1);
+      });
+
+      setSocket(newSocket);
+      socketInitializingRef.current = false;
+    };
+
+    initSocket();
+  }, [currentUser?.username, currentUser?.accessToken, channelId, socket]);
 
   useEffect(() => {
     return () => {
@@ -1589,13 +1566,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (
-      !socket ||
-      socket.localMode ||
-      !socket.connected ||
-      !currentUser ||
-      !roomId
-    ) {
+    if (!socket || !socket.connected || !currentUser || !roomId) {
       return;
     }
 
@@ -2135,7 +2106,6 @@ export default function App() {
   }, [
     socket,
     socket?.connected,
-    socket?.localMode,
     currentUser,
     roomId,
     startJoinCountdown,
@@ -2165,7 +2135,7 @@ export default function App() {
             return 0;
           }
 
-          if (socket && !socket.localMode) {
+          if (socket && socket.connected) {
             const endRoundRequest = async () => {
               try {
                 const response = await fetch(`${API_BASE_URL}/game-event`, {
@@ -2315,7 +2285,7 @@ export default function App() {
     window.lastSelectionQuestionId = activeQuestionId;
 
     const submitSelection = async () => {
-      if (socket && !socket.localMode) {
+      if (socket?.connected) {
         let attempts = 0;
         const maxAttempts = 3;
 
@@ -2463,18 +2433,6 @@ export default function App() {
       };
 
       if (isCardMode) {
-        if (socket?.localMode) {
-          players.forEach(({ id }) => {
-            if (selections[id] === true) {
-              const timeAtAnswer = answerTimesRef.current[id];
-              const points = timeAtAnswer
-                ? computePointsFromTime(timeAtAnswer)
-                : 0;
-              newScores[id] = (newScores[id] || 0) + points;
-            }
-          });
-        } else {
-        }
       } else {
         players.forEach(({ id }) => {
           if (selections[id] === correctIndex) {
@@ -3424,10 +3382,7 @@ export default function App() {
           </>
         ) : (
           <div style={{ textAlign: "center", color: "#ccc", padding: "40px" }}>
-            {socket &&
-            !socket.localMode &&
-            socket.connected &&
-            isInVoiceChannel ? (
+            {socket && socket.connected && isInVoiceChannel ? (
               <div>
                 <p>Ready to start the quiz?</p>
                 <button
