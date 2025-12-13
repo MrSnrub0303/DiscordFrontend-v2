@@ -803,12 +803,18 @@ export default function App() {
         const currentLocalSelection =
           mySelection !== null ? mySelection : currentSelectionRef.current;
         const myId = currentUser?.id;
-        if (currentLocalSelection !== null && myId) {
+        
+        // For HC cards, preserve local correct answers even if server doesn't have them yet
+        const hasLocalCardAnswer = isCardMode && hcCardAnswersRef.current[myId] === true;
+        
+        if ((currentLocalSelection !== null || hasLocalCardAnswer) && myId) {
           updateSelections(() => {
             const merged = {
               ...normalizeServerSelections(gameState.selections || {}),
             };
-            merged[myId] = currentLocalSelection;
+            if (hasLocalCardAnswer || currentLocalSelection !== null) {
+              merged[myId] = hasLocalCardAnswer ? true : currentLocalSelection;
+            }
             return merged;
           }, gameState.currentQuestion?.id ?? null);
         } else {
@@ -2474,13 +2480,6 @@ export default function App() {
       awardedDoneRef.current = true;
       return;
     }
-    
-    // Only calculate scores locally if we have multiple players locally
-    // Otherwise trust server scores to avoid desync
-    if (players.length <= 1) {
-      awardedDoneRef.current = true;
-      return;
-    }
 
     setScores((prevScores) => {
       const newScores = { ...prevScores };
@@ -2493,7 +2492,7 @@ export default function App() {
       };
 
       if (isCardMode) {
-        // Award points for correct HC card answers
+        // Award points for correct HC card answers (local scoring for HC cards)
         players.forEach(({ id }) => {
           if (hcCardAnswersRef.current[id] === true) {
             const timeAtAnswer = answerTimesRef.current[id];
@@ -2504,15 +2503,19 @@ export default function App() {
           }
         });
       } else {
-        players.forEach(({ id }) => {
-          if (selections[id] === correctIndex) {
-            const timeAtAnswer = answerTimesRef.current[id];
-            const points = timeAtAnswer
-              ? computePointsFromTime(timeAtAnswer)
-              : 0;
-            newScores[id] = (newScores[id] || 0) + points;
-          }
-        });
+        // For trivia questions: only score in single-player mode
+        // In multiplayer, server handles trivia scoring
+        if (players.length <= 1) {
+          players.forEach(({ id }) => {
+            if (selections[id] === correctIndex) {
+              const timeAtAnswer = answerTimesRef.current[id];
+              const points = timeAtAnswer
+                ? computePointsFromTime(timeAtAnswer)
+                : 0;
+              newScores[id] = (newScores[id] || 0) + points;
+            }
+          });
+        }
       }
 
       return newScores;
