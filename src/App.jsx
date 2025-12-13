@@ -769,52 +769,41 @@ export default function App() {
       const isNewQuestion =
         currentQuestion?.id !== gameState.currentQuestion?.id;
 
-      if (isNewQuestion && gameState.currentQuestion) {
-        // New question detected - reset to new round
+      setCurrentQuestion(gameState.currentQuestion);
+      if (gameState.hostPlayerId !== undefined) {
+        setHostPlayerId(gameState.hostPlayerId || null);
+      }
+
+      if (isNewQuestion) {
         currentQuestionIdRef.current = gameState.currentQuestion?.id ?? null;
-        locallyStartedQuestionIdRef.current = null;
-        
-        setCurrentQuestion(gameState.currentQuestion);
-        setShowResult(false);
-        setRevealPhaseQuestionId(null);
-        clearJoinCountdown();
-        updateSelections({}, gameState.currentQuestion?.id ?? null);
-        setMySelection(null, gameState.currentQuestion?.id ?? null);
-        currentSelectionRef.current = null;
-        window.lastSelectionTime = null;
-        window.lastSelectionQuestionId = null;
-        setIsLocked(false);
-        hcCardAnswersRef.current = {};
-        answerTimesRef.current = {};
-        awardedDoneRef.current = false;
-        setServerScoredThisRound(false);
-        setTimeLeft(gameState.timeLeft ?? MAX_TIME);
-        setScores(gameState.scores || {});
-        
-        if (gameState.hostPlayerId !== undefined) {
-          setHostPlayerId(gameState.hostPlayerId || null);
-        }
-      } else if (currentQuestion) {
-        // Same question - update state
-        if (gameState.hostPlayerId !== undefined) {
-          setHostPlayerId(gameState.hostPlayerId || null);
+        const isInRevealPhase = showResult || gameState.showResult;
+
+        if (!isInRevealPhase) {
+          setRevealPhaseQuestionId(null);
+          updateSelections({}, gameState.currentQuestion?.id ?? null);
+          setMySelection(null, gameState.currentQuestion?.id ?? null);
+          currentSelectionRef.current = null;
+          window.lastSelectionTime = null;
+          window.lastSelectionQuestionId = null;
+          setIsLocked(false);
+          hcCardAnswersRef.current = {};
+          answerTimesRef.current = {};
+          awardedDoneRef.current = false;
+          setServerScoredThisRound(false);
         }
 
+        // For a brand-new question, allow showResult to reset based on server
+        setShowResult(!!gameState.showResult);
+      } else {
         const currentLocalSelection =
           mySelection !== null ? mySelection : currentSelectionRef.current;
         const myId = currentUser?.id;
-        
-        // For HC cards, preserve local correct answers even if server doesn't have them yet
-        const hasLocalCardAnswer = isCardMode && hcCardAnswersRef.current[myId] === true;
-        
-        if ((currentLocalSelection !== null || hasLocalCardAnswer) && myId) {
+        if (currentLocalSelection !== null && myId) {
           updateSelections(() => {
             const merged = {
               ...normalizeServerSelections(gameState.selections || {}),
             };
-            if (hasLocalCardAnswer || currentLocalSelection !== null) {
-              merged[myId] = hasLocalCardAnswer ? true : currentLocalSelection;
-            }
+            merged[myId] = currentLocalSelection;
             return merged;
           }, gameState.currentQuestion?.id ?? null);
         } else {
@@ -824,29 +813,14 @@ export default function App() {
           );
         }
 
-        // Only transition to showResult if:
-        // 1. Server says round ended (showResult=true)
-        // 2. AND local timer is at or near 0 (prevents premature reveal)
-        // This prevents showing results before timer completes
-        // Use local timeLeft instead of gameState.timeLeft to avoid race conditions
+        // Existing question: allow moving into reveal, but do not force out of it
         if (gameState.showResult && !showResult) {
-          // Check local timer state - only show results if timer is done
-          setTimeLeft((currentTimeLeft) => {
-            if (currentTimeLeft <= 1) {
-              setShowResult(true);
-            }
-            return currentTimeLeft;
-          });
+          setShowResult(true);
         }
-        
-        // Sync timeLeft from server only if it won't cause early reveal
-        if (gameState.timeLeft !== undefined && gameState.timeLeft !== null && !gameState.showResult) {
-          setTimeLeft(gameState.timeLeft);
-        }
-        
-        // Always update scores to keep them in sync
-        setScores(gameState.scores || {});
       }
+
+      setTimeLeft(gameState.timeLeft);
+      setScores(gameState.scores);
     },
     [
       currentQuestion?.id,
@@ -854,7 +828,6 @@ export default function App() {
       mySelection,
       showResult,
       updateSelections,
-      clearJoinCountdown,
     ],
   );
 
@@ -971,10 +944,14 @@ export default function App() {
     };
   }, [socket, currentUser, isHost]);
 
-  // Poll game state for multiplayer sync when socket is not connected
+  // Poll game state ONLY when there's an active game and socket is disconnected
   useEffect(() => {
+    // Only poll if:
+    // 1. We have a roomId
+    // 2. Socket is disconnected OR proxy mode (no socket)
+    // 3. There's an active question to sync
     const isProxyMode = API_BASE_URL.startsWith('/');
-    const shouldPoll = isProxyMode || (socket && !socket.connected);
+    const shouldPoll = (isProxyMode || (socket && !socket.connected)) && currentQuestion !== null;
     
     if (!roomId || !shouldPoll) return undefined;
 
@@ -982,10 +959,15 @@ export default function App() {
     let pollTimer = null;
 
     let consecutiveErrors = 0;
-    const maxErrorStreak = 5;
+    const maxErrorStreak = 3;
 
     const poll = async () => {
       if (cancelled) return;
+      
+      // Stop polling if question is cleared
+      if (!currentQuestion) {
+        return;
+      }
       
       try {
         const resp = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
@@ -1007,26 +989,24 @@ export default function App() {
         consecutiveErrors += 1;
       } finally {
         if (consecutiveErrors >= maxErrorStreak) {
-          // Stop polling after too many errors, wait longer before retry
-          pollTimer = setTimeout(poll, 60000);
-          return;
+          return; // stop polling after consecutive failures
         }
 
-        // Fast polling for multiplayer sync: 5 seconds during gameplay, 3 seconds during round-end
-        const delayBase = showResult ? 3000 : 5000;
-        const delay = delayBase * Math.max(1, consecutiveErrors);
+        // Much longer delays - only poll when actively needed
+        const delayBase = 45000; // 45 seconds base
+        const delay = Math.min(180000, delayBase * Math.max(1, consecutiveErrors || 1));
         pollTimer = setTimeout(poll, delay);
       }
     };
 
-    // Start polling immediately for multiplayer sync
-    pollTimer = setTimeout(poll, 1000);
+    // Start with a delay to give socket time to connect
+    pollTimer = setTimeout(poll, 10000);
 
     return () => {
       cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [roomId, socket, socket?.connected, showResult, applyGameState]);
+  }, [roomId, socket, socket?.connected, currentQuestion, applyGameState]);
 
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
@@ -2499,7 +2479,7 @@ export default function App() {
       };
 
       if (isCardMode) {
-        // Award points for correct HC card answers (local scoring for HC cards)
+        // Award points for correct HC card answers
         players.forEach(({ id }) => {
           if (hcCardAnswersRef.current[id] === true) {
             const timeAtAnswer = answerTimesRef.current[id];
@@ -2510,19 +2490,15 @@ export default function App() {
           }
         });
       } else {
-        // For trivia questions: only score in single-player mode
-        // In multiplayer, server handles trivia scoring
-        if (players.length <= 1) {
-          players.forEach(({ id }) => {
-            if (selections[id] === correctIndex) {
-              const timeAtAnswer = answerTimesRef.current[id];
-              const points = timeAtAnswer
-                ? computePointsFromTime(timeAtAnswer)
-                : 0;
-              newScores[id] = (newScores[id] || 0) + points;
-            }
-          });
-        }
+        players.forEach(({ id }) => {
+          if (selections[id] === correctIndex) {
+            const timeAtAnswer = answerTimesRef.current[id];
+            const points = timeAtAnswer
+              ? computePointsFromTime(timeAtAnswer)
+              : 0;
+            newScores[id] = (newScores[id] || 0) + points;
+          }
+        });
       }
 
       return newScores;
@@ -2603,6 +2579,21 @@ export default function App() {
         answerTimesRef.current = {};
         awardedDoneRef.current = false;
         setServerScoredThisRound(false);
+        // Pull latest state so other clients (proxy mode) catch up quickly
+        try {
+          const syncResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
+          const syncData = await syncResp.json();
+          if (syncData?.success) {
+            applyGameState({
+              currentQuestion: syncData.currentQuestion || null,
+              hostPlayerId: syncData.hostPlayerId,
+              selections: syncData.selections || {},
+              showResult: syncData.showResult || false,
+              timeLeft: syncData.timeLeft ?? MAX_TIME,
+              scores: syncData.scores || {},
+            });
+          }
+        } catch (err) {}
         setIsTransitioning(false);
       } else {
       }
