@@ -818,15 +818,26 @@ export default function App() {
           );
         }
 
-        // Only allow transitioning to showResult=true, never back to false
-        // This prevents flickering when polling returns inconsistent state
-        if (gameState.showResult && !showResult) {
+        // Only allow transitioning to showResult=true if:
+        // 1. Server says showResult=true AND
+        // 2. Local timer is also at or near completion (to prevent premature ending)
+        if (gameState.showResult && !showResult && gameState.timeLeft <= 2) {
           setShowResult(true);
+          // Mark as server-scored to prevent local score recalculation
+          if (gameState.scores && Object.keys(gameState.scores).length > 0) {
+            setServerScoredThisRound(true);
+          }
         }
         setTimeLeft(gameState.timeLeft);
         
         // Always update scores to keep them in sync
-        setScores(gameState.scores || {});
+        if (gameState.scores && Object.keys(gameState.scores).length > 0) {
+          setScores(gameState.scores);
+          // If server has calculated scores, prevent local recalculation
+          if (showResult) {
+            setServerScoredThisRound(true);
+          }
+        }
       }
     },
     [
