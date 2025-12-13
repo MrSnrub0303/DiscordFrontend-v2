@@ -828,12 +828,19 @@ export default function App() {
         // 1. Server says round ended (showResult=true)
         // 2. AND local timer is at or near 0 (prevents premature reveal)
         // This prevents showing results before timer completes
-        if (gameState.showResult && !showResult && gameState.timeLeft <= 1) {
-          setShowResult(true);
+        // Use local timeLeft instead of gameState.timeLeft to avoid race conditions
+        if (gameState.showResult && !showResult) {
+          // Check local timer state - only show results if timer is done
+          setTimeLeft((currentTimeLeft) => {
+            if (currentTimeLeft <= 1) {
+              setShowResult(true);
+            }
+            return currentTimeLeft;
+          });
         }
         
-        // Always sync timeLeft from server (but don't let it cause early reveal)
-        if (gameState.timeLeft !== undefined && gameState.timeLeft !== null) {
+        // Sync timeLeft from server only if it won't cause early reveal
+        if (gameState.timeLeft !== undefined && gameState.timeLeft !== null && !gameState.showResult) {
           setTimeLeft(gameState.timeLeft);
         }
         
