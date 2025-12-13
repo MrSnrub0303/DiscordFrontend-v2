@@ -941,9 +941,10 @@ export default function App() {
   useEffect(() => {
     // Only poll if:
     // 1. We have a roomId
-    // 2. Socket is disconnected (not just initializing)
+    // 2. Socket is disconnected OR proxy mode (no socket)
     // 3. There's an active question to sync
-    const shouldPoll = socket && !socket.connected && currentQuestion !== null;
+    const isProxyMode = API_BASE_URL.startsWith('/');
+    const shouldPoll = (isProxyMode || (socket && !socket.connected)) && currentQuestion !== null;
     
     if (!roomId || !shouldPoll) return undefined;
 
@@ -1110,6 +1111,14 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Skip socket.io entirely when using proxy - CSP blocks WebSocket anyway
+    const isProxyMode = API_BASE_URL.startsWith('/');
+    if (isProxyMode) {
+      console.log('🔌 Running in proxy mode - using polling instead of WebSocket');
+      socketInitializingRef.current = false;
+      return;
+    }
+
     // Only initialize socket once when user is ready and authenticated
     if (
       !currentUser?.username ||
