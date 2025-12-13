@@ -811,9 +811,11 @@ export default function App() {
         }
       }
 
-      // Update showResult from server state
-      // This ensures round-end syncs across all players
-      setShowResult(gameState.showResult);
+      // Only allow transitioning to showResult=true, never back to false
+      // This prevents flickering when polling returns inconsistent state
+      if (gameState.showResult && !showResult) {
+        setShowResult(true);
+      }
       setTimeLeft(gameState.timeLeft);
       setScores(gameState.scores);
     },
@@ -939,23 +941,30 @@ export default function App() {
     };
   }, [socket, currentUser, isHost]);
 
-  // Poll game state for multiplayer sync when socket.io is unavailable
+  // Poll game state ONLY when there's an active game and socket is disconnected
   useEffect(() => {
+    // Only poll if:
+    // 1. We have a roomId
+    // 2. Socket is disconnected OR proxy mode (no socket)
+    // 3. There's an active question to sync
     const isProxyMode = API_BASE_URL.startsWith('/');
-    const shouldPoll = isProxyMode || (socket && !socket.connected);
+    const shouldPoll = (isProxyMode || (socket && !socket.connected)) && currentQuestion !== null;
     
     if (!roomId || !shouldPoll) return undefined;
 
     let cancelled = false;
     let pollTimer = null;
-    let consecutiveErrors = 0;
-    const maxErrorStreak = 5;
 
-    // Determine if we're in multiplayer (more than 1 player)
-    const isMultiplayer = players.length > 1;
+    let consecutiveErrors = 0;
+    const maxErrorStreak = 3;
 
     const poll = async () => {
       if (cancelled) return;
+      
+      // Stop polling if question is cleared or round has ended
+      if (!currentQuestion || showResult) {
+        return;
+      }
       
       try {
         const resp = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
@@ -977,35 +986,24 @@ export default function App() {
         consecutiveErrors += 1;
       } finally {
         if (consecutiveErrors >= maxErrorStreak) {
-          return; // stop polling after too many consecutive failures
+          return; // stop polling after consecutive failures
         }
 
-        // Faster polling for multiplayer, slower for solo
-        let delay;
-        if (isMultiplayer) {
-          // In multiplayer: poll every 2-4 seconds for responsive sync
-          delay = consecutiveErrors > 0 ? 4000 : 2000;
-        } else if (currentQuestion && !showResult) {
-          // Solo with active question: moderate polling
-          delay = 8000;
-        } else {
-          // Solo, waiting for question or in round-end: slow polling
-          delay = 20000;
-        }
-        
+        // Much longer delays - only poll when actively needed
+        const delayBase = 45000; // 45 seconds base
+        const delay = Math.min(180000, delayBase * Math.max(1, consecutiveErrors || 1));
         pollTimer = setTimeout(poll, delay);
       }
     };
 
-    // Start polling immediately in multiplayer, with delay in solo
-    const initialDelay = isMultiplayer ? 500 : 5000;
-    pollTimer = setTimeout(poll, initialDelay);
+    // Start with a delay to give socket time to connect
+    pollTimer = setTimeout(poll, 10000);
 
     return () => {
       cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [roomId, socket, socket?.connected, currentQuestion, showResult, players.length, applyGameState]);
+  }, [roomId, socket, socket?.connected, currentQuestion, showResult, applyGameState]);
 
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
