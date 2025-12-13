@@ -811,7 +811,11 @@ export default function App() {
         }
       }
 
-      setShowResult(gameState.showResult);
+      // Only allow transitioning to showResult=true, never back to false
+      // This prevents flickering when polling returns inconsistent state
+      if (gameState.showResult && !showResult) {
+        setShowResult(true);
+      }
       setTimeLeft(gameState.timeLeft);
       setScores(gameState.scores);
     },
@@ -957,8 +961,8 @@ export default function App() {
     const poll = async () => {
       if (cancelled) return;
       
-      // Stop polling if question is cleared
-      if (!currentQuestion) {
+      // Stop polling if question is cleared or round has ended
+      if (!currentQuestion || showResult) {
         return;
       }
       
@@ -999,7 +1003,7 @@ export default function App() {
       cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [roomId, socket, socket?.connected, currentQuestion, applyGameState]);
+  }, [roomId, socket, socket?.connected, currentQuestion, showResult, applyGameState]);
 
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
@@ -2472,6 +2476,16 @@ export default function App() {
       };
 
       if (isCardMode) {
+        // Award points for correct HC card answers
+        players.forEach(({ id }) => {
+          if (hcCardAnswersRef.current[id] === true) {
+            const timeAtAnswer = answerTimesRef.current[id];
+            const points = timeAtAnswer
+              ? computePointsFromTime(timeAtAnswer)
+              : 0;
+            newScores[id] = (newScores[id] || 0) + points;
+          }
+        });
       } else {
         players.forEach(({ id }) => {
           if (selections[id] === correctIndex) {
