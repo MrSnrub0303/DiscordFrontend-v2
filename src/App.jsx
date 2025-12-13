@@ -937,19 +937,30 @@ export default function App() {
     };
   }, [socket, currentUser, isHost]);
 
-  // Poll game state when no realtime socket is available
+  // Poll game state ONLY when there's an active game and socket is disconnected
   useEffect(() => {
-    const shouldPoll = !socket || !socket.connected;
+    // Only poll if:
+    // 1. We have a roomId
+    // 2. Socket is disconnected (not just initializing)
+    // 3. There's an active question to sync
+    const shouldPoll = socket && !socket.connected && currentQuestion !== null;
+    
     if (!roomId || !shouldPoll) return undefined;
 
     let cancelled = false;
     let pollTimer = null;
 
     let consecutiveErrors = 0;
-    const maxErrorStreak = 5;
+    const maxErrorStreak = 3;
 
     const poll = async () => {
       if (cancelled) return;
+      
+      // Stop polling if question is cleared
+      if (!currentQuestion) {
+        return;
+      }
+      
       try {
         const resp = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const data = await resp.json();
@@ -970,22 +981,24 @@ export default function App() {
         consecutiveErrors += 1;
       } finally {
         if (consecutiveErrors >= maxErrorStreak) {
-          return; // stop polling after too many consecutive errors to avoid log spam
+          return; // stop polling after consecutive failures
         }
 
-        const delayBase = 30000;
-        const delay = Math.min(120000, delayBase * Math.max(1, consecutiveErrors || 1));
+        // Much longer delays - only poll when actively needed
+        const delayBase = 45000; // 45 seconds base
+        const delay = Math.min(180000, delayBase * Math.max(1, consecutiveErrors || 1));
         pollTimer = setTimeout(poll, delay);
       }
     };
 
-    poll();
+    // Start with a delay to give socket time to connect
+    pollTimer = setTimeout(poll, 10000);
 
     return () => {
       cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [roomId, socket, applyGameState]);
+  }, [roomId, socket, socket?.connected, currentQuestion, applyGameState]);
 
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
