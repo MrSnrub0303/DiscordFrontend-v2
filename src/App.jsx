@@ -944,15 +944,16 @@ export default function App() {
     };
   }, [socket, currentUser, isHost]);
 
-  // Poll game state ONLY when there's an active game and socket is disconnected
+  // Poll game state when socket is unavailable (proxy mode) so joins/next/scores stay in sync quickly
   useEffect(() => {
     // Only poll if:
     // 1. We have a roomId
     // 2. Socket is disconnected OR proxy mode (no socket)
     // 3. There's an active question to sync
-    const isProxyMode = API_BASE_URL.startsWith('/');
-    const shouldPoll = (isProxyMode || (socket && !socket.connected)) && currentQuestion !== null;
-    
+    const isProxyMode = API_BASE_URL.startsWith("/");
+    const shouldPoll =
+      (isProxyMode || (socket && !socket.connected)) && currentQuestion !== null;
+
     if (!roomId || !shouldPoll) return undefined;
 
     let cancelled = false;
@@ -963,12 +964,12 @@ export default function App() {
 
     const poll = async () => {
       if (cancelled) return;
-      
+
       // Stop polling if question is cleared
       if (!currentQuestion) {
         return;
       }
-      
+
       try {
         const resp = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const data = await resp.json();
@@ -992,15 +993,15 @@ export default function App() {
           return; // stop polling after consecutive failures
         }
 
-        // Much longer delays - only poll when actively needed
-        const delayBase = 45000; // 45 seconds base
-        const delay = Math.min(180000, delayBase * Math.max(1, consecutiveErrors || 1));
+        // Keep the delay short so joins/next-state updates propagate quickly
+        const delayBase = 1500; // start ~1.5s
+        const delay = Math.min(8000, delayBase * Math.max(1, consecutiveErrors + 1));
         pollTimer = setTimeout(poll, delay);
       }
     };
 
-    // Start with a delay to give socket time to connect
-    pollTimer = setTimeout(poll, 10000);
+    // Start quickly so late joiners sync without waiting
+    pollTimer = setTimeout(poll, 500);
 
     return () => {
       cancelled = true;
@@ -1604,8 +1605,19 @@ export default function App() {
         "optionIndex" in selection
       ) {
         normalized[playerId] = selection.optionIndex;
+      } else if (
+        selection &&
+        typeof selection === "object" &&
+        "isCorrect" in selection
+      ) {
+        // Preserve card submissions so the UI remains locked after a correct answer
+        normalized[playerId] = selection.isCorrect === true ? true : undefined;
       } else if (typeof selection === "number") {
         normalized[playerId] = selection;
+      } else if (selection === "correct") {
+        normalized[playerId] = true;
+      } else if (selection === "incorrect") {
+        normalized[playerId] = false;
       }
     }
     return normalized;
