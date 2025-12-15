@@ -2414,52 +2414,42 @@ export default function App() {
     window.lastSelectionQuestionId = activeQuestionId;
 
     const submitSelection = async () => {
-      if (socket?.connected) {
-        let attempts = 0;
-        const maxAttempts = 3;
+      // Always send selection to the server (works for both socket and proxy mode)
+      let attempts = 0;
+      const maxAttempts = 3;
 
-        const trySubmit = async () => {
-          try {
-            const response = await fetch(`${API_BASE_URL}/game-event`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                event: "select_option",
-                data: {
-                  roomId: roomId,
-                  playerId: playerId,
-                  playerName:
-                    currentUser?.global_name ||
-                    currentUser?.username ||
-                    "Unknown Player",
-                  optionIndex: optionIndex,
-                  timeTaken: MAX_TIME - timeLeft,
-                },
-              }),
-            });
+      const trySubmit = async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/game-event`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              event: "select_option",
+              data: {
+                roomId: roomId,
+                playerId: playerId,
+                playerName:
+                  currentUser?.global_name ||
+                  currentUser?.username ||
+                  "Unknown Player",
+                optionIndex: optionIndex,
+                timeTaken: MAX_TIME - timeLeft,
+              },
+            }),
+          });
 
-            if (response.ok) {
-            } else {
-              throw new Error(
-                `Server responded with status: ${response.status}`,
-              );
-            }
-          } catch (error) {
-            attempts++;
-
-            if (attempts < maxAttempts) {
-              setTimeout(trySubmit, 1000);
-            } else {
-            }
+          if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
           }
-        };
+        } catch (error) {
+          attempts++;
+          if (attempts < maxAttempts) {
+            setTimeout(trySubmit, 1000);
+          }
+        }
+      };
 
-        await trySubmit();
-      } else {
-        // In proxy mode without socket, just record selection locally.
-        // Do NOT call beginRevealPhase - wait for the timer to end.
-        // The server will handle round completion when the host's timer fires.
-      }
+      await trySubmit();
     };
 
     submitSelection();
