@@ -986,10 +986,11 @@ export default function App() {
     // 1. We have a roomId
     // 2. Socket is disconnected OR proxy mode (no socket)
     // 3. There's an active question to sync
-    // 4. NOT in reveal phase (to prevent stale server scores from overwriting local)
     const isProxyMode = API_BASE_URL.startsWith("/");
     const shouldPoll =
-      (isProxyMode || (socket && !socket.connected)) && currentQuestion !== null && !showResult;
+      // In proxy/disconnected mode, keep polling even during reveal so other clients receive
+      // the scored result; client-side merge already prevents score downgrades.
+      (isProxyMode || (socket && !socket.connected)) && currentQuestion !== null;
 
     if (!roomId || !shouldPoll) return undefined;
 
