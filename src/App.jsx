@@ -307,8 +307,13 @@ export default function App() {
 
 
   useEffect(() => {
-    console.log("🏠 Using room ID:", roomId);
-  }, [roomId]);
+    console.log("🏠 Room ID debug:", {
+      roomId,
+      channelId,
+      instanceId,
+      currentUserId: currentUser?.id,
+    });
+  }, [roomId, channelId, instanceId, currentUser?.id]);
 
   const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -768,6 +773,15 @@ export default function App() {
 
   const applyGameState = useCallback(
     (gameState) => {
+      console.log("[applyGameState] Received:", {
+        hasQuestion: !!gameState?.currentQuestion,
+        questionId: gameState?.currentQuestion?.id,
+        selections: gameState?.selections,
+        scores: gameState?.scores,
+        showResult: gameState?.showResult,
+      });
+      if (!gameState?.currentQuestion) return;
+      
       const isNewQuestion =
         currentQuestion?.id !== gameState.currentQuestion?.id;
 
@@ -800,17 +814,20 @@ export default function App() {
         const currentLocalSelection =
           mySelection !== null ? mySelection : currentSelectionRef.current;
         const myId = currentUser?.id;
+        const normalizedSelections = normalizeServerSelections(gameState.selections || {});
+        console.log("[applyGameState] Normalized selections:", normalizedSelections, "myId:", myId, "mySelection:", currentLocalSelection);
+        
         if (currentLocalSelection !== null && myId) {
           updateSelections(() => {
             const merged = {
-              ...normalizeServerSelections(gameState.selections || {}),
+              ...normalizedSelections,
             };
             merged[myId] = currentLocalSelection;
             return merged;
           }, gameState.currentQuestion?.id ?? null);
         } else {
           updateSelections(
-            () => normalizeServerSelections(gameState.selections || {}),
+            () => normalizedSelections,
             gameState.currentQuestion?.id ?? null,
           );
         }
@@ -1098,12 +1115,15 @@ export default function App() {
 
       // Stop polling if question is cleared
       if (!currentQuestion) {
+        console.log("[poll] Stopping - no currentQuestion");
         return;
       }
 
       try {
+        console.log("[poll] Fetching game-state for room:", roomId);
         const resp = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
         const data = await resp.json();
+        console.log("[poll] Response:", data);
         if (data?.success) {
           applyGameState({
             currentQuestion: data.currentQuestion || null,
@@ -1118,6 +1138,7 @@ export default function App() {
           consecutiveErrors += 1;
         }
       } catch (error) {
+        console.error("[poll] Error:", error);
         consecutiveErrors += 1;
       } finally {
         if (consecutiveErrors >= maxErrorStreak) {
