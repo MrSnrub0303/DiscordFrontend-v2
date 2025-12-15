@@ -311,9 +311,8 @@ export default function App() {
       roomId,
       channelId,
       instanceId,
-      currentUserId: currentUser?.id,
     });
-  }, [roomId, channelId, instanceId, currentUser?.id]);
+  }, [roomId, channelId, instanceId]);
 
   const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);

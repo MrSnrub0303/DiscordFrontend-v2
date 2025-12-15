@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useMemo } from 'react';
 import { ActivityContext } from './ActivityProvider';
 
 export function useDiscordActivity() {
@@ -170,8 +170,10 @@ export function useDiscordActivity() {
   }
 
   // Ensure currentUser is never null for solo mode
+  // Use a stable guest ID that persists across renders
+  const [stableGuestId] = useState(() => 'guest-' + Math.random().toString(36).substring(2, 15));
   const effectiveCurrentUser = currentUser || {
-    id: 'guest-' + Math.random().toString(36).substring(2, 15),
+    id: stableGuestId,
     username: 'Guest',
     avatar: null,
     global_name: 'Guest Player',
