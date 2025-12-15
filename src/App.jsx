@@ -820,7 +820,13 @@ export default function App() {
       }
 
       setTimeLeft(gameState.timeLeft);
-      setScores(gameState.scores);
+      // Merge server scores - prefer server values over local
+      if (gameState.scores && Object.keys(gameState.scores).length > 0) {
+        setScores((prev) => ({
+          ...prev,
+          ...gameState.scores,
+        }));
+      }
     },
     [
       currentQuestion?.id,
@@ -883,7 +889,10 @@ export default function App() {
         beginRevealPhase(currentQuestionIdRef.current);
 
         if (data.scores) {
-          setScores(data.scores);
+          setScores((prev) => ({
+            ...prev,
+            ...data.scores,
+          }));
         }
 
         if (data.playerNames) {
@@ -906,8 +915,14 @@ export default function App() {
         setHostPlayerId(data.hostPlayerId || null);
       }
       if (data.scores) {
-        setScores(data.scores);
-        setDisplayScores(data.scores);
+        setScores((prev) => ({
+          ...prev,
+          ...data.scores,
+        }));
+        setDisplayScores((prev) => ({
+          ...prev,
+          ...data.scores,
+        }));
       }
       if (data.players) {
         setPlayers(data.players);
@@ -1877,7 +1892,10 @@ export default function App() {
             }
 
             if (data.scores) {
-              setScores(data.scores);
+              setScores((prev) => ({
+                ...prev,
+                ...data.scores,
+              }));
             }
             if (data.playerNames) {
               setPlayerNames((prevNames) => ({
@@ -2127,12 +2145,18 @@ export default function App() {
               }));
             }
             if (data.scores) {
-              setScores(data.scores);
+              setScores((prev) => ({
+                ...prev,
+                ...data.scores,
+              }));
             }
           }
         } else {
           if (data.scores) {
-            setScores(data.scores);
+            setScores((prev) => ({
+              ...prev,
+              ...data.scores,
+            }));
           }
           if (data.playerNames) {
             setPlayerNames((prevNames) => ({
@@ -2475,6 +2499,8 @@ export default function App() {
       return;
     }
 
+    // Local scoring fallback - only when server hasn't scored
+    // Iterate over all players who have selections, not just the players array
     setScores((prevScores) => {
       const newScores = { ...prevScores };
 
@@ -2485,9 +2511,18 @@ export default function App() {
         return Math.round(raw);
       };
 
+      // Get all player IDs from various sources
+      const allPlayerIds = new Set([
+        ...players.map(p => p.id),
+        ...Object.keys(selections),
+        ...Object.keys(answerTimesRef.current),
+        ...Object.keys(hcCardAnswersRef.current),
+        currentUser?.id,
+      ].filter(Boolean));
+
       if (isCardMode) {
         // Award points for correct HC card answers
-        players.forEach(({ id }) => {
+        allPlayerIds.forEach((id) => {
           if (hcCardAnswersRef.current[id] === true) {
             const timeAtAnswer = answerTimesRef.current[id];
             const points = timeAtAnswer
@@ -2497,7 +2532,7 @@ export default function App() {
           }
         });
       } else {
-        players.forEach(({ id }) => {
+        allPlayerIds.forEach((id) => {
           if (selections[id] === correctIndex) {
             const timeAtAnswer = answerTimesRef.current[id];
             const points = timeAtAnswer
