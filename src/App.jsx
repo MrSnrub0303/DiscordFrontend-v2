@@ -2385,14 +2385,9 @@ export default function App() {
 
         await trySubmit();
       } else {
-        const pendingQuestionId = currentQuestionIdRef.current;
-        setTimeout(() => {
-          updateSelections(
-            { [playerId]: optionIndex },
-            pendingQuestionId ?? null,
-          );
-          beginRevealPhase(pendingQuestionId);
-        }, 1000);
+        // In proxy mode without socket, just record selection locally.
+        // Do NOT call beginRevealPhase - wait for the timer to end.
+        // The server will handle round completion when the host's timer fires.
       }
     };
 
