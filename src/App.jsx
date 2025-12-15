@@ -33,7 +33,106 @@ import hoverSoundFile from "./assets/hoverobject_short.wav";
 
 import someOfAKindFile from "./assets/SomeOfAKind.mp3";
 import revolootinFile from "./assets/Revolootin.mp3";
+import kothFile from "./assets/KOTH.mp3";
+
+import soundOnIcon from "./assets/notification_sound_on.png";
+import soundOffIcon from "./assets/notification_sound_off.png";
+
+import revealSoundFile from "./assets/chatreceived.wav";
+
+import { getCardImageUrl } from "./utils/cardImages";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  (API_BASE_URL.startsWith("http")
+    ? API_BASE_URL
+    : window.location.origin);
+
+const MAX_TIME = 20;
+const JOIN_COUNTDOWN_SECONDS = 3;
+
+const NORMAL_VOLUME = 0.3;
+const FADED_VOLUME = 0.04;
+const FADE_DURATION = 800;
+
+const MAX_POINTS = 150;
+
+const SCORING_EXPONENT = 2;
+
+const SOLO_ROOM_KEY_PREFIX = "aoe3-quiz-solo-room";
+
+const ensureSoloRoomId = (userId) => {
+  if (typeof window === "undefined") {
+    return `solo-${userId || "guest"}`;
+  }
+
+  const storageKey = userId
+    ? `${SOLO_ROOM_KEY_PREFIX}:${userId}`
+    : SOLO_ROOM_KEY_PREFIX;
+
+  try {
+    const existing = window.localStorage.getItem(storageKey);
+    if (existing) {
+      return existing;
+    }
+
+    const randomPart =
+      window.crypto?.randomUUID?.() ??
+      Math.random().toString(36).slice(2, 10);
+    const generated = `solo-${userId || "guest"}-${randomPart}`;
+    window.localStorage.setItem(storageKey, generated);
+    return generated;
+  } catch (error) {
+    const fallbackRandom = Math.random().toString(36).slice(2, 10);
+    return `solo-${userId || "guest"}-${fallbackRandom}`;
+  }
+};
+
+const deriveInstanceRoomId = (instanceId) => {
+  if (!instanceId) {
+    return null;
+  }
+
+  const parts = instanceId.split("-");
+  if (parts.length >= 4) {
+    const tail = parts[parts.length - 1];
+    return tail || instanceId;
+  }
+
+  return instanceId;
+};
+
+const formatNumber = (n) => {
+  if (n === null || n === undefined) return "0";
+  const num = Number(n);
+  if (Number.isNaN(num)) return String(n);
+  return num.toLocaleString();
+};
+
 const cardNames = [
+  "Conquistador",
+  "Team Fencing Instructor",
+  "Unction",
+  "Team Spanish Road",
+  "Team Hidalgos",
+  "Native Lore",
+  "Advanced Trading Post",
+  "Town Militia",
+  "Pioneers",
+  "Advanced Mill",
+  "Advanced Market",
+  "Advanced Estate",
+  "Advanced Dock",
+  "Llama Ranching",
+  "Ranching",
+  "Fish Market",
+  "Schooners",
+  "Sawmills",
+  "Exotic Hardwoods",
+  "Team Ironmonger",
+  "Stockyards",
+  "Furrier",
   "Rum Distillery",
   "Capitalism",
   "Stonemasons",
@@ -805,6 +904,7 @@ export default function App() {
             });
             return merged;
           });
+          setServerScoredThisRound(true);
         }
 
         if (data.playerNames) {
@@ -813,6 +913,49 @@ export default function App() {
             ...data.playerNames,
           }));
         }
+      }
+    });
+
+    // Handle show_result event from server's socket-based timer
+    socket.on("show_result", (data) => {
+      // Update selections from server
+      if (data.selections) {
+        updateSelections(
+          () => normalizeServerSelections(data.selections),
+          currentQuestionIdRef.current ?? null,
+        );
+      }
+
+      // Trigger reveal phase
+      beginRevealPhase(currentQuestionIdRef.current);
+      setShowResult(true);
+      setIsTimerRunning(false);
+
+      // Apply scores from server - only accept values >= local to prevent downgrade
+      if (data.scores) {
+        setScores((prev) => {
+          const merged = { ...prev };
+          Object.entries(data.scores).forEach(([id, serverScore]) => {
+            if (serverScore >= (prev[id] || 0)) {
+              merged[id] = serverScore;
+            }
+          });
+          return merged;
+        });
+        setServerScoredThisRound(true);
+      }
+
+      // Also update display scores immediately
+      if (data.scores) {
+        setDisplayScores((prev) => {
+          const merged = { ...prev };
+          Object.entries(data.scores).forEach(([id, serverScore]) => {
+            if (serverScore >= (prev[id] || 0)) {
+              merged[id] = serverScore;
+            }
+          });
+          return merged;
+        });
       }
     });
 
@@ -2156,80 +2299,103 @@ export default function App() {
             return 0;
           }
 
-          // Always ask the server to end the round (proxy or socket mode)
-          const endRoundRequest = async () => {
-            try {
-              const response = await fetch(`${API_BASE_URL}/game-event`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  event: "end_round",
-                  data: {
-                    roomId: roomId,
-                    playerId: currentPlayerId,
-                  },
-                }),
-              });
+          if (socket && socket.connected) {
+            const endRoundRequest = async () => {
+              try {
+                const response = await fetch(`${API_BASE_URL}/game-event`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    event: "end_round",
+                    data: {
+                      roomId: roomId,
+                      playerId: currentPlayerId,
+                    },
+                  }),
+                });
 
-              if (response.ok) {
-                const result = await response.json();
-                if (result && result.data && result.data.selections) {
-                  const resolvedQuestionId =
-                    result.data.questionId ??
-                    currentQuestionIdRef.current ??
-                    currentQuestion?.id ??
-                    null;
-                  updateSelections(
-                    normalizeServerSelections(result.data.selections || {}),
-                    resolvedQuestionId,
-                  );
-                  if (result.data.playerNames) {
-                    setPlayerNames(result.data.playerNames);
-                  }
-                  if (result.data.scores) {
-                    setScores((prev) => {
-                      const merged = { ...prev };
-                      Object.entries(result.data.scores).forEach(([id, serverScore]) => {
-                        if (serverScore >= (prev[id] || 0)) {
-                          merged[id] = serverScore;
-                        }
+                if (response.ok) {
+                  const result = await response.json();
+                  if (result && result.data && result.data.selections) {
+                    const resolvedQuestionId =
+                      result.data.questionId ??
+                      currentQuestionIdRef.current ??
+                      currentQuestion?.id ??
+                      null;
+                    updateSelections(
+                      normalizeServerSelections(
+                        result.data.selections || {},
+                      ),
+                      resolvedQuestionId,
+                    );
+                    if (result.data.playerNames) {
+                      setPlayerNames(result.data.playerNames);
+                    } else {
+                    }
+                    if (result.data.scores) {
+                      // Merge server scores, only accepting values >= local values
+                      setScores((prev) => {
+                        const merged = { ...prev };
+                        Object.entries(result.data.scores).forEach(([id, serverScore]) => {
+                          if (serverScore >= (prev[id] || 0)) {
+                            merged[id] = serverScore;
+                          }
+                        });
+                        return merged;
                       });
-                      return merged;
-                    });
-                    setServerScoredThisRound(true);
+                      setServerScoredThisRound(true);
+                    }
+                    beginRevealPhase(currentQuestionIdRef.current);
+                  } else {
+                    const localSelections = {};
+                    const selectionToUse =
+                      mySelection !== null
+                        ? mySelection
+                        : currentSelectionRef.current;
+                    if (selectionToUse !== null && currentUser?.id) {
+                      localSelections[currentUser.id] = selectionToUse;
+                    } else {
+                    }
+                    updateSelections(
+                      localSelections,
+                      currentQuestionIdRef.current ??
+                        currentQuestion?.id ??
+                        null,
+                    );
+                    beginRevealPhase(currentQuestionIdRef.current);
                   }
-                  beginRevealPhase(currentQuestionIdRef.current);
                 } else {
-                  const localSelections = {};
-                  const selectionToUse =
-                    mySelection !== null ? mySelection : currentSelectionRef.current;
-                  if (selectionToUse !== null && currentUser?.id) {
-                    localSelections[currentUser.id] = selectionToUse;
-                  }
-                  updateSelections(
-                    localSelections,
-                    currentQuestionIdRef.current ?? currentQuestion?.id ?? null,
+                  console.error(
+                    "🚨 Server responded with error status:",
+                    response.status,
                   );
-                  beginRevealPhase(currentQuestionIdRef.current);
+                  throw new Error(
+                    `Server responded with status: ${response.status}`,
+                  );
                 }
-              } else {
-                throw new Error(`Server responded with status: ${response.status}`);
+              } catch (error) {
+                const localSelections = {};
+                const selectionToUse =
+                  mySelection !== null
+                    ? mySelection
+                    : currentSelectionRef.current;
+                if (selectionToUse !== null && currentUser?.id) {
+                  localSelections[currentUser.id] = selectionToUse;
+                }
+                updateSelections(
+                  localSelections,
+                  currentQuestionIdRef.current ??
+                    currentQuestion?.id ??
+                    null,
+                );
+                beginRevealPhase(currentQuestionIdRef.current);
               }
-            } catch (error) {
-              const localSelections = {};
-              const selectionToUse = mySelection !== null ? mySelection : currentSelectionRef.current;
-              if (selectionToUse !== null && currentUser?.id) {
-                localSelections[currentUser.id] = selectionToUse;
-              }
-              updateSelections(
-                localSelections,
-                currentQuestionIdRef.current ?? currentQuestion?.id ?? null,
-              );
-              beginRevealPhase(currentQuestionIdRef.current);
-            }
-          };
+            };
 
-          endRoundRequest();
+            endRoundRequest();
+          } else {
+            beginRevealPhase(currentQuestionIdRef.current);
+          }
 
           return 0;
         }
@@ -2292,42 +2458,52 @@ export default function App() {
     window.lastSelectionQuestionId = activeQuestionId;
 
     const submitSelection = async () => {
-      // Always send selection to the server (works for both socket and proxy mode)
-      let attempts = 0;
-      const maxAttempts = 3;
+      if (socket?.connected) {
+        let attempts = 0;
+        const maxAttempts = 3;
 
-      const trySubmit = async () => {
-        try {
-          const response = await fetch(`${API_BASE_URL}/game-event`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              event: "select_option",
-              data: {
-                roomId: roomId,
-                playerId: playerId,
-                playerName:
-                  currentUser?.global_name ||
-                  currentUser?.username ||
-                  "Unknown Player",
-                optionIndex: optionIndex,
-                timeTaken: MAX_TIME - timeLeft,
-              },
-            }),
-          });
+        const trySubmit = async () => {
+          try {
+            const response = await fetch(`${API_BASE_URL}/game-event`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                event: "select_option",
+                data: {
+                  roomId: roomId,
+                  playerId: playerId,
+                  playerName:
+                    currentUser?.global_name ||
+                    currentUser?.username ||
+                    "Unknown Player",
+                  optionIndex: optionIndex,
+                  timeTaken: MAX_TIME - timeLeft,
+                },
+              }),
+            });
 
-          if (!response.ok) {
-            throw new Error(`Server responded with status: ${response.status}`);
+            if (response.ok) {
+            } else {
+              throw new Error(
+                `Server responded with status: ${response.status}`,
+              );
+            }
+          } catch (error) {
+            attempts++;
+
+            if (attempts < maxAttempts) {
+              setTimeout(trySubmit, 1000);
+            } else {
+            }
           }
-        } catch (error) {
-          attempts++;
-          if (attempts < maxAttempts) {
-            setTimeout(trySubmit, 1000);
-          }
-        }
-      };
+        };
 
-      await trySubmit();
+        await trySubmit();
+      } else {
+        // In proxy mode without socket, just record selection locally.
+        // Do NOT call beginRevealPhase - wait for the timer to end.
+        // The server will handle round completion when the host's timer fires.
+      }
     };
 
     submitSelection();
