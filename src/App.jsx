@@ -832,6 +832,23 @@ export default function App() {
           });
           return merged;
         });
+        // Also update display scores for immediate UI feedback
+        setDisplayScores((prev) => {
+          const merged = { ...prev };
+          Object.entries(gameState.scores).forEach(([id, serverScore]) => {
+            if (serverScore >= (prev[id] || 0)) {
+              merged[id] = serverScore;
+            }
+          });
+          return merged;
+        });
+      }
+      // Sync player names from server
+      if (gameState.playerNames && Object.keys(gameState.playerNames).length > 0) {
+        setPlayerNames((prev) => ({
+          ...prev,
+          ...gameState.playerNames,
+        }));
       }
     },
     [
@@ -994,7 +1011,39 @@ export default function App() {
       }
     });
 
-    socket.on("player_selected", (data) => {});
+    socket.on("player_selected", (data) => {
+      // Update selections when another player answers
+      if (data.playerId && data.playerId !== currentUser?.id) {
+        const questionId = currentQuestionIdRef.current ?? currentQuestion?.id ?? null;
+        
+        // Determine what value to store in selections
+        let selectionValue;
+        if (data.optionIndex !== undefined) {
+          selectionValue = data.optionIndex;
+        } else if (data.isCorrect !== undefined) {
+          // For card mode, store whether they answered correctly
+          selectionValue = data.isCorrect ? "correct" : "incorrect";
+        } else {
+          selectionValue = true; // Just mark that they answered
+        }
+        
+        updateSelections(
+          (prev) => ({
+            ...prev,
+            [data.playerId]: selectionValue,
+          }),
+          questionId,
+        );
+        
+        // Store player name if provided
+        if (data.playerName) {
+          setPlayerNames((prev) => ({
+            ...prev,
+            [data.playerId]: data.playerName,
+          }));
+        }
+      }
+    });
 
     socket.on("playerJoined", (player) => {
       setPlayers((prev) => {
@@ -1024,19 +1073,13 @@ export default function App() {
     };
   }, [socket, currentUser, isHost]);
 
-  // Poll game state when socket is unavailable (proxy mode) so joins/next/scores stay in sync quickly
+  // Poll game state to keep all clients in sync (scores, selections, etc.)
   useEffect(() => {
-    // Only poll if:
-    // 1. We have a roomId
-    // 2. Socket is disconnected OR proxy mode (no socket)
-    // 3. There's an active question to sync
-    const isProxyMode = API_BASE_URL.startsWith("/");
-    const shouldPoll =
-      // In proxy/disconnected mode, keep polling even during reveal so other clients receive
-      // the scored result; client-side merge already prevents score downgrades.
-      (isProxyMode || (socket && !socket.connected)) && currentQuestion !== null;
-
-    if (!roomId || !shouldPoll) return undefined;
+    // Poll whenever there's an active question or we're in reveal phase
+    // This ensures all clients stay synchronized regardless of socket state
+    const hasActiveGame = currentQuestion !== null || showResult;
+    
+    if (!roomId || !hasActiveGame) return undefined;
 
     let cancelled = false;
     let pollTimer = null;
