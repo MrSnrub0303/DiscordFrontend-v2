@@ -316,8 +316,11 @@ export default function App() {
     questionId: null,
     entries: {},
   });
+  const [revealPhaseQuestionId, setRevealPhaseQuestionId] = useState(null);
+  // Use revealPhaseQuestionId as fallback when currentQuestion is null but we're in reveal phase
+  const effectiveQuestionId = currentQuestion?.id ?? revealPhaseQuestionId;
   const selections =
-    currentQuestion?.id && selectionState.questionId === currentQuestion.id
+    effectiveQuestionId && selectionState.questionId === effectiveQuestionId
       ? selectionState.entries
       : {};
   const [mySelection, setMySelectionState] = useState(null);
@@ -498,7 +501,6 @@ export default function App() {
   const [scores, setScores] = useState({});
   const [serverScoredThisRound, setServerScoredThisRound] = useState(false);
   const [playerNames, setPlayerNames] = useState({});
-  const [revealPhaseQuestionId, setRevealPhaseQuestionId] = useState(null);
 
   const [isLeaderboardCollapsed, setIsLeaderboardCollapsed] = useState(false);
   const [leaderboardPosition, setLeaderboardPosition] = useState({
@@ -935,6 +937,7 @@ export default function App() {
 
     // Handle show_result event from server's socket-based timer
     socket.on("show_result", (data) => {
+      console.log("[show_result] Received:", data);
       // Update selections from server
       if (data.selections) {
         updateSelections(
@@ -983,6 +986,7 @@ export default function App() {
     });
 
     socket.on("room_state", (data) => {
+      console.log("[room_state] Received:", data);
       if (data?.hostPlayerId !== undefined) {
         setHostPlayerId(data.hostPlayerId || null);
       }
@@ -1012,9 +1016,11 @@ export default function App() {
     });
 
     socket.on("player_selected", (data) => {
+      console.log("[player_selected] Received event:", data, "currentUser:", currentUser?.id);
       // Update selections when another player answers
       if (data.playerId && data.playerId !== currentUser?.id) {
         const questionId = currentQuestionIdRef.current ?? currentQuestion?.id ?? null;
+        console.log("[player_selected] Updating selections for questionId:", questionId);
         
         // Determine what value to store in selections
         let selectionValue;
