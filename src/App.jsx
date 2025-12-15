@@ -820,12 +820,18 @@ export default function App() {
       }
 
       setTimeLeft(gameState.timeLeft);
-      // Merge server scores - prefer server values over local
+      // Merge server scores - only accept values >= local to prevent downgrade
       if (gameState.scores && Object.keys(gameState.scores).length > 0) {
-        setScores((prev) => ({
-          ...prev,
-          ...gameState.scores,
-        }));
+        setScores((prev) => {
+          const merged = { ...prev };
+          Object.entries(gameState.scores).forEach(([id, serverScore]) => {
+            // Only update if server score is >= local score
+            if (serverScore >= (prev[id] || 0)) {
+              merged[id] = serverScore;
+            }
+          });
+          return merged;
+        });
       }
     },
     [
@@ -889,10 +895,15 @@ export default function App() {
         beginRevealPhase(currentQuestionIdRef.current);
 
         if (data.scores) {
-          setScores((prev) => ({
-            ...prev,
-            ...data.scores,
-          }));
+          setScores((prev) => {
+            const merged = { ...prev };
+            Object.entries(data.scores).forEach(([id, serverScore]) => {
+              if (serverScore >= (prev[id] || 0)) {
+                merged[id] = serverScore;
+              }
+            });
+            return merged;
+          });
         }
 
         if (data.playerNames) {
@@ -915,14 +926,24 @@ export default function App() {
         setHostPlayerId(data.hostPlayerId || null);
       }
       if (data.scores) {
-        setScores((prev) => ({
-          ...prev,
-          ...data.scores,
-        }));
-        setDisplayScores((prev) => ({
-          ...prev,
-          ...data.scores,
-        }));
+        setScores((prev) => {
+          const merged = { ...prev };
+          Object.entries(data.scores).forEach(([id, serverScore]) => {
+            if (serverScore >= (prev[id] || 0)) {
+              merged[id] = serverScore;
+            }
+          });
+          return merged;
+        });
+        setDisplayScores((prev) => {
+          const merged = { ...prev };
+          Object.entries(data.scores).forEach(([id, serverScore]) => {
+            if (serverScore >= (prev[id] || 0)) {
+              merged[id] = serverScore;
+            }
+          });
+          return merged;
+        });
       }
       if (data.players) {
         setPlayers(data.players);
@@ -965,9 +986,10 @@ export default function App() {
     // 1. We have a roomId
     // 2. Socket is disconnected OR proxy mode (no socket)
     // 3. There's an active question to sync
+    // 4. NOT in reveal phase (to prevent stale server scores from overwriting local)
     const isProxyMode = API_BASE_URL.startsWith("/");
     const shouldPoll =
-      (isProxyMode || (socket && !socket.connected)) && currentQuestion !== null;
+      (isProxyMode || (socket && !socket.connected)) && currentQuestion !== null && !showResult;
 
     if (!roomId || !shouldPoll) return undefined;
 
@@ -1022,7 +1044,7 @@ export default function App() {
       cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [roomId, socket, socket?.connected, currentQuestion, applyGameState]);
+  }, [roomId, socket, socket?.connected, currentQuestion, applyGameState, showResult]);
 
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
@@ -1892,10 +1914,15 @@ export default function App() {
             }
 
             if (data.scores) {
-              setScores((prev) => ({
-                ...prev,
-                ...data.scores,
-              }));
+              setScores((prev) => {
+                const merged = { ...prev };
+                Object.entries(data.scores).forEach(([id, serverScore]) => {
+                  if (serverScore >= (prev[id] || 0)) {
+                    merged[id] = serverScore;
+                  }
+                });
+                return merged;
+              });
             }
             if (data.playerNames) {
               setPlayerNames((prevNames) => ({
@@ -2145,18 +2172,28 @@ export default function App() {
               }));
             }
             if (data.scores) {
-              setScores((prev) => ({
-                ...prev,
-                ...data.scores,
-              }));
+              setScores((prev) => {
+                const merged = { ...prev };
+                Object.entries(data.scores).forEach(([id, serverScore]) => {
+                  if (serverScore >= (prev[id] || 0)) {
+                    merged[id] = serverScore;
+                  }
+                });
+                return merged;
+              });
             }
           }
         } else {
           if (data.scores) {
-            setScores((prev) => ({
-              ...prev,
-              ...data.scores,
-            }));
+            setScores((prev) => {
+              const merged = { ...prev };
+              Object.entries(data.scores).forEach(([id, serverScore]) => {
+                if (serverScore >= (prev[id] || 0)) {
+                  merged[id] = serverScore;
+                }
+              });
+              return merged;
+            });
           }
           if (data.playerNames) {
             setPlayerNames((prevNames) => ({
@@ -2251,7 +2288,16 @@ export default function App() {
                     } else {
                     }
                     if (result.data.scores) {
-                      setScores(result.data.scores);
+                      // Merge server scores, only accepting values >= local values
+                      setScores((prev) => {
+                        const merged = { ...prev };
+                        Object.entries(result.data.scores).forEach(([id, serverScore]) => {
+                          if (serverScore >= (prev[id] || 0)) {
+                            merged[id] = serverScore;
+                          }
+                        });
+                        return merged;
+                      });
                       setServerScoredThisRound(true);
                     }
                     beginRevealPhase(currentQuestionIdRef.current);
