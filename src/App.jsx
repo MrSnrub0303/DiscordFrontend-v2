@@ -840,6 +840,7 @@ export default function App() {
       setTimeLeft(gameState.timeLeft);
       // Merge server scores - only accept values >= local to prevent downgrade
       if (gameState.scores && Object.keys(gameState.scores).length > 0) {
+        console.log("[applyGameState] Server scores received:", gameState.scores);
         setScores((prev) => {
           const merged = { ...prev };
           Object.entries(gameState.scores).forEach(([id, serverScore]) => {
@@ -848,6 +849,7 @@ export default function App() {
               merged[id] = serverScore;
             }
           });
+          console.log("[applyGameState] Merged scores:", merged);
           return merged;
         });
         // Also update display scores for immediate UI feedback
