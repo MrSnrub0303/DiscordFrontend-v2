@@ -852,16 +852,19 @@ export default function App() {
           console.log("[applyGameState] Merged scores:", merged);
           return merged;
         });
-        // Also update display scores for immediate UI feedback
-        setDisplayScores((prev) => {
-          const merged = { ...prev };
-          Object.entries(gameState.scores).forEach(([id, serverScore]) => {
-            if (serverScore >= (prev[id] || 0)) {
-              merged[id] = serverScore;
-            }
+        // Only update display scores when round ends (showResult is true)
+        // This prevents scores from updating mid-round
+        if (gameState.showResult || showResult) {
+          setDisplayScores((prev) => {
+            const merged = { ...prev };
+            Object.entries(gameState.scores).forEach(([id, serverScore]) => {
+              if (serverScore >= (prev[id] || 0)) {
+                merged[id] = serverScore;
+              }
+            });
+            return merged;
           });
-          return merged;
-        });
+        }
       }
       // Sync player names from server
       if (gameState.playerNames && Object.keys(gameState.playerNames).length > 0) {
@@ -2876,7 +2879,11 @@ export default function App() {
     prevRectsRef.current = newRects;
   }, [sortedPlayers]);
 
+  // Animate score changes - only when showResult is true (round has ended)
   useEffect(() => {
+    // Don't animate scores during active gameplay - only at round end
+    if (!showResult) return;
+    
     const duration = 600;
 
     Object.keys(scores).forEach((id) => {
@@ -2926,7 +2933,7 @@ export default function App() {
       });
       scoreAnimFramesRef.current = {};
     };
-  }, [scores]);
+  }, [scores, showResult]);
 
   if (isLoading || isTransitioning) {
     const isInGameLoading = questionFetchInProgressRef.current || !!currentQuestion;
