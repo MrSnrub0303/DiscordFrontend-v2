@@ -2620,6 +2620,12 @@ export default function App() {
       );
       setCardLastWrong(false);
       setIsLocked(true);
+      
+      // Track that we've made a selection for this question (prevents unlock on poll)
+      setMySelectionState(true);
+      currentSelectionRef.current = true;
+      window.lastSelectionTime = Date.now();
+      window.lastSelectionQuestionId = currentQuestionIdRef.current ?? currentQuestion?.id ?? null;
 
       try {
         const response = await fetch(`${API_BASE_URL}/game-event`, {
