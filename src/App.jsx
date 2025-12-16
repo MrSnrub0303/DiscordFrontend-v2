@@ -2554,7 +2554,8 @@ export default function App() {
           });
 
           if (response.ok) {
-            console.log(`[onSelectOption] Submitted selection: player ${playerId} chose option ${optionIndex}`);
+            const result = await response.json();
+            console.log(`[onSelectOption] Submitted selection: player ${playerId} chose option ${optionIndex}. Server response:`, result);
           } else {
             throw new Error(
               `Server responded with status: ${response.status}`,
@@ -2641,9 +2642,14 @@ export default function App() {
         });
 
         if (response.ok) {
+          const result = await response.json();
+          console.log(`[onSubmitCardAnswer] Server response:`, result);
         } else {
+          console.log(`[onSubmitCardAnswer] Server error:`, response.status);
         }
-      } catch (error) {}
+      } catch (error) {
+        console.log(`[onSubmitCardAnswer] Fetch error:`, error);
+      }
     } else {
       setCardLastWrong(true);
 
