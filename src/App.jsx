@@ -2834,13 +2834,14 @@ export default function App() {
   };
 
   const sortedPlayers = useMemo(() => {
+    // Use displayScores for sorting so ranking only changes at round end
     return players
-      .map((p) => ({ ...p, score: scores[p.id] || 0 }))
+      .map((p) => ({ ...p, score: displayScores[p.id] || 0 }))
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         return a.name.localeCompare(b.name);
       });
-  }, [scores]);
+  }, [displayScores, players]);
 
   const getMedalForRank = (rankIdx) => {
     if (rankIdx === 0) return medalFirst;
