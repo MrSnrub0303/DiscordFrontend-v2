@@ -3755,6 +3755,7 @@ export default function App() {
                           body: JSON.stringify({
                             roomId: roomId,
                             forceNew: false,
+                            resetScores: true,
                             playerId: currentPlayerId,
                           }),
                         },
@@ -3779,6 +3780,9 @@ export default function App() {
                             hostPlayerId ?? currentPlayerId ?? null,
                           );
                         }
+                        // Reset scores locally since we're starting a new session
+                        setScores({});
+                        setDisplayScores({});
                         setCurrentQuestion(question);
                         setShowResult(false);
                         const serverSelections = normalizeServerSelections(
@@ -3792,6 +3796,7 @@ export default function App() {
                         );
                         answerTimesRef.current = {};
                         awardedDoneRef.current = false;
+                        setServerScoredThisRound(false);
                       } else {
                       }
                     } catch (error) {}
