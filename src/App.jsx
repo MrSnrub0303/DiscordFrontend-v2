@@ -813,33 +813,14 @@ export default function App() {
           setServerScoredThisRound(true);
         }
         
-        setScores((prev) => {
-          const merged = { ...prev };
-          Object.entries(gameState.scores).forEach(([id, serverScore]) => {
-            // When server has scored, always use server scores (source of truth)
-            // Only apply the "keep higher" logic if server hasn't scored yet
-            if (hasServerScored) {
-              merged[id] = serverScore;
-            } else if (serverScore >= (prev[id] || 0)) {
-              merged[id] = serverScore;
-            }
-          });
-          return merged;
-        });
+        // Server is authoritative - always accept server scores
+        // This ensures score resets are properly synchronized across all clients
+        setScores(gameState.scores);
+        
         // Only update display scores when round ends (showResult is true)
-        // This prevents scores from updating mid-round
+        // This prevents score animations from updating mid-round
         if (gameState.showResult || showResult) {
-          setDisplayScores((prev) => {
-            const merged = { ...prev };
-            Object.entries(gameState.scores).forEach(([id, serverScore]) => {
-              if (hasServerScored) {
-                merged[id] = serverScore;
-              } else if (serverScore >= (prev[id] || 0)) {
-                merged[id] = serverScore;
-              }
-            });
-            return merged;
-          });
+          setDisplayScores(gameState.scores);
         }
       }
       // Sync player names from server
@@ -986,24 +967,10 @@ export default function App() {
         setHostPlayerId(data.hostPlayerId || null);
       }
       if (data.scores) {
-        setScores((prev) => {
-          const merged = { ...prev };
-          Object.entries(data.scores).forEach(([id, serverScore]) => {
-            if (serverScore >= (prev[id] || 0)) {
-              merged[id] = serverScore;
-            }
-          });
-          return merged;
-        });
-        setDisplayScores((prev) => {
-          const merged = { ...prev };
-          Object.entries(data.scores).forEach(([id, serverScore]) => {
-            if (serverScore >= (prev[id] || 0)) {
-              merged[id] = serverScore;
-            }
-          });
-          return merged;
-        });
+        // Room state is authoritative - always accept server scores
+        // This handles score resets when players rejoin after timeout
+        setScores(data.scores);
+        setDisplayScores(data.scores);
       }
       if (data.players) {
         setPlayers(data.players);
