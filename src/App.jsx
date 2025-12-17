@@ -1075,36 +1075,60 @@ export default function App() {
   // Ref to track if initial sync has been done for current room
   const initialSyncDoneRef = useRef(null);
 
-  // Initial game state sync - fetch current game state when joining a room
+  // Initial player join - handles session timeout and score reset
   // This ensures new players sync to the host's current question/timer
   useEffect(() => {
     if (!roomId || !currentUser) return;
     
-    // Only fetch once per room
+    // Only run once per room
     if (initialSyncDoneRef.current === roomId) return;
     initialSyncDoneRef.current = roomId;
 
     let cancelled = false;
 
-    const fetchInitialState = async () => {
+    const joinAndSync = async () => {
       try {
-        const resp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+        // First, call player-join to handle session timeout logic
+        const joinResp = await fetch(`${API_BASE_URL}/player-join`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache' 
+          },
+          body: JSON.stringify({
+            roomId,
+            playerId: currentUser.id,
+            playerName: currentUser.global_name || currentUser.username || 'Player',
+          }),
+        });
+        const joinData = await joinResp.json();
+        
+        if (cancelled) return;
+        
+        // If the player's score was reset due to session timeout, update local state
+        if (joinData?.scoreReset) {
+          setScores(prev => ({ ...prev, [currentUser.id]: 0 }));
+          setDisplayScores(prev => ({ ...prev, [currentUser.id]: 0 }));
+        }
+        
+        // Now fetch the full game state
+        const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
           headers: { 'Cache-Control': 'no-cache' }
         });
-        const data = await resp.json();
+        const stateData = await stateResp.json();
 
         if (cancelled) return;
 
-        if (data?.success && data.currentQuestion) {
+        if (stateData?.success && stateData.currentQuestion) {
           // Apply the game state from the server
           applyGameState({
-            currentQuestion: data.currentQuestion,
-            hostPlayerId: data.hostPlayerId,
-            selections: data.selections || {},
-            showResult: data.showResult || false,
-            timeLeft: data.timeLeft ?? MAX_TIME,
-            scores: data.scores || {},
-            playerNames: data.playerNames || {},
+            currentQuestion: stateData.currentQuestion,
+            hostPlayerId: stateData.hostPlayerId,
+            selections: stateData.selections || {},
+            showResult: stateData.showResult || false,
+            timeLeft: stateData.timeLeft ?? MAX_TIME,
+            scores: stateData.scores || {},
+            playerNames: stateData.playerNames || {},
           });
         }
       } catch {
@@ -1112,8 +1136,8 @@ export default function App() {
       }
     };
 
-    // Fetch immediately on mount
-    fetchInitialState();
+    // Run immediately on mount
+    joinAndSync();
 
     return () => {
       cancelled = true;
