@@ -1072,10 +1072,17 @@ export default function App() {
     };
   }, [socket, currentUser, isHost]);
 
+  // Ref to track if initial sync has been done for current room
+  const initialSyncDoneRef = useRef(null);
+
   // Initial game state sync - fetch current game state when joining a room
   // This ensures new players sync to the host's current question/timer
   useEffect(() => {
     if (!roomId || !currentUser) return;
+    
+    // Only fetch once per room
+    if (initialSyncDoneRef.current === roomId) return;
+    initialSyncDoneRef.current = roomId;
 
     let cancelled = false;
 
@@ -1111,7 +1118,8 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [roomId, currentUser, applyGameState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, currentUser?.id]);
 
   // Optimized polling - faster during active gameplay, slower when idle
   useEffect(() => {
