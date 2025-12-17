@@ -28,7 +28,6 @@ class DiscordProxySocket {
   async connect() {
     // Prevent multiple simultaneous connection attempts
     if (this.connecting || this.connected) {
-      console.log('⚠️ Connection already in progress or established, skipping');
       return this.connected;
     }
     
@@ -51,8 +50,6 @@ class DiscordProxySocket {
       clearTimeout(timeoutId);
       
       if (response.ok) {
-        const data = await response.text();
-        console.log('✅ Server connection successful');
         this.connected = true;
         this.localMode = false;
         this._notifyStateChange();
@@ -61,11 +58,8 @@ class DiscordProxySocket {
         const errorText = await response.text();
         throw new Error(`Server responded with status: ${response.status}, body: ${errorText}`);
       }
-    } catch (error) {
-      console.log('⚠️ Server unavailable, using local mode:', error.message);
-      
-      // Immediately fall back to local mode without retry
-      // ERR_INSUFFICIENT_RESOURCES means Discord proxy has resource limits
+    } catch {
+      // Fall back to local mode without retry
       this.localMode = true;
       this.connected = true;
       this._notifyStateChange();

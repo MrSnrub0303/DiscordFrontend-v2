@@ -305,15 +305,6 @@ export default function App() {
 
   const [roomId, setRoomId] = useState(initialRoomId);
 
-
-  useEffect(() => {
-    console.log("🏠 Room ID debug:", {
-      roomId,
-      channelId,
-      instanceId,
-    });
-  }, [roomId, channelId, instanceId]);
-
   const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [selectionState, setSelectionState] = useState({
@@ -418,22 +409,11 @@ export default function App() {
         }
 
         if (!response.ok || !data?.success) {
-          console.log(
-            "Failed to sync question to server",
-            targetRoomId,
-            data?.error || response.statusText,
-          );
           return false;
         }
 
-        console.log("Synced active question into promoted room", targetRoomId);
         return true;
       } catch (error) {
-        console.log(
-          "Failed to sync question before promoting room",
-          targetRoomId,
-          error,
-        );
         return false;
       }
     },
@@ -457,11 +437,6 @@ export default function App() {
 
         if (shouldSyncQuestionToServer) {
           await syncLocalQuestionToServer(channelId);
-        } else if (activeQuestion && !canControlQuestions) {
-          console.log(
-            "Skipped syncing local question because user is not host",
-            channelId,
-          );
         }
 
         if (!cancelled) {
@@ -772,13 +747,6 @@ export default function App() {
 
   const applyGameState = useCallback(
     (gameState) => {
-      console.log("[applyGameState] Received:", {
-        hasQuestion: !!gameState?.currentQuestion,
-        questionId: gameState?.currentQuestion?.id,
-        selections: gameState?.selections,
-        scores: gameState?.scores,
-        showResult: gameState?.showResult,
-      });
       if (!gameState?.currentQuestion) return;
       
       const isNewQuestion =
@@ -814,7 +782,6 @@ export default function App() {
           mySelection !== null ? mySelection : currentSelectionRef.current;
         const myId = currentUser?.id;
         const normalizedSelections = normalizeServerSelections(gameState.selections || {});
-        console.log("[applyGameState] Normalized selections:", normalizedSelections, "myId:", myId, "mySelection:", currentLocalSelection);
         
         if (currentLocalSelection !== null && myId) {
           updateSelections(() => {
@@ -840,8 +807,6 @@ export default function App() {
       setTimeLeft(gameState.timeLeft);
       // Merge server scores - only accept values >= local to prevent downgrade
       if (gameState.scores && Object.keys(gameState.scores).length > 0) {
-        console.log("[applyGameState] Server scores received:", gameState.scores);
-        
         // Check if server has actually scored anyone (non-zero scores)
         const hasServerScored = Object.values(gameState.scores).some(score => score > 0);
         if (hasServerScored) {
@@ -859,7 +824,6 @@ export default function App() {
               merged[id] = serverScore;
             }
           });
-          console.log("[applyGameState] Merged scores:", merged);
           return merged;
         });
         // Only update display scores when round ends (showResult is true)
@@ -970,7 +934,6 @@ export default function App() {
 
     // Handle show_result event from server's socket-based timer
     socket.on("show_result", (data) => {
-      console.log("[show_result] Received:", data);
       // Update selections from server
       if (data.selections) {
         updateSelections(
@@ -1019,7 +982,6 @@ export default function App() {
     });
 
     socket.on("room_state", (data) => {
-      console.log("[room_state] Received:", data);
       if (data?.hostPlayerId !== undefined) {
         setHostPlayerId(data.hostPlayerId || null);
       }
@@ -1049,11 +1011,9 @@ export default function App() {
     });
 
     socket.on("player_selected", (data) => {
-      console.log("[player_selected] Received event:", data, "currentUser:", currentUser?.id);
       // Update selections when another player answers
       if (data.playerId && data.playerId !== currentUser?.id) {
         const questionId = currentQuestionIdRef.current ?? currentQuestion?.id ?? null;
-        console.log("[player_selected] Updating selections for questionId:", questionId);
         
         // Determine what value to store in selections
         let selectionValue;
@@ -1112,6 +1072,47 @@ export default function App() {
     };
   }, [socket, currentUser, isHost]);
 
+  // Initial game state sync - fetch current game state when joining a room
+  // This ensures new players sync to the host's current question/timer
+  useEffect(() => {
+    if (!roomId || !currentUser) return;
+
+    let cancelled = false;
+
+    const fetchInitialState = async () => {
+      try {
+        const resp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        const data = await resp.json();
+
+        if (cancelled) return;
+
+        if (data?.success && data.currentQuestion) {
+          // Apply the game state from the server
+          applyGameState({
+            currentQuestion: data.currentQuestion,
+            hostPlayerId: data.hostPlayerId,
+            selections: data.selections || {},
+            showResult: data.showResult || false,
+            timeLeft: data.timeLeft ?? MAX_TIME,
+            scores: data.scores || {},
+            playerNames: data.playerNames || {},
+          });
+        }
+      } catch {
+        // Silently ignore errors on initial sync
+      }
+    };
+
+    // Fetch immediately on mount
+    fetchInitialState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [roomId, currentUser, applyGameState]);
+
   // Optimized polling - faster during active gameplay, slower when idle
   useEffect(() => {
     // Poll whenever there's an active question or we're in reveal phase
@@ -1159,14 +1160,12 @@ export default function App() {
         } else {
           consecutiveErrors += 1;
         }
-      } catch (error) {
-        console.error("[poll] Error:", error);
+      } catch {
         consecutiveErrors += 1;
       } finally {
         if (cancelled) return;
         
         if (consecutiveErrors >= maxErrorStreak) {
-          console.error("[poll] Too many errors, stopping");
           return;
         }
 
@@ -1204,16 +1203,11 @@ export default function App() {
 
       setCardImageUrl(null);
 
-      console.log(
-        "🎴 HC card answer:",
-        (currentQuestion.cardName || "").trim() || "<unknown>"
-      );
-
       getCardImageUrl(currentQuestion.cardName)
         .then((imageUrl) => {
           setCardImageUrl(imageUrl);
         })
-        .catch((error) => {
+        .catch(() => {
           setCardImageUrl(null);
         });
     } else {
@@ -1310,7 +1304,6 @@ export default function App() {
     // Skip socket.io entirely when using proxy - CSP blocks WebSocket anyway
     const isProxyMode = API_BASE_URL.startsWith('/');
     if (isProxyMode) {
-      console.log('🔌 Running in proxy mode - using polling instead of WebSocket');
       socketInitializingRef.current = false;
       return;
     }
@@ -1461,8 +1454,8 @@ export default function App() {
         hoverSound.current.preload = "auto";
         hoverSound.current.volume = 0.3;
       }
-    } catch (err) {
-      console.error("Failed to initialize UI sounds:", err);
+    } catch {
+      // Silently handle audio initialization errors
     }
 
     // Initialize background music
@@ -1489,8 +1482,8 @@ export default function App() {
       });
 
       bg.current.tracks = created;
-    } catch (err) {
-      console.error("Failed to initialize background music:", err);
+    } catch {
+      // Silently handle background music initialization errors
     }
 
     // Initialize AudioContext for reveal sounds
@@ -1505,12 +1498,12 @@ export default function App() {
           const decoded =
             await audioCtxRef.current.decodeAudioData(arrayBuffer);
           revealBufferRef.current = decoded;
-        } catch (err) {
-          console.error("Failed to load reveal sound:", err);
+        } catch {
+          // Silently handle reveal sound loading errors
         }
       })();
-    } catch (e) {
-      console.error("Failed to initialize AudioContext:", e);
+    } catch {
+      // Silently handle AudioContext initialization errors
     }
 
     return () => {
@@ -2471,15 +2464,11 @@ export default function App() {
                     beginRevealPhase(currentQuestionIdRef.current);
                   }
                 } else {
-                  console.error(
-                    "🚨 Server responded with error status:",
-                    response.status,
-                  );
                   throw new Error(
                     `Server responded with status: ${response.status}`,
                   );
                 }
-              } catch (error) {
+              } catch {
                 const localSelections = {};
                 const selectionToUse =
                   mySelection !== null
@@ -2589,21 +2578,17 @@ export default function App() {
           });
 
           if (response.ok) {
-            const result = await response.json();
-            console.log(`[onSelectOption] Submitted selection: player ${playerId} chose option ${optionIndex}. Server response:`, result);
+            // Selection submitted successfully
           } else {
             throw new Error(
               `Server responded with status: ${response.status}`,
             );
           }
-        } catch (error) {
-          console.error(`[onSelectOption] Error submitting selection:`, error);
+        } catch {
           attempts++;
 
           if (attempts < maxAttempts) {
             setTimeout(trySubmit, 1000);
-          } else {
-            console.error(`[onSelectOption] Failed after ${maxAttempts} attempts`);
           }
         }
       };
@@ -2683,13 +2668,10 @@ export default function App() {
         });
 
         if (response.ok) {
-          const result = await response.json();
-          console.log(`[onSubmitCardAnswer] Server response:`, result);
-        } else {
-          console.log(`[onSubmitCardAnswer] Server error:`, response.status);
+          // Card answer submitted successfully
         }
-      } catch (error) {
-        console.log(`[onSubmitCardAnswer] Fetch error:`, error);
+      } catch {
+        // Silently handle submission errors
       }
     } else {
       setCardLastWrong(true);
@@ -2758,7 +2740,6 @@ export default function App() {
 
   const onNextQuestion = async () => {
     if (!canControlQuestions) {
-      console.log("Ignoring next-question trigger because user is not host");
       return;
     }
 
@@ -3055,19 +3036,7 @@ export default function App() {
           }}
           onMouseEnter={playHoverSound}
           onClick={async () => {
-            console.log('🎮 Start button clicked', {
-              canControlQuestions,
-              currentPlayerId,
-              hostPlayerId,
-              isHost,
-            });
-            
             if (!canControlQuestions) {
-              console.warn("⚠️ Non-host attempted to restart quiz", {
-                currentPlayerId,
-                hostPlayerId,
-                message: "This player is not the host and cannot start the quiz"
-              });
               return;
             }
 
@@ -3738,9 +3707,6 @@ export default function App() {
                   onMouseEnter={() => playHoverSound()}
                   onClick={async () => {
                     if (!canControlQuestions) {
-                      console.log(
-                        "Ignored start request from non-host participant",
-                      );
                       return;
                     }
 
@@ -3940,14 +3906,15 @@ export default function App() {
           flex-direction: column;
           gap: 8px;
           max-height: 400px;
-          overflow-y: auto;
+          overflow: hidden;
+          position: relative;
         }
 
         /* individual row */
         .leaderboard-item {
           display: block;
           border-radius: 8px;
-          overflow: visible;
+          position: relative;
         }
 
         /* Apply grid to the inner row instead to preserve FLIP animations */
