@@ -1112,7 +1112,7 @@ export default function App() {
     };
   }, [socket, currentUser, isHost]);
 
-  // Poll game state to keep all clients in sync (scores, selections, etc.)
+  // Optimized polling - faster during active gameplay, slower when idle
   useEffect(() => {
     // Poll whenever there's an active question or we're in reveal phase
     // This ensures all clients stay synchronized regardless of socket state
@@ -1122,24 +1122,29 @@ export default function App() {
 
     let cancelled = false;
     let pollTimer = null;
-
     let consecutiveErrors = 0;
-    const maxErrorStreak = 3;
+    const maxErrorStreak = 5;
+
+    // Adaptive polling intervals (ms)
+    const POLL_FAST = 800;    // During active question with timer running
+    const POLL_NORMAL = 1200; // Normal gameplay
+    const POLL_SLOW = 2500;   // After round ends / waiting
+    const POLL_ERROR = 3000;  // After an error
 
     const poll = async () => {
       if (cancelled) return;
 
-      // Stop polling if question is cleared
-      if (!currentQuestion) {
-        console.log("[poll] Stopping - no currentQuestion");
+      // Stop polling if question is cleared and not in reveal
+      if (!currentQuestion && !showResult) {
         return;
       }
 
       try {
-        console.log("[poll] Fetching game-state for room:", roomId);
-        const resp = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
+        const resp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+          headers: { 'Cache-Control': 'no-cache' }
+        });
         const data = await resp.json();
-        console.log("[poll] Response:", data);
+        
         if (data?.success) {
           applyGameState({
             currentQuestion: data.currentQuestion || null,
@@ -1148,6 +1153,7 @@ export default function App() {
             showResult: data.showResult || false,
             timeLeft: data.timeLeft ?? MAX_TIME,
             scores: data.scores || {},
+            playerNames: data.playerNames || {},
           });
           consecutiveErrors = 0;
         } else {
@@ -1157,25 +1163,39 @@ export default function App() {
         console.error("[poll] Error:", error);
         consecutiveErrors += 1;
       } finally {
+        if (cancelled) return;
+        
         if (consecutiveErrors >= maxErrorStreak) {
-          return; // stop polling after consecutive failures
+          console.error("[poll] Too many errors, stopping");
+          return;
         }
 
-        // Keep the delay short so joins/next-state updates propagate quickly
-        const delayBase = 1500; // start ~1.5s
-        const delay = Math.min(8000, delayBase * Math.max(1, consecutiveErrors + 1));
+        // Determine optimal poll interval based on game state
+        let delay;
+        if (consecutiveErrors > 0) {
+          delay = POLL_ERROR;
+        } else if (showResult) {
+          // Slower polling after round ends
+          delay = POLL_SLOW;
+        } else if (timeLeft > 0 && timeLeft <= MAX_TIME) {
+          // Fast polling during active countdown
+          delay = POLL_FAST;
+        } else {
+          delay = POLL_NORMAL;
+        }
+
         pollTimer = setTimeout(poll, delay);
       }
     };
 
-    // Start quickly so late joiners sync without waiting
-    pollTimer = setTimeout(poll, 500);
+    // Start immediately for fast sync
+    pollTimer = setTimeout(poll, 300);
 
     return () => {
       cancelled = true;
       if (pollTimer) clearTimeout(pollTimer);
     };
-  }, [roomId, socket, socket?.connected, currentQuestion, applyGameState, showResult]);
+  }, [roomId, currentQuestion, applyGameState, showResult, timeLeft]);
 
   useEffect(() => {
     if (currentQuestion?.isCard && currentQuestion?.cardName) {
