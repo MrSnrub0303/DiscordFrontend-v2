@@ -841,11 +841,21 @@ export default function App() {
       // Merge server scores - only accept values >= local to prevent downgrade
       if (gameState.scores && Object.keys(gameState.scores).length > 0) {
         console.log("[applyGameState] Server scores received:", gameState.scores);
+        
+        // Check if server has actually scored anyone (non-zero scores)
+        const hasServerScored = Object.values(gameState.scores).some(score => score > 0);
+        if (hasServerScored) {
+          setServerScoredThisRound(true);
+        }
+        
         setScores((prev) => {
           const merged = { ...prev };
           Object.entries(gameState.scores).forEach(([id, serverScore]) => {
-            // Only update if server score is >= local score
-            if (serverScore >= (prev[id] || 0)) {
+            // When server has scored, always use server scores (source of truth)
+            // Only apply the "keep higher" logic if server hasn't scored yet
+            if (hasServerScored) {
+              merged[id] = serverScore;
+            } else if (serverScore >= (prev[id] || 0)) {
               merged[id] = serverScore;
             }
           });
@@ -858,7 +868,9 @@ export default function App() {
           setDisplayScores((prev) => {
             const merged = { ...prev };
             Object.entries(gameState.scores).forEach(([id, serverScore]) => {
-              if (serverScore >= (prev[id] || 0)) {
+              if (hasServerScored) {
+                merged[id] = serverScore;
+              } else if (serverScore >= (prev[id] || 0)) {
                 merged[id] = serverScore;
               }
             });
