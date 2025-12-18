@@ -3763,6 +3763,50 @@ export default function App() {
                     playClickSound();
 
                     try {
+                      // If joining existing game, DON'T call start_question - just fetch current state
+                      if (isJoiningExistingGame) {
+                        // Fetch current game state and apply it
+                        const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+                          headers: { 'Cache-Control': 'no-cache' }
+                        });
+                        const stateData = await stateResp.json();
+                        
+                        if (stateData?.success && stateData.currentQuestion) {
+                          // Apply the current game state
+                          const question = stateData.currentQuestion;
+                          currentQuestionIdRef.current = question?.id ?? null;
+                          setCurrentQuestion(question);
+                          setShowResult(stateData.showResult || false);
+                          setTimeLeft(stateData.timeLeft ?? MAX_TIME);
+                          
+                          // Apply scores from server
+                          if (stateData.scores) {
+                            setScores(stateData.scores);
+                            setDisplayScores(stateData.scores);
+                          }
+                          
+                          // Apply player names
+                          if (stateData.playerNames) {
+                            setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
+                          }
+                          
+                          // Apply selections
+                          const serverSelections = normalizeServerSelections(stateData.selections || {});
+                          updateSelections(serverSelections, question?.id ?? null);
+                          
+                          // If joining results screen, mark as already awarded
+                          if (stateData.showResult) {
+                            awardedDoneRef.current = true;
+                            setServerScoredThisRound(true);
+                          }
+                          
+                          // Clear session timed out flag
+                          setSessionTimedOut(false);
+                        }
+                        return;
+                      }
+                      
+                      // Host starting a new game - call start_question
                       const response = await fetch(
                         `${API_BASE_URL}/start_question`,
                         {
@@ -3771,8 +3815,7 @@ export default function App() {
                           body: JSON.stringify({
                             roomId: roomId,
                             forceNew: false,
-                            // Only reset scores if host is starting a new game, not if joining existing game
-                            resetScores: !isJoiningExistingGame,
+                            resetScores: true,
                             playerId: currentPlayerId,
                           }),
                         },
