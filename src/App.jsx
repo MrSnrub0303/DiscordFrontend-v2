@@ -1119,34 +1119,52 @@ export default function App() {
           const serverSelections = normalizeServerSelections(syncData.selections || {});
           updateSelections(serverSelections, question?.id ?? null);
           setTimeLeft(syncData.timeLeft ?? MAX_TIME);
+          // Successfully synced to active game - done joining
+          setIsJoining(false);
         } else {
-          // Fallback: fetch game state directly
-          const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
-            headers: { 'Cache-Control': 'no-cache' }
-          });
-          const stateData = await stateResp.json();
+          // No active game found - do confirmation polls before showing Start button
+          // This handles race conditions where the other player's game isn't detected yet
+          let foundActiveGame = false;
+          const maxConfirmPolls = 4;
+          const pollDelay = 800;
 
-          if (cancelled) return;
+          for (let i = 0; i < maxConfirmPolls && !cancelled && !foundActiveGame; i++) {
+            await new Promise(resolve => setTimeout(resolve, pollDelay));
+            if (cancelled) break;
 
-          if (stateData?.success && stateData.currentQuestion) {
-            // Apply the game state from the server
-            applyGameState({
-              currentQuestion: stateData.currentQuestion,
-              hostPlayerId: stateData.hostPlayerId,
-              selections: stateData.selections || {},
-              showResult: stateData.showResult || false,
-              timeLeft: stateData.timeLeft ?? MAX_TIME,
-              scores: stateData.scores || {},
-              playerNames: stateData.playerNames || {},
-            });
+            try {
+              const confirmResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+                headers: { 'Cache-Control': 'no-cache' }
+              });
+              const confirmData = await confirmResp.json();
+
+              if (cancelled) break;
+
+              if (confirmData?.success && confirmData.currentQuestion) {
+                foundActiveGame = true;
+                // Apply the game state from the server
+                applyGameState({
+                  currentQuestion: confirmData.currentQuestion,
+                  hostPlayerId: confirmData.hostPlayerId,
+                  selections: confirmData.selections || {},
+                  showResult: confirmData.showResult || false,
+                  timeLeft: confirmData.timeLeft ?? MAX_TIME,
+                  scores: confirmData.scores || {},
+                  playerNames: confirmData.playerNames || {},
+                });
+              }
+            } catch {
+              // Ignore individual poll errors
+            }
+          }
+
+          if (!cancelled) {
+            setIsJoining(false);
           }
         }
       } catch {
         // Silently ignore errors on initial sync
-      } finally {
-        if (!cancelled) {
-          setIsJoining(false); // Done syncing, show normal UI
-        }
+        setIsJoining(false);
       }
     };
 
@@ -3787,11 +3805,13 @@ export default function App() {
                       }
 
                       // Check if server says there's no active game
-                      // Only the host should start a new game in this case
+                      // Only the original host (already set before this click) should start a new game
+                      // This prevents rejoining players from accidentally starting new games
                       if (result.noActiveGame) {
-                        const isHost = resolvedHostId === currentPlayerId || !resolvedHostId;
-                        if (isHost) {
-                          // Host can start a new game - make second request with forceNew: true
+                        // Use the EXISTING canControlQuestions which was set before this click
+                        // Don't use resolvedHostId from this response as it might be null
+                        if (canControlQuestions) {
+                          // This player was already the host - they can start a new game
                           const newGameResponse = await fetch(
                             `${API_BASE_URL}/start_question`,
                             {
