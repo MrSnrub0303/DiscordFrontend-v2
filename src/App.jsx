@@ -3786,6 +3786,48 @@ export default function App() {
                         setHostPlayerId(resolvedHostId || null);
                       }
 
+                      // Check if server says there's no active game
+                      // Only the host should start a new game in this case
+                      if (result.noActiveGame) {
+                        const isHost = resolvedHostId === currentPlayerId || !resolvedHostId;
+                        if (isHost) {
+                          // Host can start a new game - make second request with forceNew: true
+                          const newGameResponse = await fetch(
+                            `${API_BASE_URL}/start_question`,
+                            {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                roomId: roomId,
+                                forceNew: true,
+                                resetScores: true,
+                                playerId: currentPlayerId,
+                              }),
+                            },
+                          );
+                          const newGameResult = await newGameResponse.json();
+                          if (newGameResult?.success && newGameResult?.question) {
+                            const question = newGameResult.question;
+                            currentQuestionIdRef.current = question?.id ?? null;
+                            if (newGameResult.hostPlayerId !== undefined) {
+                              setHostPlayerId(newGameResult.hostPlayerId || null);
+                            }
+                            setScores({});
+                            setDisplayScores({});
+                            setCurrentQuestion(question);
+                            setShowResult(false);
+                            setMySelection(null, question?.id ?? null);
+                            currentSelectionRef.current = null;
+                            answerTimesRef.current = {};
+                            awardedDoneRef.current = false;
+                            setServerScoredThisRound(false);
+                            setTimeLeft(newGameResult.timeLeft ?? MAX_TIME);
+                          }
+                        }
+                        // Non-host: do nothing, already showing "Waiting for host" message
+                        return;
+                      }
+
                       const startQuestion =
                         result?.question ?? result?.data?.question;
 
