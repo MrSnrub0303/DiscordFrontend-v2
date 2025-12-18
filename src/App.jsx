@@ -3756,6 +3756,11 @@ export default function App() {
                             setScores(result.scores);
                             setDisplayScores(result.scores);
                           }
+                          // If syncing to results screen, mark as already awarded
+                          if (result.showResult) {
+                            awardedDoneRef.current = true;
+                            setServerScoredThisRound(true);
+                          }
                         }
                         setCurrentQuestion(question);
                         setShowResult(result.showResult || false);
@@ -3767,13 +3772,13 @@ export default function App() {
                         if (!result.synced) {
                           setMySelection(null, question?.id ?? null);
                           currentSelectionRef.current = null;
+                          answerTimesRef.current = {};
+                          awardedDoneRef.current = false;
+                          setServerScoredThisRound(false);
                         }
                         setTimeLeft(
                           result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME,
                         );
-                        answerTimesRef.current = {};
-                        awardedDoneRef.current = false;
-                        setServerScoredThisRound(false);
                       } else {
                       }
                     } catch (error) {}
