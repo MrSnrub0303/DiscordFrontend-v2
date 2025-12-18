@@ -3745,17 +3745,29 @@ export default function App() {
                             hostPlayerId ?? currentPlayerId ?? null,
                           );
                         }
-                        // Reset scores locally since we're starting a new session
-                        setScores({});
-                        setDisplayScores({});
+                        // Only reset scores if this is a NEW game, not a sync to existing game
+                        // The server returns synced: true when joining an in-progress game
+                        if (!result.synced) {
+                          setScores({});
+                          setDisplayScores({});
+                        } else {
+                          // Syncing to existing game - use server scores
+                          if (result.scores) {
+                            setScores(result.scores);
+                            setDisplayScores(result.scores);
+                          }
+                        }
                         setCurrentQuestion(question);
-                        setShowResult(false);
+                        setShowResult(result.showResult || false);
                         const serverSelections = normalizeServerSelections(
                           result?.data?.selections || result?.selections || {},
                         );
                         updateSelections(serverSelections, question?.id ?? null);
-                        setMySelection(null, question?.id ?? null);
-                        currentSelectionRef.current = null;
+                        // Only reset selection if not synced (new game)
+                        if (!result.synced) {
+                          setMySelection(null, question?.id ?? null);
+                          currentSelectionRef.current = null;
+                        }
                         setTimeLeft(
                           result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME,
                         );
