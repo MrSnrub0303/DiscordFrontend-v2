@@ -503,7 +503,6 @@ export default function App() {
   }, []);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isJoining, setIsJoining] = useState(true); // Shows "Joining game..." while syncing
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -1042,6 +1041,12 @@ export default function App() {
 
   // Ref to track if initial sync has been done for current room
   const initialSyncDoneRef = useRef(null);
+  
+  // State to track if initial sync is in progress (prevents showing Start button prematurely)
+  const [isInitialSyncing, setIsInitialSyncing] = useState(true);
+  
+  // State to track if player session timed out (away > 1 min, needs to click Start)
+  const [sessionTimedOut, setSessionTimedOut] = useState(false);
 
   // Initial player join - handles session timeout and score reset
   // This ensures new players sync to the host's current question/timer
@@ -1053,7 +1058,6 @@ export default function App() {
     initialSyncDoneRef.current = roomId;
 
     let cancelled = false;
-    setIsJoining(true); // Show "Joining game..." while syncing
 
     const joinAndSync = async () => {
       try {
@@ -1074,97 +1078,67 @@ export default function App() {
         
         if (cancelled) return;
         
+        // Check if player's session timed out (away > 1 minute)
+        const playerTimedOut = joinData?.scoreReset || joinData?.isNewPlayer;
+        
         // If the player's score was reset due to session timeout, update local state
         if (joinData?.scoreReset) {
           setScores(prev => ({ ...prev, [currentUser.id]: 0 }));
           setDisplayScores(prev => ({ ...prev, [currentUser.id]: 0 }));
         }
         
-        // Try to sync via start_question first (this handles active games properly)
-        // This endpoint checks for active questions and returns sync data without starting new
-        const syncResp = await fetch(`${API_BASE_URL}/start_question`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache' 
-          },
-          body: JSON.stringify({
-            roomId,
-            forceNew: false,
-            resetScores: false, // Never reset on initial sync
-            playerId: currentUser.id,
-          }),
+        // Now fetch the full game state
+        const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+          headers: { 'Cache-Control': 'no-cache' }
         });
-        const syncData = await syncResp.json();
+        const stateData = await stateResp.json();
 
         if (cancelled) return;
 
-        if (syncData?.success && syncData.question) {
-          // Apply the synced game state
-          const question = syncData.question;
-          currentQuestionIdRef.current = question?.id ?? null;
-          if (syncData.hostPlayerId !== undefined) {
-            setHostPlayerId(syncData.hostPlayerId || null);
-          }
-          if (syncData.scores) {
-            setScores(syncData.scores);
-            setDisplayScores(syncData.scores);
-          }
-          setCurrentQuestion(question);
-          setShowResult(syncData.showResult || false);
-          if (syncData.showResult) {
-            awardedDoneRef.current = true;
-            setServerScoredThisRound(true);
-          }
-          const serverSelections = normalizeServerSelections(syncData.selections || {});
-          updateSelections(serverSelections, question?.id ?? null);
-          setTimeLeft(syncData.timeLeft ?? MAX_TIME);
-          // Successfully synced to active game - done joining
-          setIsJoining(false);
-        } else {
-          // No active game found - do confirmation polls before showing Start button
-          // This handles race conditions where the other player's game isn't detected yet
-          let foundActiveGame = false;
-          const maxConfirmPolls = 4;
-          const pollDelay = 800;
-
-          for (let i = 0; i < maxConfirmPolls && !cancelled && !foundActiveGame; i++) {
-            await new Promise(resolve => setTimeout(resolve, pollDelay));
-            if (cancelled) break;
-
-            try {
-              const confirmResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
-                headers: { 'Cache-Control': 'no-cache' }
-              });
-              const confirmData = await confirmResp.json();
-
-              if (cancelled) break;
-
-              if (confirmData?.success && confirmData.currentQuestion) {
-                foundActiveGame = true;
-                // Apply the game state from the server
-                applyGameState({
-                  currentQuestion: confirmData.currentQuestion,
-                  hostPlayerId: confirmData.hostPlayerId,
-                  selections: confirmData.selections || {},
-                  showResult: confirmData.showResult || false,
-                  timeLeft: confirmData.timeLeft ?? MAX_TIME,
-                  scores: confirmData.scores || {},
-                  playerNames: confirmData.playerNames || {},
-                });
-              }
-            } catch {
-              // Ignore individual poll errors
+        const hasActiveGame = stateData?.success && stateData.currentQuestion;
+        
+        if (hasActiveGame) {
+          // There's an active game in progress
+          if (!playerTimedOut) {
+            // Player was away < 1 minute - auto-sync to current game (no Start button)
+            applyGameState({
+              currentQuestion: stateData.currentQuestion,
+              hostPlayerId: stateData.hostPlayerId,
+              selections: stateData.selections || {},
+              showResult: stateData.showResult || false,
+              timeLeft: stateData.timeLeft ?? MAX_TIME,
+              scores: stateData.scores || {},
+              playerNames: stateData.playerNames || {},
+            });
+            setSessionTimedOut(false);
+          } else {
+            // Player was away > 1 minute - they need to click Start to join
+            // But we still set the host so they know who's in charge
+            if (stateData.hostPlayerId) {
+              setHostPlayerId(stateData.hostPlayerId);
             }
+            // Apply scores and player names from server
+            if (stateData.scores) {
+              setScores(stateData.scores);
+              setDisplayScores(stateData.scores);
+            }
+            if (stateData.playerNames) {
+              setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
+            }
+            setSessionTimedOut(true);
           }
-
-          if (!cancelled) {
-            setIsJoining(false);
-          }
+        } else {
+          // No active game - show Start button for host
+          setSessionTimedOut(false);
         }
+        
+        // Mark initial sync as complete
+        setIsInitialSyncing(false);
       } catch {
-        // Silently ignore errors on initial sync
-        setIsJoining(false);
+        // On error, still mark sync as complete to avoid stuck loading state
+        if (!cancelled) {
+          setIsInitialSyncing(false);
+        }
       }
     };
 
@@ -3740,17 +3714,19 @@ export default function App() {
           </>
         ) : (
           <div style={{ textAlign: "center", color: "#ccc", padding: "40px" }}>
-            {isJoining ? (
+            {isInitialSyncing ? (
+              // Show loading state during initial sync to prevent flashing Start button
               <div>
-                <p style={{ fontSize: "1.3rem", color: "#ffb347" }}>Joining game...</p>
-                <p style={{ fontSize: "0.9rem", marginTop: 8 }}>Syncing with other players</p>
+                <p>Syncing game state...</p>
               </div>
             ) : socket && socket.connected && isInVoiceChannel ? (
               <div>
-                <p>Ready to start the quiz?</p>
+                <p>{sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId 
+                  ? "Join the current game?" 
+                  : "Ready to start the quiz?"}</p>
                 <button
                   className="next-question-button"
-                  disabled={!canControlQuestions}
+                  disabled={sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId ? false : !canControlQuestions}
                   style={{
                     marginTop: 16,
                     width: 360,
@@ -3766,16 +3742,21 @@ export default function App() {
                     fontFamily: '"Trajan Pro Bold", serif',
                     fontWeight: 600,
                     fontSize: "1.7rem",
-                    cursor: canControlQuestions ? "pointer" : "not-allowed",
+                    cursor: (sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) || canControlQuestions 
+                      ? "pointer" 
+                      : "not-allowed",
                     outline: "none",
-                    filter: canControlQuestions
+                    filter: (sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) || canControlQuestions
                       ? "drop-shadow(0 0 8px gold)"
                       : "grayscale(0.6)",
                     userSelect: "none",
                   }}
                   onMouseEnter={() => playHoverSound()}
                   onClick={async () => {
-                    if (!canControlQuestions) {
+                    // Timed-out player joining existing game OR host starting new game
+                    const isJoiningExistingGame = sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId;
+                    
+                    if (!isJoiningExistingGame && !canControlQuestions) {
                       return;
                     }
 
@@ -3790,7 +3771,8 @@ export default function App() {
                           body: JSON.stringify({
                             roomId: roomId,
                             forceNew: false,
-                            resetScores: false, // Don't reset - let server handle sync
+                            // Only reset scores if host is starting a new game, not if joining existing game
+                            resetScores: !isJoiningExistingGame,
                             playerId: currentPlayerId,
                           }),
                         },
@@ -3802,50 +3784,6 @@ export default function App() {
                         result?.hostPlayerId ?? result?.data?.hostPlayerId;
                       if (resolvedHostId !== undefined) {
                         setHostPlayerId(resolvedHostId || null);
-                      }
-
-                      // Check if server says there's no active game
-                      // Only the original host (already set before this click) should start a new game
-                      // This prevents rejoining players from accidentally starting new games
-                      if (result.noActiveGame) {
-                        // Use the EXISTING canControlQuestions which was set before this click
-                        // Don't use resolvedHostId from this response as it might be null
-                        if (canControlQuestions) {
-                          // This player was already the host - they can start a new game
-                          const newGameResponse = await fetch(
-                            `${API_BASE_URL}/start_question`,
-                            {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                roomId: roomId,
-                                forceNew: true,
-                                resetScores: true,
-                                playerId: currentPlayerId,
-                              }),
-                            },
-                          );
-                          const newGameResult = await newGameResponse.json();
-                          if (newGameResult?.success && newGameResult?.question) {
-                            const question = newGameResult.question;
-                            currentQuestionIdRef.current = question?.id ?? null;
-                            if (newGameResult.hostPlayerId !== undefined) {
-                              setHostPlayerId(newGameResult.hostPlayerId || null);
-                            }
-                            setScores({});
-                            setDisplayScores({});
-                            setCurrentQuestion(question);
-                            setShowResult(false);
-                            setMySelection(null, question?.id ?? null);
-                            currentSelectionRef.current = null;
-                            answerTimesRef.current = {};
-                            awardedDoneRef.current = false;
-                            setServerScoredThisRound(false);
-                            setTimeLeft(newGameResult.timeLeft ?? MAX_TIME);
-                          }
-                        }
-                        // Non-host: do nothing, already showing "Waiting for host" message
-                        return;
                       }
 
                       const startQuestion =
@@ -3893,23 +3831,22 @@ export default function App() {
                         setTimeLeft(
                           result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME,
                         );
+                        // Clear session timed out flag after successful join
+                        setSessionTimedOut(false);
                       } else {
                       }
                     } catch (error) {}
                   }}
                 >
-                  Start Quiz
+                  {sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId 
+                    ? "Join Game" 
+                    : "Start Quiz"}
                 </button>
-                {!canControlQuestions && (
+                {!canControlQuestions && !(sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) && (
                   <p style={{ marginTop: 8, color: "#ffb347" }}>
                     Waiting for the host to start…
                   </p>
                 )}
-              </div>
-            ) : isJoining ? (
-              <div>
-                <p style={{ fontSize: "1.3rem", color: "#ffb347" }}>Joining game...</p>
-                <p style={{ fontSize: "0.9rem", marginTop: 8 }}>Syncing with other players</p>
               </div>
             ) : (
               <p>No question loaded. Wait for the host to start the quiz.</p>
