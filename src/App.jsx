@@ -503,6 +503,7 @@ export default function App() {
   }, []);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isJoining, setIsJoining] = useState(true); // Shows "Joining game..." while syncing
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -1052,6 +1053,7 @@ export default function App() {
     initialSyncDoneRef.current = roomId;
 
     let cancelled = false;
+    setIsJoining(true); // Show "Joining game..." while syncing
 
     const joinAndSync = async () => {
       try {
@@ -1100,6 +1102,10 @@ export default function App() {
         }
       } catch {
         // Silently ignore errors on initial sync
+      } finally {
+        if (!cancelled) {
+          setIsJoining(false); // Done syncing, show normal UI
+        }
       }
     };
 
@@ -3675,7 +3681,12 @@ export default function App() {
           </>
         ) : (
           <div style={{ textAlign: "center", color: "#ccc", padding: "40px" }}>
-            {socket && socket.connected && isInVoiceChannel ? (
+            {isJoining ? (
+              <div>
+                <p style={{ fontSize: "1.3rem", color: "#ffb347" }}>Joining game...</p>
+                <p style={{ fontSize: "0.9rem", marginTop: 8 }}>Syncing with other players</p>
+              </div>
+            ) : socket && socket.connected && isInVoiceChannel ? (
               <div>
                 <p>Ready to start the quiz?</p>
                 <button
@@ -3791,6 +3802,11 @@ export default function App() {
                     Waiting for the host to start…
                   </p>
                 )}
+              </div>
+            ) : isJoining ? (
+              <div>
+                <p style={{ fontSize: "1.3rem", color: "#ffb347" }}>Joining game...</p>
+                <p style={{ fontSize: "0.9rem", marginTop: 8 }}>Syncing with other players</p>
               </div>
             ) : (
               <p>No question loaded. Wait for the host to start the quiz.</p>
