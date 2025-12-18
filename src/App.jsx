@@ -1080,25 +1080,66 @@ export default function App() {
           setDisplayScores(prev => ({ ...prev, [currentUser.id]: 0 }));
         }
         
-        // Now fetch the full game state
-        const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
-          headers: { 'Cache-Control': 'no-cache' }
+        // Try to sync via start_question first (this handles active games properly)
+        // This endpoint checks for active questions and returns sync data without starting new
+        const syncResp = await fetch(`${API_BASE_URL}/start_question`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache' 
+          },
+          body: JSON.stringify({
+            roomId,
+            forceNew: false,
+            resetScores: false, // Never reset on initial sync
+            playerId: currentUser.id,
+          }),
         });
-        const stateData = await stateResp.json();
+        const syncData = await syncResp.json();
 
         if (cancelled) return;
 
-        if (stateData?.success && stateData.currentQuestion) {
-          // Apply the game state from the server
-          applyGameState({
-            currentQuestion: stateData.currentQuestion,
-            hostPlayerId: stateData.hostPlayerId,
-            selections: stateData.selections || {},
-            showResult: stateData.showResult || false,
-            timeLeft: stateData.timeLeft ?? MAX_TIME,
-            scores: stateData.scores || {},
-            playerNames: stateData.playerNames || {},
+        if (syncData?.success && syncData.question) {
+          // Apply the synced game state
+          const question = syncData.question;
+          currentQuestionIdRef.current = question?.id ?? null;
+          if (syncData.hostPlayerId !== undefined) {
+            setHostPlayerId(syncData.hostPlayerId || null);
+          }
+          if (syncData.scores) {
+            setScores(syncData.scores);
+            setDisplayScores(syncData.scores);
+          }
+          setCurrentQuestion(question);
+          setShowResult(syncData.showResult || false);
+          if (syncData.showResult) {
+            awardedDoneRef.current = true;
+            setServerScoredThisRound(true);
+          }
+          const serverSelections = normalizeServerSelections(syncData.selections || {});
+          updateSelections(serverSelections, question?.id ?? null);
+          setTimeLeft(syncData.timeLeft ?? MAX_TIME);
+        } else {
+          // Fallback: fetch game state directly
+          const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+            headers: { 'Cache-Control': 'no-cache' }
           });
+          const stateData = await stateResp.json();
+
+          if (cancelled) return;
+
+          if (stateData?.success && stateData.currentQuestion) {
+            // Apply the game state from the server
+            applyGameState({
+              currentQuestion: stateData.currentQuestion,
+              hostPlayerId: stateData.hostPlayerId,
+              selections: stateData.selections || {},
+              showResult: stateData.showResult || false,
+              timeLeft: stateData.timeLeft ?? MAX_TIME,
+              scores: stateData.scores || {},
+              playerNames: stateData.playerNames || {},
+            });
+          }
         }
       } catch {
         // Silently ignore errors on initial sync
@@ -3731,7 +3772,7 @@ export default function App() {
                           body: JSON.stringify({
                             roomId: roomId,
                             forceNew: false,
-                            resetScores: true,
+                            resetScores: false, // Don't reset - let server handle sync
                             playerId: currentPlayerId,
                           }),
                         },
