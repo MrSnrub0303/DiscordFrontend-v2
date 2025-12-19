@@ -3079,19 +3079,57 @@ export default function App() {
             }
 
               playClickSound();
-
-              setScores(
-                players.reduce((acc, p) => {
-                  acc[p.id] = 0;
-                  return acc;
-                }, {}),
-              );
-
-              answerTimesRef.current = {};
-              awardedDoneRef.current = false;
-
               setIsLoading(true);
+              
               try {
+                // FIRST: Check if there's already an active game on the server
+                const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+                  headers: { 'Cache-Control': 'no-cache' }
+                });
+                const stateData = await stateResp.json();
+                
+                // If there's an active question with time remaining, just sync to it
+                if (stateData?.success && stateData.currentQuestion && stateData.timeLeft > 0) {
+                  const question = stateData.currentQuestion;
+                  currentQuestionIdRef.current = question?.id ?? null;
+                  setCurrentQuestion(question);
+                  setShowResult(stateData.showResult || false);
+                  setTimeLeft(stateData.timeLeft ?? MAX_TIME);
+                  
+                  if (stateData.hostPlayerId) {
+                    setHostPlayerId(stateData.hostPlayerId);
+                  }
+                  if (stateData.scores) {
+                    setScores(stateData.scores);
+                    setDisplayScores(stateData.scores);
+                  }
+                  if (stateData.playerNames) {
+                    setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
+                  }
+                  
+                  const serverSelections = normalizeServerSelections(stateData.selections || {});
+                  updateSelections(serverSelections, question?.id ?? null);
+                  
+                  if (stateData.showResult) {
+                    awardedDoneRef.current = true;
+                    setServerScoredThisRound(true);
+                  }
+                  
+                  setIsLoading(false);
+                  return; // Don't start a new question - just synced to existing game
+                }
+                
+                // No active game - proceed to start a new one
+                setScores(
+                  players.reduce((acc, p) => {
+                    acc[p.id] = 0;
+                    return acc;
+                  }, {}),
+                );
+
+                answerTimesRef.current = {};
+                awardedDoneRef.current = false;
+
                 const response = await fetch(`${API_BASE_URL}/start_question`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
