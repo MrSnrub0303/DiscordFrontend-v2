@@ -827,7 +827,18 @@ export default function App() {
         }
       }
 
-      setTimeLeft(gameState.timeLeft);
+      // Only update timeLeft if it's a new question or significantly different (>2s)
+      // This prevents timer flicker from polling conflicting with local countdown
+      if (isNewQuestion) {
+        setTimeLeft(gameState.timeLeft);
+      } else {
+        setTimeLeft((currentTime) => {
+          const serverTime = gameState.timeLeft;
+          const diff = Math.abs(currentTime - serverTime);
+          // Only sync if difference is > 2 seconds to avoid flicker
+          return diff > 2 ? serverTime : currentTime;
+        });
+      }
       // Merge server scores - only accept values >= local to prevent downgrade
       if (gameState.scores && Object.keys(gameState.scores).length > 0) {
         // Check if server has actually scored anyone (non-zero scores)
