@@ -745,16 +745,29 @@ export default function App() {
     }
   }, [ready, socket, roomId]);
 
+  // Ref to track if user explicitly clicked to join/start (allows auto-sync)
+  const userClickedStartRef = useRef(false);
+  
   const applyGameState = useCallback(
-    (gameState) => {
+    (gameState, { forceApply = false } = {}) => {
       if (!gameState?.currentQuestion) return;
       
-      // DON'T auto-sync if user doesn't have a question yet
-      // They must click Start/Join to join the game
-      if (!currentQuestion) {
-        // Just update host info, but don't set currentQuestion
+      // Don't auto-navigate user to question screen if they haven't clicked Start
+      // Only apply game state if:
+      // 1. forceApply is true (explicit user action)
+      // 2. userClickedStartRef is true (user clicked Start/Join)
+      // 3. We already have a currentQuestion (we're already in the game)
+      if (!forceApply && !userClickedStartRef.current && !currentQuestion) {
+        // Just update host/scores/playerNames but don't set currentQuestion
         if (gameState.hostPlayerId !== undefined) {
           setHostPlayerId(gameState.hostPlayerId || null);
+        }
+        if (gameState.scores && Object.keys(gameState.scores).length > 0) {
+          setScores(gameState.scores);
+          setDisplayScores(gameState.scores);
+        }
+        if (gameState.playerNames && Object.keys(gameState.playerNames).length > 0) {
+          setPlayerNames((prev) => ({ ...prev, ...gameState.playerNames }));
         }
         return;
       }
@@ -1108,21 +1121,36 @@ export default function App() {
         const hasActiveGame = stateData?.success && stateData.currentQuestion;
         
         if (hasActiveGame) {
-          // There's an active game in progress - show Start/Join button
-          // Player must click to join, no auto-sync
-          if (stateData.hostPlayerId) {
-            setHostPlayerId(stateData.hostPlayerId);
+          // There's an active game in progress
+          if (!playerTimedOut) {
+            // Player was away < 1 minute - auto-sync to current game (no Start button)
+            userClickedStartRef.current = true; // Mark as allowed to sync
+            applyGameState({
+              currentQuestion: stateData.currentQuestion,
+              hostPlayerId: stateData.hostPlayerId,
+              selections: stateData.selections || {},
+              showResult: stateData.showResult || false,
+              timeLeft: stateData.timeLeft ?? MAX_TIME,
+              scores: stateData.scores || {},
+              playerNames: stateData.playerNames || {},
+            }, { forceApply: true });
+            setSessionTimedOut(false);
+          } else {
+            // Player was away > 1 minute - they need to click Start to join
+            // But we still set the host so they know who's in charge
+            if (stateData.hostPlayerId) {
+              setHostPlayerId(stateData.hostPlayerId);
+            }
+            // Apply scores and player names from server
+            if (stateData.scores) {
+              setScores(stateData.scores);
+              setDisplayScores(stateData.scores);
+            }
+            if (stateData.playerNames) {
+              setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
+            }
+            setSessionTimedOut(true);
           }
-          // Apply scores and player names from server
-          if (stateData.scores) {
-            setScores(stateData.scores);
-            setDisplayScores(stateData.scores);
-          }
-          if (stateData.playerNames) {
-            setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
-          }
-          // Mark as timed out so they see the Join button
-          setSessionTimedOut(true);
         } else {
           // No active game - show Start button for host
           setSessionTimedOut(false);
@@ -1710,6 +1738,12 @@ export default function App() {
 
   useEffect(() => {
     const initializeQuestion = async () => {
+      // Don't auto-initialize if user hasn't explicitly clicked Start
+      // This prevents auto-navigation to question screen
+      if (!userClickedStartRef.current) {
+        return;
+      }
+      
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       const getQuestionFromServer = async (allowSyncAttempt = true) => {
@@ -1847,6 +1881,12 @@ export default function App() {
       if (questionFetchInProgressRef.current) {
         return;
       }
+      
+      // Don't sync game state if user hasn't clicked Start yet and has no current question
+      // This prevents auto-navigation to question screen
+      if (!userClickedStartRef.current && !currentQuestion) {
+        return;
+      }
 
       try {
         const response = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
@@ -1867,20 +1907,6 @@ export default function App() {
         }
 
         if (data.success && data.currentQuestion) {
-          // DON'T auto-sync if user doesn't have a question yet
-          // They must click Start/Join to join the game
-          if (!currentQuestion) {
-            // Just update host info and scores, but don't set currentQuestion
-            if (data.scores) {
-              setScores(data.scores);
-              setDisplayScores(data.scores);
-            }
-            if (data.playerNames) {
-              setPlayerNames(prev => ({ ...prev, ...data.playerNames }));
-            }
-            return;
-          }
-          
           const currentQuestionId = currentQuestion?.id;
           const serverQuestionId = data.currentQuestion?.id;
           const isDifferentQuestion =
@@ -2792,6 +2818,7 @@ export default function App() {
     }
 
     setIsLoading(true);
+    userClickedStartRef.current = true; // Mark that user explicitly clicked
 
     try {
       setIsTransitioning(true);
@@ -3090,6 +3117,7 @@ export default function App() {
 
               playClickSound();
               setIsLoading(true);
+              userClickedStartRef.current = true; // Mark that user explicitly clicked
               
               try {
                 // FIRST: Check if there's already an active game on the server
@@ -3809,6 +3837,7 @@ export default function App() {
                     }
 
                     playClickSound();
+                    userClickedStartRef.current = true; // Mark that user explicitly clicked
 
                     try {
                       // If joining existing game, DON'T call start_question - just fetch current state
