@@ -827,15 +827,7 @@ export default function App() {
         }
       }
 
-      // Only update timeLeft if the difference is significant (> 2 seconds)
-      // This prevents timer flickering during polling while keeping sync accurate
-      const serverTime = gameState.timeLeft;
-      const currentTime = timeLeftRef.current ?? MAX_TIME;
-      const timeDiff = Math.abs(serverTime - currentTime);
-      if (timeDiff > 2 || currentTime === MAX_TIME || serverTime === 0) {
-        setTimeLeft(serverTime);
-      }
-      
+      setTimeLeft(gameState.timeLeft);
       // Merge server scores - only accept values >= local to prevent downgrade
       if (gameState.scores && Object.keys(gameState.scores).length > 0) {
         // Check if server has actually scored anyone (non-zero scores)
@@ -3411,16 +3403,15 @@ export default function App() {
           backgroundSize: "contain",
           backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
-          padding: "clamp(20px, 5vw, 60px)",
+          padding: 60,
           boxSizing: "border-box",
-          width: "min(850px, 95vw)",
+          width: 850,
           maxWidth: "95vw",
-          minHeight: "min(600px, 85vh)",
-          maxHeight: "90vh",
+          minHeight: 600,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          overflow: "auto",
+          overflow: "hidden",
           color: "white",
           textShadow: "0 1px 2px rgba(0,0,0,0.8)",
         }}
