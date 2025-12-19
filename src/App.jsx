@@ -502,7 +502,7 @@ export default function App() {
     return () => window.removeEventListener("resize", setInitialPosition);
   }, []);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
@@ -1122,35 +1122,21 @@ export default function App() {
         
         if (hasActiveGame) {
           // There's an active game in progress
-          if (!playerTimedOut) {
-            // Player was away < 1 minute - auto-sync to current game (no Start button)
-            userClickedStartRef.current = true; // Mark as allowed to sync
-            applyGameState({
-              currentQuestion: stateData.currentQuestion,
-              hostPlayerId: stateData.hostPlayerId,
-              selections: stateData.selections || {},
-              showResult: stateData.showResult || false,
-              timeLeft: stateData.timeLeft ?? MAX_TIME,
-              scores: stateData.scores || {},
-              playerNames: stateData.playerNames || {},
-            }, { forceApply: true });
-            setSessionTimedOut(false);
-          } else {
-            // Player was away > 1 minute - they need to click Start to join
-            // But we still set the host so they know who's in charge
-            if (stateData.hostPlayerId) {
-              setHostPlayerId(stateData.hostPlayerId);
-            }
-            // Apply scores and player names from server
-            if (stateData.scores) {
-              setScores(stateData.scores);
-              setDisplayScores(stateData.scores);
-            }
-            if (stateData.playerNames) {
-              setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
-            }
-            setSessionTimedOut(true);
+          // ALL players must click Start/Join to enter the game - no auto-sync
+          // Set host so they know who's in charge
+          if (stateData.hostPlayerId) {
+            setHostPlayerId(stateData.hostPlayerId);
           }
+          // Apply scores and player names from server (but NOT the question)
+          if (stateData.scores) {
+            setScores(stateData.scores);
+            setDisplayScores(stateData.scores);
+          }
+          if (stateData.playerNames) {
+            setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
+          }
+          // Mark that they need to click to join
+          setSessionTimedOut(true);
         } else {
           // No active game - show Start button for host
           setSessionTimedOut(false);
