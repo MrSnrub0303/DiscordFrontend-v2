@@ -749,6 +749,16 @@ export default function App() {
     (gameState) => {
       if (!gameState?.currentQuestion) return;
       
+      // DON'T auto-sync if user doesn't have a question yet
+      // They must click Start/Join to join the game
+      if (!currentQuestion) {
+        // Just update host info, but don't set currentQuestion
+        if (gameState.hostPlayerId !== undefined) {
+          setHostPlayerId(gameState.hostPlayerId || null);
+        }
+        return;
+      }
+      
       const isNewQuestion =
         currentQuestion?.id !== gameState.currentQuestion?.id;
 
@@ -1857,6 +1867,20 @@ export default function App() {
         }
 
         if (data.success && data.currentQuestion) {
+          // DON'T auto-sync if user doesn't have a question yet
+          // They must click Start/Join to join the game
+          if (!currentQuestion) {
+            // Just update host info and scores, but don't set currentQuestion
+            if (data.scores) {
+              setScores(data.scores);
+              setDisplayScores(data.scores);
+            }
+            if (data.playerNames) {
+              setPlayerNames(prev => ({ ...prev, ...data.playerNames }));
+            }
+            return;
+          }
+          
           const currentQuestionId = currentQuestion?.id;
           const serverQuestionId = data.currentQuestion?.id;
           const isDifferentQuestion =
