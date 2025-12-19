@@ -1114,9 +1114,11 @@ export default function App() {
         
         // Check if player's session timed out (away > 1 minute)
         const playerTimedOut = joinData?.scoreReset || joinData?.isNewPlayer;
+        const scoreWasReset = joinData?.scoreReset === true;
         
         // If the player's score was reset due to session timeout, update local state
-        if (joinData?.scoreReset) {
+        if (scoreWasReset) {
+          console.log(`[initial-sync] Score was reset for player ${currentUser.id} due to session timeout`);
           setScores(prev => ({ ...prev, [currentUser.id]: 0 }));
           setDisplayScores(prev => ({ ...prev, [currentUser.id]: 0 }));
         }
@@ -1139,9 +1141,17 @@ export default function App() {
             setHostPlayerId(stateData.hostPlayerId);
           }
           // Apply scores and player names from server (but NOT the question)
+          // If score was reset, ensure we keep the reset score at 0
           if (stateData.scores) {
-            setScores(stateData.scores);
-            setDisplayScores(stateData.scores);
+            if (scoreWasReset) {
+              // Make sure to keep player's score at 0 even if server has old data
+              const updatedScores = { ...stateData.scores, [currentUser.id]: 0 };
+              setScores(updatedScores);
+              setDisplayScores(updatedScores);
+            } else {
+              setScores(stateData.scores);
+              setDisplayScores(stateData.scores);
+            }
           }
           if (stateData.playerNames) {
             setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
