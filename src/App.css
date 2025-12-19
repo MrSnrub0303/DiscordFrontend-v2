@@ -101,6 +101,10 @@ button:focus-visible {
 
 .timer {
   margin: 6px 0 14px 0;
+  /* Smooth transition for timer updates */
+  font-variant-numeric: tabular-nums;
+  min-width: 120px;
+  text-align: center;
 }
 
 /* 2x2 grid for the answer buttons */
@@ -239,6 +243,55 @@ button:focus-visible {
     right: -2px;
     font-size: 0.7rem;
     padding: 3px 6px;
+  }
+}
+
+/* Discord Activity responsive tweaks */
+@media (max-width: 800px) {
+  .wood-panel {
+    padding: 30px !important;
+  }
+  .title {
+    font-size: clamp(1.2rem, 4vw, 2rem) !important;
+  }
+  .question {
+    font-size: clamp(0.9rem, 3vw, 1.4rem) !important;
+  }
+  .timer {
+    font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+  }
+  .options-grid {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .options-grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: 50px;
+    gap: 8px;
+  }
+  .option-button {
+    width: 100%;
+    padding: 10px;
+  }
+}
+
+@media (max-height: 500px) {
+  .wood-panel {
+    min-height: auto !important;
+    padding: 15px !important;
+  }
+  .title {
+    font-size: 1.2rem !important;
+    margin-bottom: 5px !important;
+  }
+  .divider-line {
+    display: none !important;
+  }
+  .options-grid {
+    grid-auto-rows: 45px;
+    gap: 6px;
   }
 }
 
