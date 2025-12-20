@@ -1123,8 +1123,10 @@ export default function App() {
           setDisplayScores(prev => ({ ...prev, [currentUser.id]: 0 }));
         }
         
-        // Now fetch the full game state
-        const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+        // Now fetch the full game state (include playerId to track activity)
+        const stateUrl = new URL(`${API_BASE_URL}/game-state/${roomId}`, window.location.origin);
+        stateUrl.searchParams.set('playerId', currentUser.id);
+        const stateResp = await fetch(stateUrl.toString(), {
           headers: { 'Cache-Control': 'no-cache' }
         });
         const stateData = await stateResp.json();
@@ -1210,7 +1212,12 @@ export default function App() {
       }
 
       try {
-        const resp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+        // Include playerId in polling to track activity
+        const pollUrl = new URL(`${API_BASE_URL}/game-state/${roomId}`, window.location.origin);
+        if (currentUser?.id) {
+          pollUrl.searchParams.set('playerId', currentUser.id);
+        }
+        const resp = await fetch(pollUrl.toString(), {
           headers: { 'Cache-Control': 'no-cache' }
         });
         const data = await resp.json();
@@ -1896,7 +1903,12 @@ export default function App() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/game-state/${roomId}`);
+        // Include playerId in the request to track player activity
+        const url = new URL(`${API_BASE_URL}/game-state/${roomId}`, window.location.origin);
+        if (currentUser?.id) {
+          url.searchParams.set('playerId', currentUser.id);
+        }
+        const response = await fetch(url.toString());
         const data = await response.json();
 
         setHostPlayerId(data.hostPlayerId || null);
