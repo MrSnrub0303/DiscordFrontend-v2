@@ -4,12 +4,17 @@ import { DISCORD_CLIENT_ID } from './config';
 
 export const ActivityContext = createContext(null);
 
+// Module-level flag to prevent duplicate SDK initialization across component remounts
+let globalInitializationStarted = false;
+let globalSdkInstance = null;
+let globalAuthResult = null;
+
 export function ActivityProvider({ children }) {
-  const [sdk, setSdk] = useState(null);
+  const [sdk, setSdk] = useState(globalSdkInstance);
   const [error, setError] = useState(null);
-  const [ready, setReady] = useState(false);
-  const [token, setToken] = useState(null);
-  const [initializationStep, setInitializationStep] = useState('starting');
+  const [ready, setReady] = useState(!!globalAuthResult);
+  const [token, setToken] = useState(globalAuthResult?.access_token || null);
+  const [initializationStep, setInitializationStep] = useState(globalInitializationStarted ? 'already_started' : 'starting');
   const [debugLogs, setDebugLogs] = useState([]);
   const initializationRef = useRef(false);
 
@@ -136,6 +141,10 @@ export function ActivityProvider({ children }) {
         
         discordSdk.authenticated = authResponse;
         
+        // Store in global variables for reuse on remount
+        globalSdkInstance = discordSdk;
+        globalAuthResult = { access_token: tokenData.access_token, authResponse };
+        
         setToken(tokenData.access_token);
         setInitializationStep('complete');
         setReady(true);
@@ -205,17 +214,32 @@ export function ActivityProvider({ children }) {
       }
     };
 
-    
-    if (initializationRef.current) {
-      addDebugLog('Already initialized, skipping...');
+    // Check global flag first (prevents duplicate initialization across remounts)
+    if (globalInitializationStarted) {
+      addDebugLog('Global initialization already started, skipping...');
+      // If we already have a result, use it
+      if (globalSdkInstance && globalAuthResult) {
+        setSdk(globalSdkInstance);
+        setToken(globalAuthResult.access_token);
+        setReady(true);
+        setInitializationStep('complete');
+      }
       return;
     }
     
+    // Also check component ref (for within same mount)
+    if (initializationRef.current) {
+      addDebugLog('Already initialized in this mount, skipping...');
+      return;
+    }
+    
+    // Set both flags
+    globalInitializationStarted = true;
     initializationRef.current = true;
     addDebugLog('Starting initialization...');
     
     initializeSDK().catch((err) => {
-      
+      // Only reset component ref, not global (to prevent infinite retry loops)
       initializationRef.current = false; 
     });
 
