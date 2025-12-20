@@ -52,8 +52,8 @@ const SOCKET_URL =
 const MAX_TIME = 20;
 const JOIN_COUNTDOWN_SECONDS = 3;
 
-const NORMAL_VOLUME = 0.3;
-const FADED_VOLUME = 0.04;
+const NORMAL_VOLUME = 0.15;
+const FADED_VOLUME = 0.02;
 const FADE_DURATION = 800;
 
 const MAX_POINTS = 150;
@@ -1004,7 +1004,16 @@ export default function App() {
         // Room state is authoritative - always accept server scores
         // This handles score resets when players rejoin after timeout
         setScores(data.scores);
-        setDisplayScores(data.scores);
+        // Merge with existing display scores to prevent flickering
+        // Only remove players if server explicitly sets them to 0 or undefined
+        setDisplayScores((prev) => {
+          const merged = { ...prev };
+          // First, add/update all players from server
+          Object.entries(data.scores).forEach(([id, serverScore]) => {
+            merged[id] = serverScore;
+          });
+          return merged;
+        });
       }
       if (data.players) {
         setPlayers(data.players);
