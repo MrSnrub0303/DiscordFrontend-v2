@@ -268,6 +268,22 @@ export function ActivityProvider({ children }) {
     handleStart();
   }, [sdk, ready]);
 
+  // Map initialization steps to user-friendly messages and progress
+  const getLoadingInfo = () => {
+    const steps = {
+      'starting': { message: 'Starting...', progress: 5 },
+      'already_started': { message: 'Connecting...', progress: 10 },
+      'creating_sdk': { message: 'Initializing...', progress: 15 },
+      'sdk_instance': { message: 'Setting up...', progress: 25 },
+      'waiting_ready': { message: 'Connecting to Discord...', progress: 35 },
+      'authorizing': { message: 'Authorizing...', progress: 50 },
+      'exchanging_token': { message: 'Connecting to server...', progress: 70 },
+      'authenticating': { message: 'Almost there...', progress: 90 },
+      'complete': { message: 'Ready!', progress: 100 },
+    };
+    return steps[initializationStep] || { message: 'Loading...', progress: 0 };
+  };
+
   if (error) {
     return (
       <div style={{ 
@@ -305,6 +321,107 @@ export function ActivityProvider({ children }) {
         >
           Retry
         </button>
+      </div>
+    );
+  }
+
+  // Show loading indicator while initializing
+  if (!ready) {
+    const { message, progress } = getLoadingInfo();
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        width: '100vw',
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+        color: '#e8e8e8',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '20px',
+          padding: '40px',
+        }}>
+          {/* Subtle pulsing dot indicator */}
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            marginBottom: '8px',
+          }}>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                style={{
+                  width: '10px',
+                  height: '10px',
+                  borderRadius: '50%',
+                  backgroundColor: '#5865F2',
+                  opacity: 0.6,
+                  animation: `pulse 1.4s ease-in-out ${i * 0.2}s infinite`,
+                }}
+              />
+            ))}
+          </div>
+          
+          {/* Status message */}
+          <p style={{
+            fontSize: '16px',
+            fontWeight: '500',
+            margin: 0,
+            opacity: 0.9,
+            letterSpacing: '0.3px',
+          }}>
+            {message}
+          </p>
+          
+          {/* Progress bar */}
+          <div style={{
+            width: '200px',
+            height: '4px',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '2px',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              width: `${progress}%`,
+              height: '100%',
+              backgroundColor: '#5865F2',
+              borderRadius: '2px',
+              transition: 'width 0.5s ease-out',
+            }} />
+          </div>
+          
+          {/* Subtle hint for longer waits */}
+          {initializationStep === 'exchanging_token' && (
+            <p style={{
+              fontSize: '12px',
+              margin: 0,
+              opacity: 0.5,
+              marginTop: '12px',
+            }}>
+              First load may take a moment...
+            </p>
+          )}
+        </div>
+        
+        {/* CSS animation for pulsing dots */}
+        <style>{`
+          @keyframes pulse {
+            0%, 80%, 100% {
+              transform: scale(0.8);
+              opacity: 0.4;
+            }
+            40% {
+              transform: scale(1.2);
+              opacity: 1;
+            }
+          }
+        `}</style>
       </div>
     );
   }
