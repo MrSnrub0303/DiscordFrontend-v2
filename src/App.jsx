@@ -847,14 +847,27 @@ export default function App() {
           setServerScoredThisRound(true);
         }
         
-        // Server is authoritative - always accept server scores
+        // Server is authoritative - merge server scores with existing scores
         // This ensures score resets are properly synchronized across all clients
-        setScores(gameState.scores);
+        // Always merge instead of replacing to preserve players not in this update
+        setScores((prev) => {
+          const merged = { ...prev };
+          Object.entries(gameState.scores).forEach(([id, serverScore]) => {
+            merged[id] = serverScore;
+          });
+          return merged;
+        });
         
         // Only update display scores when round ends (showResult is true)
         // This prevents score animations from updating mid-round
         if (gameState.showResult || showResult) {
-          setDisplayScores(gameState.scores);
+          setDisplayScores((prev) => {
+            const merged = { ...prev };
+            Object.entries(gameState.scores).forEach(([id, serverScore]) => {
+              merged[id] = serverScore;
+            });
+            return merged;
+          });
         }
       }
       // Sync player names from server
@@ -1001,9 +1014,16 @@ export default function App() {
         setHostPlayerId(data.hostPlayerId || null);
       }
       if (data.scores) {
-        // Room state is authoritative - always accept server scores
+        // Room state is authoritative - merge server scores with existing scores
         // This handles score resets when players rejoin after timeout
-        setScores(data.scores);
+        // Always merge instead of replacing to preserve players not in this update
+        setScores((prev) => {
+          const merged = { ...prev };
+          Object.entries(data.scores).forEach(([id, serverScore]) => {
+            merged[id] = serverScore;
+          });
+          return merged;
+        });
         // Merge with existing display scores to prevent flickering
         // Only remove players if server explicitly sets them to 0 or undefined
         setDisplayScores((prev) => {
