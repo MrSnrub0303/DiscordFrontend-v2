@@ -4376,7 +4376,7 @@ export default function App() {
               outline: "none",
               filter:
                 showResult && canControlQuestions
-                  ? "drop-shadow(0 0 8px gold)"
+                  ? "drop-shadow(0 4px 6px rgba(0,0,0,0.5))"
                   : "none",
               visibility:
                 showResult && canControlQuestions ? "visible" : "hidden",
