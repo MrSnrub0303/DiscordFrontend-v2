@@ -4,6 +4,7 @@ import btnNormal from '../assets/combobox_button_normal.png';
 import topBarBg from '../assets/marblebg2.png';
 import soundOnIcon from '../assets/notification_sound_on.png';
 import soundOffIcon from '../assets/notification_sound_off.png';
+import aoe3Logo from '../assets/aoe3_de_logo.png';
 
 export function SpinnerScreen({ onBackClick, onBackHover, onBackPress, musicEnabled, onToggleMusic }) {
   return (
@@ -51,6 +52,20 @@ export function SpinnerScreen({ onBackClick, onBackHover, onBackPress, musicEnab
         </button>
         <h1 className="spinner-title">Civilization Spinner</h1>
       </div>
+
+      <img
+        src={aoe3Logo}
+        alt="Age of Empires III DE"
+        style={{
+          position: "fixed",
+          bottom: 16,
+          left: 16,
+          width: "16vw",
+          height: "auto",
+          zIndex: 999,
+          pointerEvents: "none",
+        }}
+      />
 
       <div className="spinner-screen-content">
         <iframe
