@@ -4356,8 +4356,8 @@ export default function App() {
               }
             }}
             style={{
-              width: 360,
-              height: 65,
+              width: 252,
+              height: 46,
               position: "static",
               display: "block",
               margin: 0,
@@ -4371,7 +4371,7 @@ export default function App() {
               color: "white",
               fontFamily: '"Trajan Pro Bold", serif',
               fontWeight: 600,
-              fontSize: "1.7rem",
+              fontSize: "1.19rem",
               cursor: showResult && canControlQuestions ? "pointer" : "default",
               outline: "none",
               filter:
