@@ -4337,7 +4337,7 @@ export default function App() {
             width: "100%",
             display: "flex",
             justifyContent: "center",
-            marginTop: -12,
+            marginTop: 16,
             position: "static",
             alignSelf: "center",
             zIndex: 2,
