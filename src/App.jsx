@@ -3602,6 +3602,7 @@ export default function App() {
         justifyContent: "flex-start",
         alignItems: "stretch",
         boxSizing: "border-box",
+        overflow: "hidden",
       }}
     >
       {renderScreenTransitionOverlay()}
@@ -4337,7 +4338,7 @@ export default function App() {
             width: "100%",
             display: "flex",
             justifyContent: "center",
-            marginTop: -12,
+            marginTop: 18,
             position: "static",
             alignSelf: "center",
             zIndex: 2,
