@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://discordbackend-xggi.onrender.com/api/:path*"
+      "destination": "https://discordbackend-v2.onrender.com/api/:path*"
     },
     {
       "source": "/privacy-policy",
