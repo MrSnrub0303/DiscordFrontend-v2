@@ -3777,7 +3777,7 @@ export default function App() {
             boxSizing: "border-box",
             width: 850,
             maxWidth: "95vw",
-            minHeight: 600,
+            minHeight: 700,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
