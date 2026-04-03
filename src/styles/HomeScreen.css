@@ -1,0 +1,258 @@
+/* ── Home Screen Container ── */
+
+.home-screen-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.home-screen-background {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.home-screen-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  text-align: center;
+  max-width: 600px;
+  padding: 2rem;
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ── Header ── */
+
+.home-screen-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+}
+
+.home-screen-logo {
+  max-width: 420px;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.4));
+}
+
+.home-screen-discord-text {
+  max-width: 1060px;
+  width: 150%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.3));
+}
+
+/* ── Buttons Container ── */
+
+.home-screen-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 1.2rem;
+  width: 100%;
+  margin: 1rem 0;
+  justify-content: center;
+}
+
+.home-screen-button {
+  width: min(520px, 88vw);
+  aspect-ratio: 6.5 / 1;
+  min-height: 284px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  color: transparent;
+  font-family: "Trajan Pro Bold", serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 250ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  transform: translateY(0) scale(1);
+  position: relative;
+  overflow: visible;
+  outline: none;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5));
+  user-select: none;
+  text-shadow: none;
+}
+
+.home-screen-button::before {
+  content: none;
+}
+
+.home-screen-button:hover::before {
+  left: 0;
+}
+
+.home-screen-button:hover {
+  transform: translateY(-4px) scale(1.05);
+  filter: drop-shadow(0 12px 30px rgba(0, 0, 0, 0.6));
+}
+
+.home-screen-button:active {
+  transform: translateY(-1px) scale(0.98);
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.45));
+}
+
+/* Disabled state */
+.home-screen-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+  pointer-events: none;
+}
+
+.home-screen-button.locked-button {
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
+  text-shadow: none;
+}
+
+/* ── Button Content ── */
+
+.home-screen-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Footer ── */
+
+.home-screen-footer {
+  margin-top: 0.5rem;
+}
+
+.home-screen-info {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+/* ── Responsive Design ── */
+
+@media (max-width: 640px) {
+  .home-screen-content {
+    gap: 1.8rem;
+    padding: 1.5rem;
+  }
+
+  .home-screen-buttons {
+    flex-direction: column;
+  }
+
+  .home-screen-button {
+    width: min(400px, 84vw);
+    min-height: 74px;
+    font-size: 1.25rem;
+  }
+
+  .home-screen-title {
+    font-size: 1.8rem;
+  }
+
+  .home-screen-subtitle {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-screen-content {
+    gap: 1.3rem;
+    padding: 1rem;
+  }
+
+  .home-screen-buttons {
+    flex-direction: column;
+  }
+
+  .home-screen-button {
+    width: min(320px, 88vw);
+    min-height: 66px;
+    font-size: 1rem;
+  }
+
+  .home-screen-title {
+    font-size: 1.5rem;
+  }
+
+  .home-screen-subtitle {
+    font-size: 0.85rem;
+  }
+}
+
+/* Respect reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+  .home-screen-container {
+    animation: none;
+  }
+
+  .home-screen-button {
+    transition: none;
+  }
+
+  .home-screen-button:hover {
+    transform: none;
+  }
+}
+
+/* ── Loading Spinner Styles ── */
+
+.home-screen-button.loading {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.button-spinner {
+  width: 60px;
+  height: 60px;
+  animation: spinnerRotate 1.5s linear infinite;
+  object-fit: contain;
+}
+
+@keyframes spinnerRotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-spinner {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+

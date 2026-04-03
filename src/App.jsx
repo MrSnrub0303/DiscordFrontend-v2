@@ -7,6 +7,8 @@ import {
   useCallback,
 } from "react";
 import "./App.css";
+import { HomeScreen } from "./components/HomeScreen";
+import { SpinnerScreen } from "./components/SpinnerScreen";
 import questions from "./questions.json";
 import { useDiscordActivity } from "./discord/useDiscordActivity";
 import { io } from "socket.io-client";
@@ -15,6 +17,7 @@ import woodPanelBg from "./assets/sendresource_bg.png";
 import btnNormal from "./assets/combobox_button_normal.png";
 import btnHover from "./assets/combobox_button_hover.png";
 import btnDisabled from "./assets/combobox_button_disabled.png";
+import topBarBg from "./assets/marblebg2.png";
 import btnMainMenuDisabled from "./assets/button_mainmenu_disabled.png";
 import restartButtonBg from "./assets/button.webp";
 import restartScreenBg from "./assets/background.webp";
@@ -274,8 +277,12 @@ const createJoinCountdownState = () => ({
   questionId: null,
 });
 
+const SCREEN_TRANSITION_MS = 1000;
+
 export default function App() {
   const [players, setPlayers] = useState([]);
+
+  const [appMode, setAppMode] = useState("HOME"); // "HOME", "GAME", or "SPINNER"
 
   const [socket, setSocket] = useState(null);
 
@@ -402,7 +409,7 @@ export default function App() {
         let data = null;
         try {
           data = await response.json();
-        } catch (jsonError) {}
+        } catch (jsonError) { }
 
         if (data?.hostPlayerId !== undefined) {
           setHostPlayerId(data.hostPlayerId || null);
@@ -505,6 +512,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [screenTransitionStage, setScreenTransitionStage] = useState("idle");
 
   const [cardInput, setCardInput] = useState("");
   const [cardLastWrong, setCardLastWrong] = useState(false);
@@ -525,13 +533,26 @@ export default function App() {
   const [socketStateVersion, setSocketStateVersion] = useState(0);
 
   useEffect(() => {
-    if (isTransitioning) {
-      const timeout = setTimeout(() => {
-        setIsTransitioning(false);
-      }, 5000);
-
-      return () => clearTimeout(timeout);
+    if (!isTransitioning) {
+      setScreenTransitionStage("idle");
+      return;
     }
+
+    setScreenTransitionStage("enter");
+
+    const fadeOutTimer = setTimeout(() => {
+      setScreenTransitionStage("out");
+    }, 600);
+
+    const doneTimer = setTimeout(() => {
+      setIsTransitioning(false);
+      setScreenTransitionStage("idle");
+    }, 960);
+
+    return () => {
+      clearTimeout(fadeOutTimer);
+      clearTimeout(doneTimer);
+    };
   }, [isTransitioning]);
 
   const timerRef = useRef(null);
@@ -720,7 +741,7 @@ export default function App() {
       setCurrentQuestion(null);
       setSelectionState({ questionId: null, entries: {} });
       setMySelection(null, currentQuestionIdRef.current ?? null);
-    currentQuestionIdRef.current = null;
+      currentQuestionIdRef.current = null;
       currentSelectionRef.current = null;
       window.lastSelectionTime = null;
       window.lastSelectionQuestionId = null;
@@ -747,11 +768,11 @@ export default function App() {
 
   // Ref to track if user explicitly clicked to join/start (allows auto-sync)
   const userClickedStartRef = useRef(false);
-  
+
   const applyGameState = useCallback(
     (gameState, { forceApply = false } = {}) => {
       if (!gameState?.currentQuestion) return;
-      
+
       // Don't auto-navigate user to question screen if they haven't clicked Start
       // Only apply game state if:
       // 1. forceApply is true (explicit user action)
@@ -771,7 +792,7 @@ export default function App() {
         }
         return;
       }
-      
+
       const isNewQuestion =
         currentQuestion?.id !== gameState.currentQuestion?.id;
 
@@ -805,7 +826,7 @@ export default function App() {
           mySelection !== null ? mySelection : currentSelectionRef.current;
         const myId = currentUser?.id;
         const normalizedSelections = normalizeServerSelections(gameState.selections || {});
-        
+
         if (currentLocalSelection !== null && myId) {
           updateSelections(() => {
             const merged = {
@@ -846,7 +867,7 @@ export default function App() {
         if (hasServerScored) {
           setServerScoredThisRound(true);
         }
-        
+
         // Server is authoritative - merge server scores with existing scores
         // This ensures score resets are properly synchronized across all clients
         // Always merge instead of replacing to preserve players not in this update
@@ -857,7 +878,7 @@ export default function App() {
           });
           return merged;
         });
-        
+
         // Only update display scores when round ends (showResult is true)
         // This prevents score animations from updating mid-round
         if (gameState.showResult || showResult) {
@@ -1044,7 +1065,7 @@ export default function App() {
       // Update selections when another player answers
       if (data.playerId && data.playerId !== currentUser?.id) {
         const questionId = currentQuestionIdRef.current ?? currentQuestion?.id ?? null;
-        
+
         // Determine what value to store in selections
         let selectionValue;
         if (data.optionIndex !== undefined) {
@@ -1055,7 +1076,7 @@ export default function App() {
         } else {
           selectionValue = true; // Just mark that they answered
         }
-        
+
         updateSelections(
           (prev) => ({
             ...prev,
@@ -1063,7 +1084,7 @@ export default function App() {
           }),
           questionId,
         );
-        
+
         // Store player name if provided
         if (data.playerName) {
           setPlayerNames((prev) => ({
@@ -1104,10 +1125,10 @@ export default function App() {
 
   // Ref to track if initial sync has been done for current room
   const initialSyncDoneRef = useRef(null);
-  
+
   // State to track if initial sync is in progress (prevents showing Start button prematurely)
   const [isInitialSyncing, setIsInitialSyncing] = useState(true);
-  
+
   // State to track if player session timed out (away > 1 min, needs to click Start)
   const [sessionTimedOut, setSessionTimedOut] = useState(false);
 
@@ -1115,7 +1136,7 @@ export default function App() {
   // This ensures new players sync to the host's current question/timer
   useEffect(() => {
     if (!roomId || !currentUser) return;
-    
+
     // Only run once per room
     if (initialSyncDoneRef.current === roomId) return;
     initialSyncDoneRef.current = roomId;
@@ -1127,9 +1148,9 @@ export default function App() {
         // First, call player-join to handle session timeout logic
         const joinResp = await fetch(`${API_BASE_URL}/player-join`, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache' 
+            'Cache-Control': 'no-cache'
           },
           body: JSON.stringify({
             roomId,
@@ -1138,20 +1159,20 @@ export default function App() {
           }),
         });
         const joinData = await joinResp.json();
-        
+
         if (cancelled) return;
-        
+
         // Check if player's session timed out (away > 1 minute)
         const playerTimedOut = joinData?.scoreReset || joinData?.isNewPlayer;
         const scoreWasReset = joinData?.scoreReset === true;
-        
+
         // If the player's score was reset due to session timeout, update local state
         if (scoreWasReset) {
           console.log(`[initial-sync] Score was reset for player ${currentUser.id} due to session timeout`);
           setScores(prev => ({ ...prev, [currentUser.id]: 0 }));
           setDisplayScores(prev => ({ ...prev, [currentUser.id]: 0 }));
         }
-        
+
         // Now fetch the full game state (include playerId to track activity)
         const stateUrl = new URL(`${API_BASE_URL}/game-state/${roomId}`, window.location.origin);
         stateUrl.searchParams.set('playerId', currentUser.id);
@@ -1163,7 +1184,7 @@ export default function App() {
         if (cancelled) return;
 
         const hasActiveGame = stateData?.success && stateData.currentQuestion;
-        
+
         if (hasActiveGame) {
           // There's an active game in progress
           // ALL players must click Start/Join to enter the game - no auto-sync
@@ -1193,7 +1214,7 @@ export default function App() {
           // No active game - show Start button for host
           setSessionTimedOut(false);
         }
-        
+
         // Mark initial sync as complete
         setIsInitialSyncing(false);
       } catch {
@@ -1218,7 +1239,7 @@ export default function App() {
     // Poll whenever there's an active question or we're in reveal phase
     // This ensures all clients stay synchronized regardless of socket state
     const hasActiveGame = currentQuestion !== null || showResult;
-    
+
     if (!roomId || !hasActiveGame) return undefined;
 
     let cancelled = false;
@@ -1250,7 +1271,7 @@ export default function App() {
           headers: { 'Cache-Control': 'no-cache' }
         });
         const data = await resp.json();
-        
+
         if (data?.success) {
           applyGameState({
             currentQuestion: data.currentQuestion || null,
@@ -1269,7 +1290,7 @@ export default function App() {
         consecutiveErrors += 1;
       } finally {
         if (cancelled) return;
-        
+
         if (consecutiveErrors >= maxErrorStreak) {
           return;
         }
@@ -1332,7 +1353,7 @@ export default function App() {
     answerTimesRef.current = {};
   }, [currentQuestion?.id, currentUser?.id]);
 
-  useEffect(() => {}, [mySelection]);
+  useEffect(() => { }, [mySelection]);
 
   const prevRectsRef = useRef({});
 
@@ -1375,7 +1396,7 @@ export default function App() {
     bg.current.tracks.forEach((t) => {
       try {
         t.pause();
-      } catch (e) {}
+      } catch (e) { }
     });
   };
 
@@ -1390,7 +1411,7 @@ export default function App() {
       if (i !== index) {
         try {
           t.pause();
-        } catch (e) {}
+        } catch (e) { }
       }
     });
 
@@ -1401,7 +1422,7 @@ export default function App() {
 
     const p = current.play();
     if (p && typeof p.catch === "function") {
-      p.catch((err) => {});
+      p.catch((err) => { });
     }
   };
 
@@ -1480,13 +1501,13 @@ export default function App() {
     if (user.avatar) {
       return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256`;
     }
-    
+
     // Handle guest users (IDs starting with 'guest-')
     if (typeof user.id === 'string' && user.id.startsWith('guest-')) {
       // Use a default avatar for guests
       return `https://cdn.discordapp.com/embed/avatars/${Math.floor(Math.random() * 6)}.png`;
     }
-    
+
     // Discord snowflake IDs can be converted to BigInt
     try {
       const defaultAvatarIndex = (BigInt(user.id) >> 22n) % 6n;
@@ -1624,7 +1645,7 @@ export default function App() {
           hoverSound.current.src = "";
           hoverSound.current = null;
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // Clean up fade timer
       if (fadeTimerRef.current) {
@@ -1638,7 +1659,7 @@ export default function App() {
           if (a._onEnded) a.removeEventListener("ended", a._onEnded);
           a.pause();
           a.src = "";
-        } catch (e) {}
+        } catch (e) { }
       });
       bg.current.tracks = [];
 
@@ -1647,7 +1668,7 @@ export default function App() {
         if (audioCtxRef.current && audioCtxRef.current.close) {
           audioCtxRef.current.close();
         }
-      } catch (e) {}
+      } catch (e) { }
     };
   }, []);
 
@@ -1664,7 +1685,7 @@ export default function App() {
         playRevealBuffer();
         pendingRevealRef.current = false;
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   useEffect(() => {
@@ -1688,7 +1709,7 @@ export default function App() {
       src.connect(gain);
       gain.connect(ctx.destination);
       src.start(0);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const startBackgroundMusic = () => {
@@ -1703,7 +1724,7 @@ export default function App() {
     const indexToPlay = currentIndexRef.current || 0;
     try {
       playTrackAt(indexToPlay);
-    } catch (err) {}
+    } catch (err) { }
   };
 
   useEffect(() => {
@@ -1735,7 +1756,7 @@ export default function App() {
     } else {
       current
         .play()
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => {
           fadeTo(current, NORMAL_VOLUME, FADE_DURATION);
         });
@@ -1752,7 +1773,7 @@ export default function App() {
     } else {
       try {
         pauseAllTracks();
-      } catch (err) {}
+      } catch (err) { }
 
       if (fadeTimerRef.current) {
         clearInterval(fadeTimerRef.current);
@@ -1768,14 +1789,14 @@ export default function App() {
 
     if (clickSound.current) {
       clickSound.current.currentTime = 0;
-      clickSound.current.play().catch(() => {});
+      clickSound.current.play().catch(() => { });
     }
   };
 
   const playHoverSound = () => {
     if (hoverSound.current) {
       hoverSound.current.currentTime = 0;
-      hoverSound.current.play().catch(() => {});
+      hoverSound.current.play().catch(() => { });
     }
   };
 
@@ -1786,7 +1807,7 @@ export default function App() {
       if (!userClickedStartRef.current) {
         return;
       }
-      
+
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       const getQuestionFromServer = async (allowSyncAttempt = true) => {
@@ -1869,7 +1890,7 @@ export default function App() {
             window.lastSelectionQuestionId = null;
             answerTimesRef.current = {};
             awardedDoneRef.current = false;
-          } catch (error) {}
+          } catch (error) { }
         } finally {
           setTimeout(() => {
             setIsLoading(false);
@@ -1924,7 +1945,7 @@ export default function App() {
       if (questionFetchInProgressRef.current) {
         return;
       }
-      
+
       // Don't sync game state if user hasn't clicked Start yet and has no current question
       // This prevents auto-navigation to question screen
       if (!userClickedStartRef.current && !currentQuestion) {
@@ -2229,8 +2250,8 @@ export default function App() {
                 setTimeLeft(data.timeLeft);
                 setIsTimerRunning(
                   data.gameState === "playing" &&
-                    !data.showResult &&
-                    data.timeLeft > 0,
+                  !data.showResult &&
+                  data.timeLeft > 0,
                 );
               }
             } else {
@@ -2339,7 +2360,7 @@ export default function App() {
                     const mySelectionForThisQuestion =
                       hasMySelection &&
                       window.lastSelectionQuestionId ===
-                        data.currentQuestion?.id;
+                      data.currentQuestion?.id;
 
                     const myPlayerId = currentUser?.id;
                     const hasAnsweredInRef =
@@ -2474,7 +2495,7 @@ export default function App() {
             );
           }
         }
-      } catch (error) {}
+      } catch (error) { }
     };
 
     window.syncGameStateFunc = syncGameState;
@@ -2580,8 +2601,8 @@ export default function App() {
                     updateSelections(
                       localSelections,
                       currentQuestionIdRef.current ??
-                        currentQuestion?.id ??
-                        null,
+                      currentQuestion?.id ??
+                      null,
                     );
                     beginRevealPhase(currentQuestionIdRef.current);
                   }
@@ -2602,8 +2623,8 @@ export default function App() {
                 updateSelections(
                   localSelections,
                   currentQuestionIdRef.current ??
-                    currentQuestion?.id ??
-                    null,
+                  currentQuestion?.id ??
+                  null,
                 );
                 beginRevealPhase(currentQuestionIdRef.current);
               }
@@ -2639,8 +2660,8 @@ export default function App() {
   const correctIndex =
     !isCardMode && currentQuestion
       ? currentQuestion.options.findIndex((opt) =>
-          opt.startsWith(correctLetter),
-        )
+        opt.startsWith(correctLetter),
+      )
       : -1;
 
   const revealActive =
@@ -2762,7 +2783,7 @@ export default function App() {
       );
       setCardLastWrong(false);
       setIsLocked(true);
-      
+
       // Track that we've made a selection for this question (prevents unlock on poll)
       setMySelectionState(true);
       currentSelectionRef.current = true;
@@ -2860,6 +2881,68 @@ export default function App() {
     awardedDoneRef.current = true;
   }, [showResult]);
 
+  const triggerScreenTransition = useCallback((targetMode, action) => {
+    if (transitionDebounceRef.current) {
+      clearTimeout(transitionDebounceRef.current);
+      transitionDebounceRef.current = null;
+    }
+
+    setIsTransitioning(true);
+
+    transitionDebounceRef.current = setTimeout(async () => {
+      try {
+        await action();
+      } finally {
+        setAppMode(targetMode);
+        transitionDebounceRef.current = null;
+      }
+    }, 320);
+  }, []);
+
+  const renderScreenTransitionOverlay = () => {
+    if (!joinCountdown.active && !isTransitioning) {
+      return null;
+    }
+
+    return (
+      <div
+        className={`join-countdown-overlay ${isTransitioning ? "screen-transition-overlay" : ""} ${isTransitioning ? `screen-transition-${screenTransitionStage}` : ""}`}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: isTransitioning
+            ? "transparent"
+            : "rgba(255, 255, 255, 0.1)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1200,
+          color: "#fff4d6",
+          textShadow: "0 2px 6px rgba(0, 0, 0, 0.6)",
+          pointerEvents: "none",
+          overflow: "hidden",
+          fontFamily: '"Trajan Pro Bold", serif',
+        }}
+      >
+        {isTransitioning && (
+          <>
+            <div className="screen-transition-dip" />
+            <div className="screen-transition-wipe" />
+          </>
+        )}
+        {joinCountdown.active && !isTransitioning && (
+          <>
+            <p style={{ fontSize: 22, marginBottom: 4 }}>Joining mid-round</p>
+            <p style={{ fontSize: 42, margin: 0 }}>
+              Syncing in {joinCountdown.remaining}s
+            </p>
+          </>
+        )}
+      </div>
+    );
+  };
+
   const onNextQuestion = async () => {
     if (!canControlQuestions) {
       return;
@@ -2946,7 +3029,7 @@ export default function App() {
               scores: syncData.scores || {},
             });
           }
-        } catch (err) {}
+        } catch (err) { }
         setIsTransitioning(false);
       } else {
       }
@@ -3020,7 +3103,7 @@ export default function App() {
   useEffect(() => {
     // Don't animate scores during active gameplay - only at round end
     if (!showResult) return;
-    
+
     const duration = 600;
 
     Object.keys(scores).forEach((id) => {
@@ -3072,108 +3155,286 @@ export default function App() {
     };
   }, [scores, showResult]);
 
+  // ─────────────────────────────────────────────────────────────────
+  // Render home screen with game/spinner selection
+  // ─────────────────────────────────────────────────────────────────
+  const startQuizFromHome = async () => {
+    setIsLoading(true);
+    userClickedStartRef.current = true;
+
+    try {
+      const isJoiningExistingGame =
+        sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId;
+
+      if (isJoiningExistingGame) {
+        const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+          headers: { "Cache-Control": "no-cache" },
+        });
+        const stateData = await stateResp.json();
+
+        if (stateData?.success && stateData.currentQuestion) {
+          const question = stateData.currentQuestion;
+          currentQuestionIdRef.current = question?.id ?? null;
+          setCurrentQuestion(question);
+          setShowResult(stateData.showResult || false);
+          setTimeLeft(stateData.timeLeft ?? MAX_TIME);
+
+          if (stateData.scores) {
+            setScores(stateData.scores);
+            setDisplayScores(stateData.scores);
+          }
+
+          if (stateData.playerNames) {
+            setPlayerNames((prev) => ({ ...prev, ...stateData.playerNames }));
+          }
+
+          const serverSelections = normalizeServerSelections(
+            stateData.selections || {},
+          );
+          updateSelections(serverSelections, question?.id ?? null);
+
+          if (stateData.showResult) {
+            awardedDoneRef.current = true;
+            setServerScoredThisRound(true);
+          }
+
+          setSessionTimedOut(false);
+        }
+
+        return;
+      }
+
+      if (!canControlQuestions) {
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/start_question`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roomId: roomId,
+          forceNew: false,
+          resetScores: true,
+          playerId: currentPlayerId,
+        }),
+      });
+
+      const result = await response.json();
+
+      const resolvedHostId =
+        result?.hostPlayerId ?? result?.data?.hostPlayerId;
+      if (resolvedHostId !== undefined) {
+        setHostPlayerId(resolvedHostId || null);
+      }
+
+      const startQuestion = result?.question ?? result?.data?.question;
+
+      if (result && result.success && startQuestion) {
+        const question = startQuestion;
+        currentQuestionIdRef.current = question?.id ?? null;
+        if (resolvedHostId === undefined) {
+          setHostPlayerId(hostPlayerId ?? currentPlayerId ?? null);
+        }
+
+        if (!result.synced) {
+          setScores({});
+          setDisplayScores({});
+        } else {
+          if (result.scores) {
+            setScores(result.scores);
+            setDisplayScores(result.scores);
+          }
+
+          if (result.showResult) {
+            awardedDoneRef.current = true;
+            setServerScoredThisRound(true);
+          }
+        }
+
+        setCurrentQuestion(question);
+        setShowResult(result.showResult || false);
+        const serverSelections = normalizeServerSelections(
+          result?.data?.selections || result?.selections || {},
+        );
+        updateSelections(serverSelections, question?.id ?? null);
+
+        if (!result.synced) {
+          setMySelection(null, question?.id ?? null);
+          currentSelectionRef.current = null;
+          answerTimesRef.current = {};
+          awardedDoneRef.current = false;
+          setServerScoredThisRound(false);
+        }
+
+        setTimeLeft(result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME);
+        setSessionTimedOut(false);
+      }
+    } catch {
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (appMode === "HOME") {
+    return (
+      <>
+        <HomeScreen
+          onGameClick={() =>
+            triggerScreenTransition("GAME", async () => {
+              await startQuizFromHome();
+            })
+          }
+          onSpinnerClick={() =>
+            setAppMode("SPINNER")
+          }
+          onButtonHover={playHoverSound}
+          onButtonClick={(handler) => {
+            playClickSound();
+            handler();
+          }}
+          musicEnabled={musicEnabled}
+          onToggleMusic={toggleMusic}
+          isLoading={isLoading}
+        />
+        {renderScreenTransitionOverlay()}
+      </>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Render Civ Spinner
+  // ─────────────────────────────────────────────────────────────────
+  if (appMode === "SPINNER") {
+    return (
+      <>
+        <SpinnerScreen
+          onBackClick={() =>
+            triggerScreenTransition("HOME", async () => { })
+          }
+          onBackHover={playHoverSound}
+          onBackPress={(handler) => {
+            playClickSound();
+            handler();
+          }}
+          musicEnabled={musicEnabled}
+          onToggleMusic={toggleMusic}
+        />
+        {renderScreenTransitionOverlay()}
+      </>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Game mode - render quiz
+  // ─────────────────────────────────────────────────────────────────
+
   if (isLoading || isTransitioning) {
     const isInGameLoading = questionFetchInProgressRef.current || !!currentQuestion;
     return (
-      <div
-        className="app-container"
-        style={{
-          backgroundImage: `url(${isInGameLoading ? quizScreenBg : restartScreenBg})`,
-          backgroundSize: isInGameLoading ? "cover" : "contain",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          height: "100vh",
-          width: "100vw",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          padding: "0 32px 96px",
-          boxSizing: "border-box",
-        }}
-      >
-        <p
+      <>
+        <div
+          className="app-container"
           style={{
-            fontSize: 16,
-            textAlign: "center",
-            color: "rgba(255, 228, 181, 0.85)",
-            margin: 0,
-            padding: "12px 24px",
-            backgroundColor: "rgba(0, 0, 0, 0.45)",
-            borderRadius: 12,
-            fontFamily: '"Trajan Pro Bold", serif',
-            letterSpacing: 1,
+            backgroundImage: `url(${isInGameLoading ? quizScreenBg : restartScreenBg})`,
+            backgroundSize: isInGameLoading ? "cover" : "contain",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+            height: "100vh",
+            width: "100vw",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            padding: "0 32px 96px",
+            boxSizing: "border-box",
           }}
         >
-          {isTransitioning
-            ? "Preparing your next challenge"
-            : "Preparing your Age of Empires III challenge"}
-        </p>
-      </div>
+          <p
+            style={{
+              fontSize: 16,
+              textAlign: "center",
+              color: "rgba(255, 228, 181, 0.85)",
+              margin: 0,
+              padding: "12px 24px",
+              backgroundColor: "rgba(0, 0, 0, 0.45)",
+              borderRadius: 12,
+              fontFamily: '"Trajan Pro Bold", serif',
+              letterSpacing: 1,
+            }}
+          >
+            {isTransitioning
+              ? "Preparing your next challenge"
+              : "Preparing your Age of Empires III challenge"}
+          </p>
+        </div>
+        {renderScreenTransitionOverlay()}
+      </>
     );
   }
 
   if (!currentQuestion && !isLoading && !questionFetchInProgressRef.current) {
     return (
-      <div
-        className="app-container"
-        style={{
-          backgroundImage: `url(${restartScreenBg})`,
-          backgroundSize: "contain",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          height: "100vh",
-          width: "100vw",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          padding: "0 32px 96px",
-          boxSizing: "border-box",
-        }}
-      >
-        <button
-          className="restart-button"
-          aria-label="Restart quiz"
+      <>
+        <div
+          className="app-container"
           style={{
-            width: 360,
-            height: 65,
-            backgroundImage: `url(${restartButtonBg})`,
+            backgroundImage: `url(${restartScreenBg})`,
             backgroundSize: "contain",
-            backgroundRepeat: "no-repeat",
             backgroundPosition: "center",
-            backgroundColor: "transparent",
-            border: "none",
-            borderRadius: 12,
-            color: "white",
-            fontFamily: '"Trajan Pro Bold", serif',
-            fontWeight: 600,
-            fontSize: "1.7rem",
-            cursor: "pointer",
-            outline: "none",
-            filter: "drop-shadow(0 0 8px gold)",
-            userSelect: "none",
+            backgroundRepeat: "no-repeat",
+            height: "100vh",
+            width: "100vw",
             display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
             alignItems: "center",
-            justifyContent: "center",
+            padding: "0 32px 96px",
+            boxSizing: "border-box",
+            gap: "16px",
           }}
-          onMouseEnter={playHoverSound}
-          onClick={async () => {
-            if (!canControlQuestions) {
-              return;
-            }
+        >
+          <button
+            className="restart-button"
+            aria-label="Restart quiz"
+            style={{
+              width: 360,
+              height: 65,
+              backgroundImage: `url(${restartButtonBg})`,
+              backgroundSize: "contain",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              backgroundColor: "transparent",
+              border: "none",
+              borderRadius: 12,
+              color: "white",
+              fontFamily: '"Trajan Pro Bold", serif',
+              fontWeight: 600,
+              fontSize: "1.7rem",
+              cursor: "pointer",
+              outline: "none",
+              filter: "drop-shadow(0 0 8px gold)",
+              userSelect: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onMouseEnter={playHoverSound}
+            onClick={async () => {
+              if (!canControlQuestions) {
+                return;
+              }
 
               playClickSound();
               setIsLoading(true);
               userClickedStartRef.current = true; // Mark that user explicitly clicked
-              
+
               try {
                 // FIRST: Check if there's already an active game on the server
                 const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
                   headers: { 'Cache-Control': 'no-cache' }
                 });
                 const stateData = await stateResp.json();
-                
+
                 // If there's an active question with time remaining, just sync to it
                 if (stateData?.success && stateData.currentQuestion && stateData.timeLeft > 0) {
                   const question = stateData.currentQuestion;
@@ -3181,7 +3442,7 @@ export default function App() {
                   setCurrentQuestion(question);
                   setShowResult(stateData.showResult || false);
                   setTimeLeft(stateData.timeLeft ?? MAX_TIME);
-                  
+
                   if (stateData.hostPlayerId) {
                     setHostPlayerId(stateData.hostPlayerId);
                   }
@@ -3192,19 +3453,19 @@ export default function App() {
                   if (stateData.playerNames) {
                     setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
                   }
-                  
+
                   const serverSelections = normalizeServerSelections(stateData.selections || {});
                   updateSelections(serverSelections, question?.id ?? null);
-                  
+
                   if (stateData.showResult) {
                     awardedDoneRef.current = true;
                     setServerScoredThisRound(true);
                   }
-                  
+
                   setIsLoading(false);
                   return; // Don't start a new question - just synced to existing game
                 }
-                
+
                 // No active game - proceed to start a new one
                 setScores(
                   players.reduce((acc, p) => {
@@ -3265,7 +3526,9 @@ export default function App() {
               }
             }}
           ></button>
-      </div>
+        </div>
+        {renderScreenTransitionOverlay()}
+      </>
     );
   }
 
@@ -3336,37 +3599,13 @@ export default function App() {
         width: "100vw",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 20,
+        justifyContent: "flex-start",
+        alignItems: "stretch",
         boxSizing: "border-box",
       }}
     >
-      {joinCountdown.active && (
-        <div
-          className="join-countdown-overlay"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.55)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1200,
-            color: "#fff4d6",
-            textShadow: "0 2px 6px rgba(0, 0, 0, 0.6)",
-            pointerEvents: "none",
-            fontFamily: '"Trajan Pro Bold", serif',
-          }}
-        >
-          <p style={{ fontSize: 22, marginBottom: 4 }}>Joining mid-round</p>
-          <p style={{ fontSize: 42, margin: 0 }}>
-            Syncing in {joinCountdown.remaining}s
-          </p>
-        </div>
-      )}
-      {}
+      {renderScreenTransitionOverlay()}
+      { }
       <aside
         className={`leaderboard-container ${isLeaderboardCollapsed ? "collapsed" : ""} ${isDraggingLeaderboard ? "dragging" : ""}`}
         aria-label="Leaderboard"
@@ -3402,7 +3641,7 @@ export default function App() {
                   className={`leaderboard-item ${p.id === myPlayerId ? "you" : ""} rank-${idx + 1}`}
                   aria-label={`${p.name} score ${p.score}`}
                 >
-                  {}
+                  { }
                   <div className="leaderboard-row">
                     {medal ? (
                       <img src={medal} alt={`#${idx + 1} medal`} />
@@ -3429,11 +3668,11 @@ export default function App() {
         )}
       </aside>
 
-      {}
+      { }
       <div style={{ position: "fixed", top: 12, right: 12, zIndex: 999 }}>
         <button
           onClick={toggleMusic}
-          onMouseEnter={() => {}}
+          onMouseEnter={() => { }}
           style={{
             width: 44,
             height: 44,
@@ -3459,617 +3698,703 @@ export default function App() {
       </div>
 
       <div
-        className="wood-panel"
+        className="spinner-screen-header"
         style={{
-          backgroundImage: `url(${woodPanelBg})`,
-          backgroundSize: "contain",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "center",
-          padding: 60,
+          backgroundImage: `url(${topBarBg})`,
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "1rem 1.5rem",
+          minHeight: "74px",
           boxSizing: "border-box",
-          width: 850,
-          maxWidth: "95vw",
-          minHeight: 600,
+        }}
+      >
+        <button
+          className="spinner-back-button"
+          aria-label="Back to home"
+          style={{
+            backgroundImage: `url(${btnNormal})`,
+            position: "absolute",
+            left: 20,
+            top: "50%",
+            marginTop: "-1px",
+            "--spinner-back-button-base-transform": "translateY(-50%)",
+          }}
+          onMouseEnter={playHoverSound}
+          onClick={() => {
+            playClickSound();
+            triggerScreenTransition("HOME", async () => { });
+          }}
+        >
+          <span className="back-arrow">←</span>
+          Back
+        </button>
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: "50%",
+            transform: "translateY(-50%)",
+            display: "flex",
+            justifyContent: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <h1
+            className="spinner-title"
+            style={{
+              margin: 0,
+              textAlign: "center",
+              "--spinner-title-offset-y": "-3px",
+            }}
+          >
+            Age of Empires III Trivia
+          </h1>
+        </div>
+      </div>
+
+      <div
+        style={{
+          flex: 1,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          overflow: "hidden",
-          color: "white",
-          textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+          justifyContent: "center",
+          padding: "20px",
+          boxSizing: "border-box",
         }}
       >
-        <h1 className="title">Age of Empires III Trivia!</h1>
-        <img
-          src={dividingLine}
-          alt=""
-          className="divider-line"
+        <div
+          className="wood-panel"
           style={{
-            display: "block",
-            width: 600,
-            maxWidth: "100%",
-            height: "auto",
-            pointerEvents: "none",
-            userSelect: "none",
-            transform: "translateY(-15px)",
+            backgroundImage: `url(${woodPanelBg})`,
+            backgroundSize: "contain",
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "center",
+            padding: 60,
+            boxSizing: "border-box",
+            width: 850,
+            maxWidth: "95vw",
+            minHeight: 600,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            overflow: "hidden",
+            color: "white",
+            textShadow: "0 1px 2px rgba(0,0,0,0.8)",
           }}
-        />
+        >
+          <h1 className="title">Age of Empires III Trivia!</h1>
+          <img
+            src={dividingLine}
+            alt=""
+            className="divider-line"
+            style={{
+              display: "block",
+              width: 600,
+              maxWidth: "100%",
+              height: "auto",
+              pointerEvents: "none",
+              userSelect: "none",
+              transform: "translateY(-15px)",
+            }}
+          />
 
-        <p className="timer">Time Left: {timeLeft}s</p>
+          <p className="timer">Time Left: {timeLeft}s</p>
 
-        {}
-        {currentQuestion ? (
-          <>
-            {}
-            {isCardMode ? (
-              <>
-                <h2 className="question">What HC card is this?</h2>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 12,
-                  }}
-                >
-                  {}
+          { }
+          {currentQuestion ? (
+            <>
+              { }
+              {isCardMode ? (
+                <>
+                  <h2 className="question">What HC card is this?</h2>
                   <div
-                    style={{ position: "relative", width: 160, height: 160 }}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 12,
+                    }}
                   >
-                    {cardImageUrl ? (
-                      <img
-                        src={cardImageUrl}
-                        alt="HC card"
+                    { }
+                    <div
+                      style={{ position: "relative", width: 160, height: 160 }}
+                    >
+                      {cardImageUrl ? (
+                        <img
+                          src={cardImageUrl}
+                          alt="HC card"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "contain",
+                            borderRadius: 8,
+                            boxShadow: "0 6px 18px rgba(0,0,0,0.6)",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            borderRadius: 8,
+                            boxShadow: "0 6px 18px rgba(0,0,0,0.6)",
+                            background:
+                              "linear-gradient(135deg, #2c1810 0%, #4a3222 100%)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "#d4b887",
+                            fontSize: "14px",
+                            textAlign: "center",
+                            border: "2px solid #8b6914",
+                          }}
+                        >
+                          Loading card...
+                        </div>
+                      )}
+
+                      { }
+                      {revealActive && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            left: "50%",
+                            bottom: 8,
+                            transform: "translateX(-50%)",
+                            background: "rgba(0, 0, 0, 0.6)",
+                            padding: "8px 10px",
+                            borderRadius: 6,
+                            color: "#ffd",
+                            textAlign: "center",
+                            maxWidth: "92%",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                            pointerEvents: "none",
+                            fontSize: "0.77rem",
+                            width: "75%",
+                          }}
+                        >
+                          <div style={{ fontWeight: 700 }}>
+                            Correct Answer: {currentQuestion.cardName}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{ display: "flex", gap: 8, alignItems: "center" }}
+                    >
+                      <input
+                        className="card-input"
+                        value={cardInput}
+                        onChange={(e) => {
+                          setCardInput(e.target.value);
+                          setCardLastWrong(false);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            onSubmitCardAnswer(myPlayerId, e.target.value);
+                          }
+                        }}
+                        disabled={
+                          showResult || selections[myPlayerId] !== undefined
+                        }
+                        placeholder="Type the card name here..."
                         style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "contain",
+                          width: 420,
+                          height: 48,
+                          padding: "8px 12px",
                           borderRadius: 8,
-                          boxShadow: "0 6px 18px rgba(0,0,0,0.6)",
+                          border: "none",
+                          outline: "none",
+                          fontSize: "1.4rem",
+                          fontFamily: `"Trajan Pro White", "Trajan Pro", serif`,
+                          color: "#ffffff",
+                          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+
+                          backgroundImage: `url(${showResult || selections[myPlayerId] !== undefined ? nicknameBgOver : nicknameBg})`,
+                          backgroundSize: "contain",
+                          backgroundRepeat: "no-repeat",
+                          backgroundPosition: "center",
+
+                          backgroundColor: "transparent",
+                          WebkitAppearance: "none",
+                          MozAppearance: "none",
+
+                          opacity:
+                            showResult || selections[myPlayerId] !== undefined
+                              ? 0.7
+                              : 1,
+                          filter:
+                            showResult || selections[myPlayerId] !== undefined
+                              ? "brightness(0.85)"
+                              : "none",
+                          transition: "opacity 0.3s ease, filter 0.3s ease",
+                          pointerEvents:
+                            showResult || selections[myPlayerId] !== undefined
+                              ? "none"
+                              : "auto",
                         }}
                       />
-                    ) : (
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          borderRadius: 8,
-                          boxShadow: "0 6px 18px rgba(0,0,0,0.6)",
-                          background:
-                            "linear-gradient(135deg, #2c1810 0%, #4a3222 100%)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "#d4b887",
-                          fontSize: "14px",
-                          textAlign: "center",
-                          border: "2px solid #8b6914",
-                        }}
-                      >
-                        Loading card...
-                      </div>
-                    )}
 
-                    {}
-                    {revealActive && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          left: "50%",
-                          bottom: 8,
-                          transform: "translateX(-50%)",
-                          background: "rgba(0, 0, 0, 0.6)",
-                          padding: "8px 10px",
-                          borderRadius: 6,
-                          color: "#ffd",
-                          textAlign: "center",
-                          maxWidth: "92%",
-                          boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-                          pointerEvents: "none",
-                          fontSize: "0.77rem",
-                          width: "75%",
-                        }}
-                      >
-                        <div style={{ fontWeight: 700 }}>
-                          Correct Answer: {currentQuestion.cardName}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div
-                    style={{ display: "flex", gap: 8, alignItems: "center" }}
-                  >
-                    <input
-                      className="card-input"
-                      value={cardInput}
-                      onChange={(e) => {
-                        setCardInput(e.target.value);
-                        setCardLastWrong(false);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          onSubmitCardAnswer(myPlayerId, e.target.value);
-                        }
-                      }}
-                      disabled={
-                        showResult || selections[myPlayerId] !== undefined
-                      }
-                      placeholder="Type the card name here..."
-                      style={{
-                        width: 420,
-                        height: 48,
-                        padding: "8px 12px",
-                        borderRadius: 8,
-                        border: "none",
-                        outline: "none",
-                        fontSize: "1.4rem",
-                        fontFamily: `"Trajan Pro White", "Trajan Pro", serif`,
-                        color: "#ffffff",
-                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
-
-                        backgroundImage: `url(${showResult || selections[myPlayerId] !== undefined ? nicknameBgOver : nicknameBg})`,
-                        backgroundSize: "contain",
-                        backgroundRepeat: "no-repeat",
-                        backgroundPosition: "center",
-
-                        backgroundColor: "transparent",
-                        WebkitAppearance: "none",
-                        MozAppearance: "none",
-
-                        opacity:
-                          showResult || selections[myPlayerId] !== undefined
-                            ? 0.7
-                            : 1,
-                        filter:
-                          showResult || selections[myPlayerId] !== undefined
-                            ? "brightness(0.85)"
-                            : "none",
-                        transition: "opacity 0.3s ease, filter 0.3s ease",
-                        pointerEvents:
-                          showResult || selections[myPlayerId] !== undefined
-                            ? "none"
-                            : "auto",
-                      }}
-                    />
-
-                    <button
-                      onClick={() => {
-                        if (
-                          !showResult &&
-                          selections[myPlayerId] === undefined
-                        ) {
-                          playClickSound();
-                        }
-                        onSubmitCardAnswer(myPlayerId, cardInput);
-                      }}
-                      onMouseEnter={
-                        showResult || selections[myPlayerId] !== undefined
-                          ? undefined
-                          : playHoverSound
-                      }
-                      disabled={
-                        showResult || selections[myPlayerId] !== undefined
-                      }
-                      style={{
-                        height: 48,
-                        padding: "8px 16px",
-                        borderRadius: 8,
-                        border: "none",
-                        cursor:
-                          showResult || selections[myPlayerId] !== undefined
-                            ? "default"
-                            : "pointer",
-                        backgroundImage: `url(${btnNormal})`,
-                        backgroundSize: "contain",
-                        backgroundRepeat: "no-repeat",
-                        backgroundPosition: "center",
-                        backgroundColor: "transparent",
-                        color: "white",
-                        textShadow: "0 1px 3px rgba(0,0,0,0.8)",
-                        fontSize: "1.4rem",
-                        width: 320,
-
-                        opacity:
-                          showResult || selections[myPlayerId] !== undefined
-                            ? 0.7
-                            : 1,
-                        filter:
-                          showResult || selections[myPlayerId] !== undefined
-                            ? "brightness(0.85)"
-                            : "none",
-                        transition: "opacity 0.3s ease, filter 0.3s ease",
-                        pointerEvents:
-                          showResult || selections[myPlayerId] !== undefined
-                            ? "none"
-                            : "auto",
-                      }}
-                    >
-                      Submit!
-                    </button>
-                  </div>
-
-                  {cardLastWrong && !showResult && (
-                    <div style={{ color: "#ffb3b3", marginTop: 6 }}>
-                      Incorrect — try again.
-                    </div>
-                  )}
-
-                  {}
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 className="question">{currentQuestion.question}</h2>
-
-                <div className="options-grid">
-                  {currentQuestion.options.map((opt, i) => {
-                    const reveal = revealActive;
-                    const disableInteractions = showResult;
-                    const isMySelected = i === mySelection;
-
-                    const isMySelectionInRef =
-                      currentSelectionRef.current === i;
-
-                    const isMySelectionOnServer = selections[myPlayerId] === i;
-                    const isLocked = isMySelected || isMySelectionOnServer;
-
-                    let backgroundImage = `url(${btnNormal})`;
-                    let boxShadow = "none";
-                    let opacity = 1;
-                    let cursor = "pointer";
-                    let pointerEvents = "auto";
-                    let filter = "none";
-
-                    if (reveal) {
-                      if (i === correctIndex) {
-                        backgroundImage = `url(${btnHover})`;
-                        boxShadow = "0 0 12px 4px gold";
-                      } else {
-                        backgroundImage = `url(${btnDisabled})`;
-                      }
-                    } else if (disableInteractions) {
-                      backgroundImage = `url(${btnDisabled})`;
-                      cursor = "default";
-                      pointerEvents = "none";
-                      opacity = 0.85;
-                      filter = "brightness(0.9)";
-                    } else if (isLocked) {
-                      backgroundImage = `url(${btnHover})`;
-
-                      opacity = 0.7;
-                      cursor = "default";
-                      pointerEvents = "none";
-                      filter = "brightness(0.85)";
-                    }
-
-                    return (
                       <button
-                        key={i}
-                        disabled={disableInteractions}
-                        className="option-button"
-                        style={{
-                          backgroundImage,
-                          boxShadow,
-                          opacity,
-                          cursor: disableInteractions ? "default" : cursor,
-                          pointerEvents: disableInteractions
-                            ? "none"
-                            : pointerEvents,
-                          filter,
-                          transition: "opacity 0.3s ease, filter 0.3s ease",
+                        onClick={() => {
+                          if (
+                            !showResult &&
+                            selections[myPlayerId] === undefined
+                          ) {
+                            playClickSound();
+                          }
+                          onSubmitCardAnswer(myPlayerId, cardInput);
                         }}
                         onMouseEnter={
-                          !isLocked && !disableInteractions
-                            ? playHoverSound
-                            : undefined
+                          showResult || selections[myPlayerId] !== undefined
+                            ? undefined
+                            : playHoverSound
                         }
-                        onClick={() => {
-                          if (isLocked) return;
+                        disabled={
+                          showResult || selections[myPlayerId] !== undefined
+                        }
+                        style={{
+                          height: 48,
+                          padding: "8px 16px",
+                          borderRadius: 8,
+                          border: "none",
+                          cursor:
+                            showResult || selections[myPlayerId] !== undefined
+                              ? "default"
+                              : "pointer",
+                          backgroundImage: `url(${btnNormal})`,
+                          backgroundSize: "contain",
+                          backgroundRepeat: "no-repeat",
+                          backgroundPosition: "center",
+                          backgroundColor: "transparent",
+                          color: "white",
+                          textShadow: "0 1px 3px rgba(0,0,0,0.8)",
+                          fontSize: "1.4rem",
+                          width: 320,
 
-                          onSelectOption(myPlayerId, i);
+                          opacity:
+                            showResult || selections[myPlayerId] !== undefined
+                              ? 0.7
+                              : 1,
+                          filter:
+                            showResult || selections[myPlayerId] !== undefined
+                              ? "brightness(0.85)"
+                              : "none",
+                          transition: "opacity 0.3s ease, filter 0.3s ease",
+                          pointerEvents:
+                            showResult || selections[myPlayerId] !== undefined
+                              ? "none"
+                              : "auto",
                         }}
                       >
-                        <span className="option-text">{opt}</span>
-
-                        {}
-                        {}
-                        {!reveal && (isMySelected || isMySelectionInRef) && (
-                          <>
-                            {}
-                            <span className="option-badge my-selection">
-                              {currentUser?.username ||
-                                currentUser?.global_name ||
-                                "You"}
-                            </span>
-                          </>
-                        )}
-
-                        {}
-                        {reveal &&
-                          (() => {
-                            const playersForOption = Object.entries(
-                              selections,
-                            ).filter(
-                              ([playerId, optionIndex]) => optionIndex === i,
-                            );
-
-                            if (playersForOption.length === 0) {
-                              return null;
-                            }
-
-                            const playerNames_display = playersForOption
-                              .map(([playerId]) => {
-                                let playerName = playerNames[playerId];
-
-                                if (!playerName) {
-                                  const player = players.find(
-                                    (p) => p.id === playerId,
-                                  );
-                                  playerName = player?.name;
-                                }
-
-                                if (
-                                  !playerName &&
-                                  playerId === currentUser?.id
-                                ) {
-                                  playerName =
-                                    currentUser?.username ||
-                                    currentUser?.global_name;
-                                }
-
-                                const finalName =
-                                  playerName || `Player ${playerId.slice(-4)}`;
-                                return finalName;
-                              })
-                              .join(", ");
-
-                            return (
-                              <span className="option-badge">
-                                {playerNames_display}
-                              </span>
-                            );
-                          })()}
+                        Submit!
                       </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </>
-        ) : (
-          <div style={{ textAlign: "center", color: "#ccc", padding: "40px" }}>
-            {isInitialSyncing ? (
-              // Show loading state during initial sync to prevent flashing Start button
-              <div>
-                <p>Syncing game state...</p>
-              </div>
-            ) : socket && socket.connected && isInVoiceChannel ? (
-              <div>
-                <p>{sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId 
-                  ? "Join the current game?" 
-                  : "Ready to start the quiz?"}</p>
-                <button
-                  className="next-question-button"
-                  disabled={sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId ? false : !canControlQuestions}
-                  style={{
-                    marginTop: 16,
-                    width: 360,
-                    height: 65,
-                    backgroundImage: `url(${btnMainMenuDisabled})`,
-                    backgroundSize: "contain",
-                    backgroundRepeat: "no-repeat",
-                    backgroundPosition: "center",
-                    backgroundColor: "transparent",
-                    border: "none",
-                    borderRadius: 12,
-                    color: "white",
-                    fontFamily: '"Trajan Pro Bold", serif',
-                    fontWeight: 600,
-                    fontSize: "1.7rem",
-                    cursor: (sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) || canControlQuestions 
-                      ? "pointer" 
-                      : "not-allowed",
-                    outline: "none",
-                    filter: (sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) || canControlQuestions
-                      ? "drop-shadow(0 0 8px gold)"
-                      : "grayscale(0.6)",
-                    userSelect: "none",
-                  }}
-                  onMouseEnter={() => playHoverSound()}
-                  onClick={async () => {
-                    // Timed-out player joining existing game OR host starting new game
-                    const isJoiningExistingGame = sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId;
-                    
-                    if (!isJoiningExistingGame && !canControlQuestions) {
-                      return;
-                    }
+                    </div>
 
-                    playClickSound();
-                    userClickedStartRef.current = true; // Mark that user explicitly clicked
+                    {cardLastWrong && !showResult && (
+                      <div style={{ color: "#ffb3b3", marginTop: 6 }}>
+                        Incorrect — try again.
+                      </div>
+                    )}
 
-                    try {
-                      // If joining existing game, DON'T call start_question - just fetch current state
-                      if (isJoiningExistingGame) {
-                        // Fetch current game state and apply it
-                        const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
-                          headers: { 'Cache-Control': 'no-cache' }
-                        });
-                        const stateData = await stateResp.json();
-                        
-                        if (stateData?.success && stateData.currentQuestion) {
-                          // Apply the current game state
-                          const question = stateData.currentQuestion;
-                          currentQuestionIdRef.current = question?.id ?? null;
-                          setCurrentQuestion(question);
-                          setShowResult(stateData.showResult || false);
-                          setTimeLeft(stateData.timeLeft ?? MAX_TIME);
-                          
-                          // Apply scores from server
-                          if (stateData.scores) {
-                            setScores(stateData.scores);
-                            setDisplayScores(stateData.scores);
-                          }
-                          
-                          // Apply player names
-                          if (stateData.playerNames) {
-                            setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
-                          }
-                          
-                          // Apply selections
-                          const serverSelections = normalizeServerSelections(stateData.selections || {});
-                          updateSelections(serverSelections, question?.id ?? null);
-                          
-                          // If joining results screen, mark as already awarded
-                          if (stateData.showResult) {
-                            awardedDoneRef.current = true;
-                            setServerScoredThisRound(true);
-                          }
-                          
-                          // Clear session timed out flag
-                          setSessionTimedOut(false);
+                    { }
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="question">{currentQuestion.question}</h2>
+
+                  <div className="options-grid">
+                    {currentQuestion.options.map((opt, i) => {
+                      const reveal = revealActive;
+                      const disableInteractions = showResult;
+                      const isMySelected = i === mySelection;
+
+                      const isMySelectionInRef =
+                        currentSelectionRef.current === i;
+
+                      const isMySelectionOnServer = selections[myPlayerId] === i;
+                      const isLocked = isMySelected || isMySelectionOnServer;
+
+                      let backgroundImage = `url(${btnNormal})`;
+                      let boxShadow = "none";
+                      let opacity = 1;
+                      let cursor = "pointer";
+                      let pointerEvents = "auto";
+                      let filter = "none";
+
+                      if (reveal) {
+                        if (i === correctIndex) {
+                          backgroundImage = `url(${btnHover})`;
+                          boxShadow = "0 0 12px 4px gold";
+                        } else {
+                          backgroundImage = `url(${btnDisabled})`;
                         }
+                      } else if (disableInteractions) {
+                        backgroundImage = `url(${btnDisabled})`;
+                        cursor = "default";
+                        pointerEvents = "none";
+                        opacity = 0.85;
+                        filter = "brightness(0.9)";
+                      } else if (isLocked) {
+                        backgroundImage = `url(${btnHover})`;
+
+                        opacity = 0.7;
+                        cursor = "default";
+                        pointerEvents = "none";
+                        filter = "brightness(0.85)";
+                      }
+
+                      return (
+                        <button
+                          key={i}
+                          disabled={disableInteractions}
+                          className="option-button"
+                          style={{
+                            backgroundImage,
+                            boxShadow,
+                            opacity,
+                            cursor: disableInteractions ? "default" : cursor,
+                            pointerEvents: disableInteractions
+                              ? "none"
+                              : pointerEvents,
+                            filter,
+                            transition: "opacity 0.3s ease, filter 0.3s ease",
+                          }}
+                          onMouseEnter={
+                            !isLocked && !disableInteractions
+                              ? playHoverSound
+                              : undefined
+                          }
+                          onClick={() => {
+                            if (isLocked) return;
+
+                            onSelectOption(myPlayerId, i);
+                          }}
+                        >
+                          <span className="option-text">{opt}</span>
+
+                          { }
+                          { }
+                          {!reveal && (isMySelected || isMySelectionInRef) && (
+                            <>
+                              { }
+                              <span className="option-badge my-selection">
+                                {currentUser?.username ||
+                                  currentUser?.global_name ||
+                                  "You"}
+                              </span>
+                            </>
+                          )}
+
+                          { }
+                          {reveal &&
+                            (() => {
+                              const playersForOption = Object.entries(
+                                selections,
+                              ).filter(
+                                ([playerId, optionIndex]) => optionIndex === i,
+                              );
+
+                              if (playersForOption.length === 0) {
+                                return null;
+                              }
+
+                              const playerNames_display = playersForOption
+                                .map(([playerId]) => {
+                                  let playerName = playerNames[playerId];
+
+                                  if (!playerName) {
+                                    const player = players.find(
+                                      (p) => p.id === playerId,
+                                    );
+                                    playerName = player?.name;
+                                  }
+
+                                  if (
+                                    !playerName &&
+                                    playerId === currentUser?.id
+                                  ) {
+                                    playerName =
+                                      currentUser?.username ||
+                                      currentUser?.global_name;
+                                  }
+
+                                  const finalName =
+                                    playerName || `Player ${playerId.slice(-4)}`;
+                                  return finalName;
+                                })
+                                .join(", ");
+
+                              return (
+                                <span className="option-badge">
+                                  {playerNames_display}
+                                </span>
+                              );
+                            })()}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div style={{ textAlign: "center", color: "#ccc", padding: "40px" }}>
+              {isInitialSyncing ? (
+                // Show loading state during initial sync to prevent flashing Start button
+                <div>
+                  <p>Syncing game state...</p>
+                </div>
+              ) : socket && socket.connected && isInVoiceChannel ? (
+                <div>
+                  <p>{sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId
+                    ? "Join the current game?"
+                    : "Ready to start the quiz?"}</p>
+                  <button
+                    className="next-question-button"
+                    disabled={sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId ? false : !canControlQuestions}
+                    style={{
+                      marginTop: 16,
+                      width: 360,
+                      height: 65,
+                      backgroundImage: `url(${btnMainMenuDisabled})`,
+                      backgroundSize: "contain",
+                      backgroundRepeat: "no-repeat",
+                      backgroundPosition: "center",
+                      backgroundColor: "transparent",
+                      border: "none",
+                      borderRadius: 12,
+                      color: "white",
+                      fontFamily: '"Trajan Pro Bold", serif',
+                      fontWeight: 600,
+                      fontSize: "1.7rem",
+                      cursor: (sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) || canControlQuestions
+                        ? "pointer"
+                        : "not-allowed",
+                      outline: "none",
+                      filter: (sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) || canControlQuestions
+                        ? "drop-shadow(0 0 8px gold)"
+                        : "grayscale(0.6)",
+                      userSelect: "none",
+                    }}
+                    onMouseEnter={() => playHoverSound()}
+                    onClick={async () => {
+                      // Timed-out player joining existing game OR host starting new game
+                      const isJoiningExistingGame = sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId;
+
+                      if (!isJoiningExistingGame && !canControlQuestions) {
                         return;
                       }
-                      
-                      // Host starting a new game - call start_question
-                      const response = await fetch(
-                        `${API_BASE_URL}/start_question`,
-                        {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            roomId: roomId,
-                            forceNew: false,
-                            resetScores: true,
-                            playerId: currentPlayerId,
-                          }),
-                        },
-                      );
 
-                      const result = await response.json();
+                      playClickSound();
+                      userClickedStartRef.current = true; // Mark that user explicitly clicked
 
-                      const resolvedHostId =
-                        result?.hostPlayerId ?? result?.data?.hostPlayerId;
-                      if (resolvedHostId !== undefined) {
-                        setHostPlayerId(resolvedHostId || null);
-                      }
+                      try {
+                        // If joining existing game, DON'T call start_question - just fetch current state
+                        if (isJoiningExistingGame) {
+                          // Fetch current game state and apply it
+                          const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
+                            headers: { 'Cache-Control': 'no-cache' }
+                          });
+                          const stateData = await stateResp.json();
 
-                      const startQuestion =
-                        result?.question ?? result?.data?.question;
+                          if (stateData?.success && stateData.currentQuestion) {
+                            // Apply the current game state
+                            const question = stateData.currentQuestion;
+                            currentQuestionIdRef.current = question?.id ?? null;
+                            setCurrentQuestion(question);
+                            setShowResult(stateData.showResult || false);
+                            setTimeLeft(stateData.timeLeft ?? MAX_TIME);
 
-                      if (result && result.success && startQuestion) {
-                        const question = startQuestion;
-                        currentQuestionIdRef.current = question?.id ?? null;
-                        if (resolvedHostId === undefined) {
-                          setHostPlayerId(
-                            hostPlayerId ?? currentPlayerId ?? null,
+                            // Apply scores from server
+                            if (stateData.scores) {
+                              setScores(stateData.scores);
+                              setDisplayScores(stateData.scores);
+                            }
+
+                            // Apply player names
+                            if (stateData.playerNames) {
+                              setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
+                            }
+
+                            // Apply selections
+                            const serverSelections = normalizeServerSelections(stateData.selections || {});
+                            updateSelections(serverSelections, question?.id ?? null);
+
+                            // If joining results screen, mark as already awarded
+                            if (stateData.showResult) {
+                              awardedDoneRef.current = true;
+                              setServerScoredThisRound(true);
+                            }
+
+                            // Clear session timed out flag
+                            setSessionTimedOut(false);
+                          }
+                          return;
+                        }
+
+                        // Host starting a new game - call start_question
+                        const response = await fetch(
+                          `${API_BASE_URL}/start_question`,
+                          {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              roomId: roomId,
+                              forceNew: false,
+                              resetScores: true,
+                              playerId: currentPlayerId,
+                            }),
+                          },
+                        );
+
+                        const result = await response.json();
+
+                        const resolvedHostId =
+                          result?.hostPlayerId ?? result?.data?.hostPlayerId;
+                        if (resolvedHostId !== undefined) {
+                          setHostPlayerId(resolvedHostId || null);
+                        }
+
+                        const startQuestion =
+                          result?.question ?? result?.data?.question;
+
+                        if (result && result.success && startQuestion) {
+                          const question = startQuestion;
+                          currentQuestionIdRef.current = question?.id ?? null;
+                          if (resolvedHostId === undefined) {
+                            setHostPlayerId(
+                              hostPlayerId ?? currentPlayerId ?? null,
+                            );
+                          }
+                          // Only reset scores if this is a NEW game, not a sync to existing game
+                          // The server returns synced: true when joining an in-progress game
+                          if (!result.synced) {
+                            setScores({});
+                            setDisplayScores({});
+                          } else {
+                            // Syncing to existing game - use server scores
+                            if (result.scores) {
+                              setScores(result.scores);
+                              setDisplayScores(result.scores);
+                            }
+                            // If syncing to results screen, mark as already awarded
+                            if (result.showResult) {
+                              awardedDoneRef.current = true;
+                              setServerScoredThisRound(true);
+                            }
+                          }
+                          setCurrentQuestion(question);
+                          setShowResult(result.showResult || false);
+                          const serverSelections = normalizeServerSelections(
+                            result?.data?.selections || result?.selections || {},
                           );
-                        }
-                        // Only reset scores if this is a NEW game, not a sync to existing game
-                        // The server returns synced: true when joining an in-progress game
-                        if (!result.synced) {
-                          setScores({});
-                          setDisplayScores({});
+                          updateSelections(serverSelections, question?.id ?? null);
+                          // Only reset selection if not synced (new game)
+                          if (!result.synced) {
+                            setMySelection(null, question?.id ?? null);
+                            currentSelectionRef.current = null;
+                            answerTimesRef.current = {};
+                            awardedDoneRef.current = false;
+                            setServerScoredThisRound(false);
+                          }
+                          setTimeLeft(
+                            result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME,
+                          );
+                          // Clear session timed out flag after successful join
+                          setSessionTimedOut(false);
                         } else {
-                          // Syncing to existing game - use server scores
-                          if (result.scores) {
-                            setScores(result.scores);
-                            setDisplayScores(result.scores);
-                          }
-                          // If syncing to results screen, mark as already awarded
-                          if (result.showResult) {
-                            awardedDoneRef.current = true;
-                            setServerScoredThisRound(true);
-                          }
                         }
-                        setCurrentQuestion(question);
-                        setShowResult(result.showResult || false);
-                        const serverSelections = normalizeServerSelections(
-                          result?.data?.selections || result?.selections || {},
-                        );
-                        updateSelections(serverSelections, question?.id ?? null);
-                        // Only reset selection if not synced (new game)
-                        if (!result.synced) {
-                          setMySelection(null, question?.id ?? null);
-                          currentSelectionRef.current = null;
-                          answerTimesRef.current = {};
-                          awardedDoneRef.current = false;
-                          setServerScoredThisRound(false);
-                        }
-                        setTimeLeft(
-                          result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME,
-                        );
-                        // Clear session timed out flag after successful join
-                        setSessionTimedOut(false);
-                      } else {
-                      }
-                    } catch (error) {}
-                  }}
-                >
-                  {sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId 
-                    ? "Join Game" 
-                    : "Start Quiz"}
-                </button>
-                {!canControlQuestions && !(sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) && (
-                  <p style={{ marginTop: 8, color: "#ffb347" }}>
-                    Waiting for the host to start…
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p>No question loaded. Wait for the host to start the quiz.</p>
-            )}
-          </div>
-        )}
-      </div>
+                      } catch (error) { }
+                    }}
+                  >
+                    {sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId
+                      ? "Join Game"
+                      : "Start Quiz"}
+                  </button>
+                  {!canControlQuestions && !(sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) && (
+                    <p style={{ marginTop: 8, color: "#ffb347" }}>
+                      Waiting for the host to start…
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p>No question loaded. Wait for the host to start the quiz.</p>
+              )}
+            </div>
+          )}
+        </div>
 
-      {}
-      <button
-        className="next-question-button"
-        onMouseEnter={() => {
-          if (showResult && canControlQuestions) playHoverSound();
-        }}
-        onClick={() => {
-          if (showResult && canControlQuestions) {
-            playClickSound();
-            onNextQuestion();
-          }
-        }}
-        style={{
-          marginTop: 16,
-          width: 360,
-          height: 65,
-          backgroundImage: `url(${btnMainMenuDisabled})`,
-          backgroundSize: "contain",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "center",
-          backgroundColor: "transparent",
-          border: "none",
-          borderRadius: 12,
-          color: "white",
-          fontFamily: '"Trajan Pro Bold", serif',
-          fontWeight: 600,
-          fontSize: "1.7rem",
-          cursor: showResult && canControlQuestions ? "pointer" : "default",
-          outline: "none",
-          filter:
-            showResult && canControlQuestions
-              ? "drop-shadow(0 0 8px gold)"
-              : "none",
-          visibility: showResult && canControlQuestions ? "visible" : "hidden",
-          pointerEvents: showResult && canControlQuestions ? "auto" : "none",
-          userSelect: "none",
-        }}
-      >
-        Next Question
-      </button>
+        { }
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            marginTop: -12,
+            position: "static",
+            alignSelf: "center",
+            zIndex: 2,
+          }}
+        >
+          <button
+            className="next-question-button"
+            onMouseEnter={() => {
+              if (showResult && canControlQuestions) playHoverSound();
+            }}
+            onClick={() => {
+              if (showResult && canControlQuestions) {
+                playClickSound();
+                onNextQuestion();
+              }
+            }}
+            style={{
+              width: 360,
+              height: 65,
+              position: "static",
+              display: "block",
+              margin: 0,
+              backgroundImage: `url(${btnMainMenuDisabled})`,
+              backgroundSize: "contain",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              backgroundColor: "transparent",
+              border: "none",
+              borderRadius: 12,
+              color: "white",
+              fontFamily: '"Trajan Pro Bold", serif',
+              fontWeight: 600,
+              fontSize: "1.7rem",
+              cursor: showResult && canControlQuestions ? "pointer" : "default",
+              outline: "none",
+              filter:
+                showResult && canControlQuestions
+                  ? "drop-shadow(0 0 8px gold)"
+                  : "none",
+              visibility:
+                showResult && canControlQuestions ? "visible" : "hidden",
+              pointerEvents:
+                showResult && canControlQuestions ? "auto" : "none",
+              userSelect: "none",
+            }}
+          >
+            Next Question
+          </button>
+        </div>
+      </div>
       {showResult && !canControlQuestions && (
         <p style={{ marginTop: 8, color: "#ffb347" }}>
           Waiting for the host to pick the next question…
         </p>
       )}
 
-      {}
+      { }
       <style>{`
         .leaderboard-container {
           position: fixed;
@@ -4264,6 +4589,37 @@ export default function App() {
           }
         }
 
+        .screen-transition-overlay {
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+        }
+
+        .screen-transition-dip,
+        .screen-transition-wipe {
+          position: absolute;
+          inset: 0;
+          background: black;
+          opacity: 0;
+        }
+
+        .screen-transition-enter .screen-transition-dip {
+          animation: fadeInDark 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .screen-transition-out .screen-transition-dip {
+          animation: fadeOutDark 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes fadeInDark {
+          0% { opacity: 0; }
+          100% { opacity: 0.92; }
+        }
+
+        @keyframes fadeOutDark {
+          0% { opacity: 0.92; }
+          100% { opacity: 0; }
+        }
+
         /* Card input customizations */
         .card-input {
           background-clip: padding-box; /* prevent weird bleed on rounded corners */
@@ -4281,9 +4637,10 @@ export default function App() {
           /* if you want a slight dim when locked, uncomment next line */
           /* opacity: 0.98; */
         }
+
         
-        /* divider under main title */
-        .divider-line { display: block; height: auto; }
+         /* divider under main title */
+         .divider-line { display: block; height: auto; }
       `}</style>
     </div>
   );

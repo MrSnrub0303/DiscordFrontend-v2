@@ -1,8 +1,9 @@
-import React, { useEffect, useState, createContext, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { DISCORD_CLIENT_ID } from './config';
+import { ActivityContext } from './ActivityContext';
 
-export const ActivityContext = createContext(null);
+export { ActivityContext };
 
 // Module-level flag to prevent duplicate SDK initialization across component remounts
 let globalInitializationStarted = false;

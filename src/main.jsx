@@ -7,7 +7,7 @@ import { ActivityProvider as MockActivityProvider } from './discord/MockActivity
 import { ErrorBoundary } from './components/ErrorBoundary'
 
 
-const Provider = ActivityProvider; 
+const Provider = MockActivityProvider; 
 
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary>

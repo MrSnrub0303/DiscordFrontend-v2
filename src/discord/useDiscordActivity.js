@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState, useMemo } from 'react';
-import { ActivityContext } from './ActivityProvider';
+import { ActivityContext } from './ActivityContext';
 
 export function useDiscordActivity() {
   const context = useContext(ActivityContext);
