@@ -123,7 +123,7 @@ button:focus-visible {
   grid-template-columns: repeat(2, 1fr);
   /* <-- tweak this line to change button height -->
      was: grid-auto-rows: minmax(84px, 120px); */
-  grid-auto-rows: 46px;   /* <--- reduced height */
+  grid-auto-rows: 55px;   /* <--- reduced height */
   gap: 18px;
   width: 100%;
   max-width: 100%; /* match your panel size constraints */
