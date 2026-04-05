@@ -51,7 +51,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
       try {
         data = JSON.parse(rawText);
       } catch {
-        throw new Error(`HTTP ${resp.status} — response: ${rawText.slice(0, 300)}`);
+        throw new Error(`Server error (${resp.status}) — please try again.`);
       }
 
       if (!resp.ok || !data.success) {
@@ -181,16 +181,6 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
               draggable={false}
             />
             <div className="events-register-input-area">
-              {registerSuccess && (
-                <div className="events-register-feedback events-register-feedback--success">
-                  {registerSuccess}
-                </div>
-              )}
-              {registerError && (
-                <div className="events-register-feedback events-register-feedback--error">
-                  {registerError}
-                </div>
-              )}
               <div className="events-register-row">
                 <input
                   className="events-register-input"
@@ -215,6 +205,28 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
                 </button>
               </div>
             </div>
+            {(registerSuccess || registerError) && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                textAlign: 'center',
+                paddingTop: 8,
+                pointerEvents: 'none',
+              }}>
+                {registerSuccess && (
+                  <div className="events-register-feedback events-register-feedback--success">
+                    {registerSuccess}
+                  </div>
+                )}
+                {registerError && (
+                  <div className="events-register-feedback events-register-feedback--error">
+                    {registerError}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
         </div>

@@ -3913,7 +3913,7 @@ export default function App() {
                     </div>
 
                     <div
-                      style={{ display: "flex", gap: 8, alignItems: "center" }}
+                      style={{ position: "relative", display: "flex", gap: 8, alignItems: "center" }}
                     >
                       <input
                         className="card-input"
@@ -4025,7 +4025,16 @@ export default function App() {
                     </div>
 
                     {cardLastWrong && !showResult && (
-                      <div style={{ color: "#ffb3b3", marginTop: 6 }}>
+                      <div style={{
+                        position: "absolute",
+                        top: "100%",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        marginTop: 6,
+                        color: "#ffb3b3",
+                        whiteSpace: "nowrap",
+                        pointerEvents: "none",
+                      }}>
                         Incorrect — try again.
                       </div>
                     )}
