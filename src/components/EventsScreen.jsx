@@ -15,20 +15,41 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerError, setRegisterError] = useState('');
   const [registerSuccess, setRegisterSuccess] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
       const resp = await fetch('/api/events/leaderboard');
-      if (!resp.ok) return;
+      if (!resp.ok) return [];
       const data = await resp.json();
-      if (data.success) setPlayers(data.players);
+      if (data.success) {
+        setPlayers(data.players);
+        return data.players;
+      }
+      return [];
     } catch {
-      // server not reachable — leaderboard stays empty
+      return [];
     }
   }, []);
 
   useEffect(() => {
-    fetchLeaderboard();
+    const init = async () => {
+      const current = await fetchLeaderboard();
+      if (!current.length) return;
+      setIsRefreshing(true);
+      await Promise.all(
+        current.map(p =>
+          fetch('/api/events/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerId: p.playerId }),
+          }).catch(() => {})
+        )
+      );
+      await fetchLeaderboard();
+      setIsRefreshing(false);
+    };
+    init();
   }, [fetchLeaderboard]);
 
   const handleRegister = async () => {
@@ -147,6 +168,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
             <div className="events-leaderboard-header">
               <span className="events-lb-col-rank">#</span>
               <span className="events-lb-col-name">Player</span>
+              {isRefreshing && <span style={{ marginLeft: 'auto', opacity: 0.6, fontSize: '0.7rem', fontStyle: 'italic' }}>Refreshing scores...</span>}
               <span className="events-lb-col-wins">Qualifying Wins</span>
             </div>
             <div className="events-leaderboard-body">
