@@ -50,13 +50,8 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
       try {
         data = await resp.json();
       } catch {
-        if (resp.status === 404) {
-          throw new Error('Events endpoint not found — restart the local server to pick up new code.');
-        }
-        if (resp.status >= 502 && resp.status <= 504) {
-          throw new Error('Cannot reach local server — run: cd server && npm run dev');
-        }
-        throw new Error(`Server error (${resp.status}) — try restarting the local server.`);
+        const rawText = await resp.text().catch(() => '(unreadable)');
+        throw new Error(`HTTP ${resp.status} — non-JSON response: ${rawText.slice(0, 200)}`);
       }
 
       if (!resp.ok || !data.success) {
