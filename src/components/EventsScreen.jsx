@@ -46,12 +46,12 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
         body: JSON.stringify({ username: trimmed }),
       });
 
+      const rawText = await resp.text();
       let data;
       try {
-        data = await resp.json();
+        data = JSON.parse(rawText);
       } catch {
-        const rawText = await resp.text().catch(() => '(unreadable)');
-        throw new Error(`HTTP ${resp.status} — non-JSON response: ${rawText.slice(0, 200)}`);
+        throw new Error(`HTTP ${resp.status} — response: ${rawText.slice(0, 300)}`);
       }
 
       if (!resp.ok || !data.success) {
