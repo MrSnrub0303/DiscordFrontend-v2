@@ -212,7 +212,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
                 left: 0,
                 right: 0,
                 textAlign: 'center',
-                paddingTop: 3,
+                paddingTop: 2,
                 pointerEvents: 'none',
               }}>
                 {registerSuccess && (
