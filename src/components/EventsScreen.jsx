@@ -9,6 +9,51 @@ import backgroundSpinner from '../assets/background-spinner.png';
 import registerPanel from '../assets/RegisterHerePanel.png';
 import nicknameBg from '../assets/uiskirmishnickname_textentry.png';
 
+const AOE3_API = 'https://api.aoe3explorer.com';
+
+async function lookupPlayer(username) {
+  const url = `${AOE3_API}/players?name=like.*${encodeURIComponent(username)}*&limit=1`;
+  const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!resp.ok) throw new Error(`Player lookup failed (${resp.status})`);
+  const data = await resp.json();
+  if (!Array.isArray(data) || data.length === 0) throw new Error(`Player "${username}" not found`);
+  return data[0]; // { gameId, name, ... }
+}
+
+async function fetchPlayerWins(playerId) {
+  const url =
+    `${AOE3_API}/rpc/get_player_match_history_v2_legacy` +
+    `?p_player_id=${playerId}&p_limit=200&p_offset=0` +
+    `&type=eq.3vs3%20Supremacy&isRanked=eq.true` +
+    `&date=gte.1775174400&date=lt.1775952000`;
+
+  const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!resp.ok) throw new Error(`Match history fetch failed (${resp.status})`);
+  const matches = await resp.json();
+  if (!Array.isArray(matches)) return 0;
+
+  const pid = String(playerId);
+  let qualifyingWins = 0;
+
+  for (const match of matches) {
+    const winners = match.winnersStats;
+    const losers = match.losersStats;
+    if (!Array.isArray(winners) || !Array.isArray(losers)) continue;
+
+    const won = winners.some((p) => String(p.playerId) === pid);
+    if (!won) continue;
+
+    // Elo Gained = (W_elo - L_elo) × (1/25) + 16
+    const wElo = winners.reduce((sum, p) => sum + (p.elo || 0), 0);
+    const lElo = losers.reduce((sum, p) => sum + (p.elo || 0), 0);
+    const eloGain = (wElo - lElo) * (1 / 25) + 16;
+
+    if (eloGain >= 5) qualifyingWins++;
+  }
+
+  return qualifyingWins;
+}
+
 export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabled, onToggleMusic }) {
   const [players, setPlayers] = useState([]);
   const [username, setUsername] = useState('');
@@ -19,10 +64,11 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
   const fetchLeaderboard = useCallback(async () => {
     try {
       const resp = await fetch('/api/events/leaderboard');
+      if (!resp.ok) return;
       const data = await resp.json();
       if (data.success) setPlayers(data.players);
     } catch {
-      // silently fail — leaderboard just stays as-is
+      // server not available — leaderboard stays empty
     }
   }, []);
 
@@ -39,22 +85,38 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
     setRegisterSuccess('');
 
     try {
+      // 1. Look up player directly from AoE3 Explorer
+      const player = await lookupPlayer(trimmed);
+      const playerId = player.gameId;
+      const playerName = player.name ?? trimmed;
+
+      if (!playerId) throw new Error('Could not determine player ID');
+
+      // 2. Calculate qualifying wins directly from AoE3 Explorer
+      const wins = await fetchPlayerWins(playerId);
+
+      // 3. Save to server (for shared persistence)
       const resp = await fetch('/api/events/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: trimmed }),
+        body: JSON.stringify({ playerId: String(playerId), name: playerName, wins }),
       });
-      const data = await resp.json();
 
-      if (data.success) {
-        setRegisterSuccess(`${data.player.name} registered — ${data.player.wins} qualifying win${data.player.wins !== 1 ? 's' : ''}!`);
-        setUsername('');
-        await fetchLeaderboard();
-      } else {
-        setRegisterError(data.error || 'Registration failed.');
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.success) {
+          setRegisterSuccess(`${playerName} registered — ${wins} qualifying win${wins !== 1 ? 's' : ''}!`);
+          setUsername('');
+          await fetchLeaderboard();
+          return;
+        }
       }
-    } catch {
-      setRegisterError('Could not connect to server.');
+
+      // Server unavailable — show result without persisting
+      setRegisterSuccess(`${playerName} — ${wins} qualifying win${wins !== 1 ? 's' : ''} (server offline, not saved).`);
+      setUsername('');
+    } catch (err) {
+      setRegisterError(err.message || 'Registration failed.');
     } finally {
       setIsRegistering(false);
     }
@@ -163,7 +225,6 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
               className="events-register-panel-img"
               draggable={false}
             />
-            {/* Input row overlaid on the bottom half of the panel */}
             <div className="events-register-input-area">
               {registerSuccess && (
                 <div className="events-register-feedback events-register-feedback--success">

@@ -19,10 +19,15 @@ export default defineConfig({
     host: true,
     allowedHosts: ['discord-frontend-virid.vercel.app'],
     proxy: {
+      '/api/events': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api': {
         target: 'https://discordbackend-xggi.onrender.com',
         changeOrigin: true,
-        secure: true
+        secure: true,
       }
     }
   },
