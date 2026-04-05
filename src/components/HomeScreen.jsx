@@ -3,7 +3,7 @@ import '../styles/HomeScreen.css';
 import backgroundSpinner from '../assets/background-spinner.png';
 import playGameButton from '../assets/PlayGameHomeButton.png';
 import civAndMapButton from '../assets/CivAndMapHomeButton.png';
-import comingSoonButton from '../assets/ComingSoonHomeButton.png';
+import eventsButton from '../assets/EventsHomeButton.png';
 import aoe3Logo from '../assets/aoe3_de_logo.png';
 import discordAppText from '../assets/DiscordAppText.png';
 import soundOnIcon from '../assets/notification_sound_on.png';
@@ -13,6 +13,7 @@ import loadingSpinner from '../assets/loadingspinner.png';
 export function HomeScreen({
   onGameClick,
   onSpinnerClick,
+  onEventsClick,
   onButtonHover,
   onButtonClick,
   musicEnabled,
@@ -86,11 +87,12 @@ export function HomeScreen({
           ></button>
 
           <button
-            className="home-screen-button locked-button"
-            disabled
-            style={{ backgroundImage: `url(${comingSoonButton})` }}
-            aria-label="Coming soon"
-            title="Coming Soon"
+            className="home-screen-button events-button"
+            onMouseEnter={onButtonHover}
+            onClick={onButtonClick ? () => onButtonClick(onEventsClick) : onEventsClick}
+            style={{ backgroundImage: `url(${eventsButton})` }}
+            aria-label="Events"
+            title="Events"
           ></button>
         </div>
 

@@ -9,6 +9,7 @@ import {
 import "./App.css";
 import { HomeScreen } from "./components/HomeScreen";
 import { SpinnerScreen } from "./components/SpinnerScreen";
+import { EventsScreen } from "./components/EventsScreen";
 import questions from "./questions.json";
 import { useDiscordActivity } from "./discord/useDiscordActivity";
 import { io } from "socket.io-client";
@@ -3287,6 +3288,9 @@ export default function App() {
           onSpinnerClick={() =>
             setAppMode("SPINNER")
           }
+          onEventsClick={() =>
+            setAppMode("EVENTS")
+          }
           onButtonHover={playHoverSound}
           onButtonClick={(handler) => {
             playClickSound();
@@ -3295,6 +3299,29 @@ export default function App() {
           musicEnabled={musicEnabled}
           onToggleMusic={toggleMusic}
           isLoading={isLoading}
+        />
+        {renderScreenTransitionOverlay()}
+      </>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Render Events
+  // ─────────────────────────────────────────────────────────────────
+  if (appMode === "EVENTS") {
+    return (
+      <>
+        <EventsScreen
+          onBackClick={() =>
+            triggerScreenTransition("HOME", async () => { })
+          }
+          onBackHover={playHoverSound}
+          onBackPress={(handler) => {
+            playClickSound();
+            handler();
+          }}
+          musicEnabled={musicEnabled}
+          onToggleMusic={toggleMusic}
         />
         {renderScreenTransitionOverlay()}
       </>
