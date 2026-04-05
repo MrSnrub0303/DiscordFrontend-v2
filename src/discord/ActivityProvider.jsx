@@ -197,7 +197,7 @@ export function ActivityProvider({ children }) {
             errorDetails.suggestion = 'The server is temporarily unavailable. Please wait a moment and try again.';
           } else {
             errorDetails.message = 'Unstable Network';
-            errorDetails.suggestion = 'Check that your backend server is running and accessible at https://discordbackend-xggi.onrender.com';
+            errorDetails.suggestion = 'Check that your backend server is running and accessible at https://discordbackend-v2.onrender.com';
           }
         } else if (error.message.includes('fetch')) {
           errorDetails.message = 'Unstable Network';

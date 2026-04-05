@@ -17,7 +17,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     host: true,
-    allowedHosts: ['discord-frontend-virid.vercel.app'],
+    allowedHosts: ['discord-frontend-v2.vercel.app'],
     proxy: {
       '/api/events': {
         target: 'http://localhost:3001',
@@ -25,7 +25,7 @@ export default defineConfig({
         secure: false,
       },
       '/api': {
-        target: 'https://discordbackend-xggi.onrender.com',
+        target: 'https://discordbackend-v2.onrender.com',
         changeOrigin: true,
         secure: true,
       }
