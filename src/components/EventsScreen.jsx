@@ -19,7 +19,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
 
   const fetchLeaderboard = useCallback(async () => {
     try {
-      const resp = await fetch('/api/events/leaderboard');
+      const resp = await fetch('/api/events/leaderboard', { cache: 'no-store' });
       if (!resp.ok) return [];
       const data = await resp.json();
       if (data.success) {
@@ -37,15 +37,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
       const current = await fetchLeaderboard();
       if (!current.length) return;
       setIsRefreshing(true);
-      await Promise.all(
-        current.map(p =>
-          fetch('/api/events/refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ playerId: p.playerId }),
-          }).catch(() => {})
-        )
-      );
+      await fetch('/api/events/refresh-all', { method: 'POST' }).catch(() => {});
       await fetchLeaderboard();
       setIsRefreshing(false);
     };
