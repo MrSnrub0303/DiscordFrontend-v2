@@ -85,7 +85,7 @@
 
 .home-screen-button {
   width: min(380px, 88vw);
-  aspect-ratio: 16.5 / 1;
+  aspect-ratio: 6.5 / 1;
   min-height: 284px;
   padding: 0;
   border: none;
