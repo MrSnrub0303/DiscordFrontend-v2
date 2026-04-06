@@ -141,7 +141,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
           <span className="back-arrow">←</span>
           Back
         </button>
-        <h1 className="events-title">Events</h1>
+        <h1 className="events-title">GGplz Challenge – 3v3 Ranked Grind</h1>
       </div>
 
       {/* AoE3 logo bottom-left */}
