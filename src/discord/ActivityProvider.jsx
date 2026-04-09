@@ -399,8 +399,7 @@ export function ActivityProvider({ children }) {
               margin: 0,
               opacity: 0.95,
               letterSpacing: '0.2px',
-              textShadow: '2px 2px 0 rgba(0, 0, 0, 0.9)',
-              WebkitTextStroke: '0.8px black',
+              textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8)',
             }}>
               {message}
             </p>
@@ -411,8 +410,7 @@ export function ActivityProvider({ children }) {
                 margin: 0,
                 opacity: 0.85,
                 marginTop: '20px',
-                textShadow: '1px 1px 0 rgba(0, 0, 0, 0.8)',
-                WebkitTextStroke: '0.5px black',
+                textShadow: '0 2px 6px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)',
               }}>
                 First load may take a moment...
               </p>
