@@ -19,7 +19,12 @@ export function HomeScreen({
   musicEnabled,
   onToggleMusic,
   isLoading,
+  loadingTarget,
 }) {
+  const isEventsLoading = loadingTarget === "EVENTS";
+  const isSpinnerLoading = loadingTarget === "SPINNER";
+  const isAnyLoading = isLoading || !!loadingTarget;
+
   return (
     <div className="home-screen-container">
       <div
@@ -69,7 +74,7 @@ export function HomeScreen({
             className={`home-screen-button game-button ${isLoading ? 'loading' : ''}`}
             onMouseEnter={onButtonHover}
             onClick={onButtonClick ? () => onButtonClick(onGameClick) : onGameClick}
-            disabled={isLoading}
+            disabled={isAnyLoading}
             style={{ backgroundImage: `url(${playGameButton})` }}
             aria-label="Play game"
             title="Play Game"
@@ -78,22 +83,28 @@ export function HomeScreen({
           </button>
 
           <button 
-            className="home-screen-button spinner-button"
+            className={`home-screen-button spinner-button ${isSpinnerLoading ? 'loading' : ''}`}
             onMouseEnter={onButtonHover}
             onClick={onButtonClick ? () => onButtonClick(onSpinnerClick) : onSpinnerClick}
+            disabled={isAnyLoading}
             style={{ backgroundImage: `url(${civAndMapButton})` }}
             aria-label="Civ and map randomiser"
             title="Civ & Map"
-          ></button>
+          >
+            {isSpinnerLoading && <img src={loadingSpinner} alt="Loading" className="button-spinner" />}
+          </button>
 
           <button
-            className="home-screen-button events-button"
+            className={`home-screen-button events-button ${isEventsLoading ? 'loading' : ''}`}
             onMouseEnter={onButtonHover}
             onClick={onButtonClick ? () => onButtonClick(onEventsClick) : onEventsClick}
+            disabled={isAnyLoading}
             style={{ backgroundImage: `url(${eventsButton})` }}
             aria-label="Events"
             title="Events"
-          ></button>
+          >
+            {isEventsLoading && <img src={loadingSpinner} alt="Loading" className="button-spinner" />}
+          </button>
         </div>
 
         <div className="home-screen-footer">

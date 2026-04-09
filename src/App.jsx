@@ -511,6 +511,9 @@ export default function App() {
   }, []);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingTarget, setLoadingTarget] = useState(null);
+  const [eventsInitialPlayers, setEventsInitialPlayers] = useState([]);
+  const [spinnerIframeLoaded, setSpinnerIframeLoaded] = useState(false);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [screenTransitionStage, setScreenTransitionStage] = useState("idle");
@@ -557,6 +560,36 @@ export default function App() {
   }, [isTransitioning]);
 
   const timerRef = useRef(null);
+
+  const preloadEventsLeaderboard = async () => {
+    try {
+      const response = await fetch('/api/events/leaderboard', { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error('Unable to fetch events leaderboard');
+      }
+      const data = await response.json();
+      if (data?.success && Array.isArray(data.players)) {
+        setEventsInitialPlayers(data.players);
+        return data.players;
+      }
+    } catch (error) {
+      console.warn('Events preload failed:', error);
+      setEventsInitialPlayers([]);
+    }
+    return [];
+  };
+
+  const preloadSpinnerAssets = async () => {
+    try {
+      await fetch('/civ-spinner/civ_spinner.html', { cache: 'no-store' });
+    } catch (error) {
+      console.warn('Spinner preload failed:', error);
+    }
+  };
+
+  const handleSpinnerIframeLoad = () => {
+    setSpinnerIframeLoaded(true);
+  };
 
   const awardedDoneRef = useRef(false);
 
@@ -3280,17 +3313,37 @@ export default function App() {
     return (
       <>
         <HomeScreen
-          onGameClick={() =>
+          onGameClick={() => {
+            setLoadingTarget("GAME");
             triggerScreenTransition("GAME", async () => {
-              await startQuizFromHome();
-            })
-          }
-          onSpinnerClick={() =>
-            setAppMode("SPINNER")
-          }
-          onEventsClick={() =>
-            setAppMode("EVENTS")
-          }
+              try {
+                await startQuizFromHome();
+              } finally {
+                setLoadingTarget(null);
+              }
+            });
+          }}
+          onSpinnerClick={() => {
+            setLoadingTarget("SPINNER");
+            setSpinnerIframeLoaded(false);
+            triggerScreenTransition("SPINNER", async () => {
+              try {
+                await preloadSpinnerAssets();
+              } finally {
+                setLoadingTarget(null);
+              }
+            });
+          }}
+          onEventsClick={() => {
+            setLoadingTarget("EVENTS");
+            triggerScreenTransition("EVENTS", async () => {
+              try {
+                await preloadEventsLeaderboard();
+              } finally {
+                setLoadingTarget(null);
+              }
+            });
+          }}
           onButtonHover={playHoverSound}
           onButtonClick={(handler) => {
             playClickSound();
@@ -3299,6 +3352,7 @@ export default function App() {
           musicEnabled={musicEnabled}
           onToggleMusic={toggleMusic}
           isLoading={isLoading}
+          loadingTarget={loadingTarget}
         />
         {renderScreenTransitionOverlay()}
       </>
@@ -3322,6 +3376,7 @@ export default function App() {
           }}
           musicEnabled={musicEnabled}
           onToggleMusic={toggleMusic}
+          initialPlayers={eventsInitialPlayers}
         />
         {renderScreenTransitionOverlay()}
       </>
@@ -3345,6 +3400,8 @@ export default function App() {
           }}
           musicEnabled={musicEnabled}
           onToggleMusic={toggleMusic}
+          iframeLoaded={spinnerIframeLoaded}
+          onIframeLoad={handleSpinnerIframeLoad}
         />
         {renderScreenTransitionOverlay()}
       </>

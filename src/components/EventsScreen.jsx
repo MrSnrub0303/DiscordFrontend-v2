@@ -9,8 +9,8 @@ import backgroundSpinner from '../assets/background-spinner.png';
 import registerPanel from '../assets/RegisterHerePanel.png';
 import nicknameBg from '../assets/uiskirmishnickname_textentry.png';
 
-export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabled, onToggleMusic }) {
-  const [players, setPlayers] = useState([]);
+export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabled, onToggleMusic, initialPlayers = [] }) {
+  const [players, setPlayers] = useState(initialPlayers);
   const [username, setUsername] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerError, setRegisterError] = useState('');
@@ -34,6 +34,11 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
 
   useEffect(() => {
     const init = async () => {
+      if (initialPlayers.length > 0) {
+        setPlayers(initialPlayers);
+        return;
+      }
+
       const current = await fetchLeaderboard();
       if (!current.length) return;
       setIsRefreshing(true);
@@ -42,7 +47,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
       setIsRefreshing(false);
     };
     init();
-  }, [fetchLeaderboard]);
+  }, [fetchLeaderboard, initialPlayers]);
 
   const handleRegister = async () => {
     const trimmed = username.trim();

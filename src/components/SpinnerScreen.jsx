@@ -6,7 +6,7 @@ import soundOnIcon from '../assets/notification_sound_on.png';
 import soundOffIcon from '../assets/notification_sound_off.png';
 import aoe3Logo from '../assets/aoe3_de_logo.png';
 
-export function SpinnerScreen({ onBackClick, onBackHover, onBackPress, musicEnabled, onToggleMusic }) {
+export function SpinnerScreen({ onBackClick, onBackHover, onBackPress, musicEnabled, onToggleMusic, iframeLoaded, onIframeLoad }) {
   return (
     <div className="spinner-screen-container">
       <div style={{ position: "fixed", top: 12, right: 12, zIndex: 999 }}>
@@ -68,12 +68,18 @@ export function SpinnerScreen({ onBackClick, onBackHover, onBackPress, musicEnab
       />
 
       <div className="spinner-screen-content">
+        {!iframeLoaded && (
+          <div className="spinner-screen-loading-overlay">
+            <span>Loading spinner...</span>
+          </div>
+        )}
         <iframe
           src="/civ-spinner/civ_spinner.html"
           className="spinner-iframe"
           title="Civilization Spinner"
           style={{ background: '#000' }}
           sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+          onLoad={onIframeLoad}
         />
       </div>
     </div>
