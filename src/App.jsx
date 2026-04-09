@@ -583,14 +583,15 @@ export default function App() {
     setSpinnerIframeLoaded(true);
   };
 
-  // Once the hidden SpinnerScreen iframe finishes loading, trigger the transition
+  // Once the hidden SpinnerScreen iframe finishes loading, trigger the transition.
+  // triggerScreenTransition is a stable useCallback([]) — safe to omit from deps.
   useEffect(() => {
     if (spinnerIframeLoaded && loadingTarget === "SPINNER" && appMode === "HOME") {
       triggerScreenTransition("SPINNER", async () => {
         setLoadingTarget(null);
       });
     }
-  }, [spinnerIframeLoaded, loadingTarget, appMode, triggerScreenTransition]);
+  }, [spinnerIframeLoaded, loadingTarget, appMode]);
 
   const awardedDoneRef = useRef(false);
 
