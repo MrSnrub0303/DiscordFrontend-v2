@@ -579,17 +579,18 @@ export default function App() {
     return [];
   };
 
-  const preloadSpinnerAssets = async () => {
-    try {
-      await fetch('/civ-spinner/civ_spinner.html', { cache: 'no-store' });
-    } catch (error) {
-      console.warn('Spinner preload failed:', error);
-    }
-  };
-
   const handleSpinnerIframeLoad = () => {
     setSpinnerIframeLoaded(true);
   };
+
+  // Once the hidden SpinnerScreen iframe finishes loading, trigger the transition
+  useEffect(() => {
+    if (spinnerIframeLoaded && loadingTarget === "SPINNER" && appMode === "HOME") {
+      triggerScreenTransition("SPINNER", async () => {
+        setLoadingTarget(null);
+      });
+    }
+  }, [spinnerIframeLoaded, loadingTarget, appMode, triggerScreenTransition]);
 
   const awardedDoneRef = useRef(false);
 
@@ -3326,13 +3327,7 @@ export default function App() {
           onSpinnerClick={() => {
             setLoadingTarget("SPINNER");
             setSpinnerIframeLoaded(false);
-            triggerScreenTransition("SPINNER", async () => {
-              try {
-                await preloadSpinnerAssets();
-              } finally {
-                setLoadingTarget(null);
-              }
-            });
+            // Transition is deferred — triggered by useEffect once iframe loads
           }}
           onEventsClick={() => {
             setLoadingTarget("EVENTS");
@@ -3354,6 +3349,19 @@ export default function App() {
           isLoading={isLoading}
           loadingTarget={loadingTarget}
         />
+        {/* Pre-render SpinnerScreen hidden so its iframe loads while user waits on HOME */}
+        {loadingTarget === "SPINNER" && (
+          <div style={{ position: "fixed", inset: 0, visibility: "hidden", pointerEvents: "none", zIndex: -1 }}>
+            <SpinnerScreen
+              onBackClick={() => {}}
+              onBackHover={() => {}}
+              musicEnabled={musicEnabled}
+              onToggleMusic={() => {}}
+              iframeLoaded={spinnerIframeLoaded}
+              onIframeLoad={handleSpinnerIframeLoad}
+            />
+          </div>
+        )}
         {renderScreenTransitionOverlay()}
       </>
     );
