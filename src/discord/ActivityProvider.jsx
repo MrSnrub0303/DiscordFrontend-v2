@@ -20,6 +20,8 @@ export function ActivityProvider({ children }) {
   const [initializationStep, setInitializationStep] = useState(globalInitializationStarted ? 'already_started' : 'starting');
   const [debugLogs, setDebugLogs] = useState([]);
   const initializationRef = useRef(false);
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(!globalAuthResult);
+  const [loadingFadingOut, setLoadingFadingOut] = useState(false);
 
   
   const addDebugLog = (message) => {
@@ -328,93 +330,103 @@ export function ActivityProvider({ children }) {
     );
   }
 
-  // Show loading indicator while initializing
-  if (!ready) {
-    const { message } = getLoadingInfo();
-    return (
-      <div style={{
-        position: 'relative',
-        width: '100vw',
-        height: '100vh',
-        overflow: 'hidden',
-        fontFamily: '"Trajan Pro Bold", serif',
-        color: '#ffffff',
-      }}>
-        <img
-          src={ServerLoadingBackground}
-          alt="Loading background"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            filter: 'blur(2px) brightness(0.5)',
-            transform: 'scale(1.05)',
-          }}
-        />
-        <div style={{
-          position: 'relative',
-          zIndex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          width: '100%',
-          padding: '40px',
-          textAlign: 'center',
-        }}>
-          <img
-            src={loadingSpinner}
-            alt="Loading"
-            style={{
-              width: '120px',
-              height: '120px',
-              marginBottom: '32px',
-              animation: 'spin 1.2s linear infinite',
-            }}
-          />
+  useEffect(() => {
+    if (ready && showLoadingOverlay && !loadingFadingOut) {
+      setLoadingFadingOut(true);
+      const timer = setTimeout(() => {
+        setShowLoadingOverlay(false);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [ready, showLoadingOverlay, loadingFadingOut]);
 
-          <p style={{
-            fontSize: '32px',
-            fontWeight: 700,
-            margin: 0,
-            opacity: 0.95,
-            letterSpacing: '0.2px',
-            textShadow: '2px 2px 0 rgba(0, 0, 0, 0.9)',
-            WebkitTextStroke: '0.8px black',
-          }}>
-            {message}
-          </p>
+  const { message } = getLoadingInfo();
 
-          {initializationStep === 'exchanging_token' && (
-            <p style={{
-              fontSize: '18px',
-              margin: 0,
-              opacity: 0.85,
-              marginTop: '20px',
-              textShadow: '1px 1px 0 rgba(0, 0, 0, 0.8)',
-              WebkitTextStroke: '0.5px black',
-            }}>
-              First load may take a moment...
-            </p>
-          )}
-        </div>
-
-        <style>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        `}</style>
-      </div>
-    );
-  }
-
-  
   return (
     <ActivityContext.Provider value={{ sdk, token, ready }}>
-      {children}
+      {ready && children}
+      {showLoadingOverlay && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          overflow: 'hidden',
+          fontFamily: '"Trajan Pro Bold", serif',
+          color: '#ffffff',
+          opacity: loadingFadingOut ? 0 : 1,
+          transition: 'opacity 0.6s ease',
+          pointerEvents: loadingFadingOut ? 'none' : 'auto',
+        }}>
+          <img
+            src={ServerLoadingBackground}
+            alt="Loading background"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              filter: 'blur(2px) brightness(0.5)',
+              transform: 'scale(1.05)',
+            }}
+          />
+          <div style={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            width: '100%',
+            padding: '40px',
+            textAlign: 'center',
+          }}>
+            <img
+              src={loadingSpinner}
+              alt="Loading"
+              style={{
+                width: '120px',
+                height: '120px',
+                marginBottom: '32px',
+                animation: 'spin 1.2s linear infinite',
+              }}
+            />
+
+            <p style={{
+              fontSize: '32px',
+              fontWeight: 700,
+              margin: 0,
+              opacity: 0.95,
+              letterSpacing: '0.2px',
+              textShadow: '2px 2px 0 rgba(0, 0, 0, 0.9)',
+              WebkitTextStroke: '0.8px black',
+            }}>
+              {message}
+            </p>
+
+            {initializationStep === 'exchanging_token' && (
+              <p style={{
+                fontSize: '18px',
+                margin: 0,
+                opacity: 0.85,
+                marginTop: '20px',
+                textShadow: '1px 1px 0 rgba(0, 0, 0, 0.8)',
+                WebkitTextStroke: '0.5px black',
+              }}>
+                First load may take a moment...
+              </p>
+            )}
+          </div>
+
+          <style>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      )}
     </ActivityContext.Provider>
   );
 }
