@@ -34,11 +34,6 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
 
   useEffect(() => {
     const init = async () => {
-      if (initialPlayers.length > 0) {
-        setPlayers(initialPlayers);
-        return;
-      }
-
       const current = await fetchLeaderboard();
       if (!current.length) return;
       setIsRefreshing(true);
@@ -47,7 +42,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
       setIsRefreshing(false);
     };
     init();
-  }, [fetchLeaderboard, initialPlayers]);
+  }, [fetchLeaderboard]);
 
   const handleRegister = async () => {
     const trimmed = username.trim();
