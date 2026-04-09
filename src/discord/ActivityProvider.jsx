@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { DISCORD_CLIENT_ID } from './config';
 import { ActivityContext } from './ActivityContext';
+import loadingSpinner from '../assets/loadingspinner.png';
+import ServerLoadingBackground from '../assets/ServerLoadingBackground.png';
 
 export { ActivityContext };
 
@@ -328,100 +330,82 @@ export function ActivityProvider({ children }) {
 
   // Show loading indicator while initializing
   if (!ready) {
-    const { message, progress } = getLoadingInfo();
+    const { message } = getLoadingInfo();
     return (
       <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
+        position: 'relative',
         width: '100vw',
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-        color: '#e8e8e8',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        height: '100vh',
+        overflow: 'hidden',
+        fontFamily: '"Trajan Pro Bold", serif',
+        color: '#ffffff',
       }}>
+        <img
+          src={ServerLoadingBackground}
+          alt="Loading background"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            filter: 'blur(12px) brightness(0.5)',
+            transform: 'scale(1.05)',
+          }}
+        />
         <div style={{
+          position: 'relative',
+          zIndex: 1,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '20px',
+          justifyContent: 'center',
+          height: '100%',
+          width: '100%',
           padding: '40px',
+          textAlign: 'center',
         }}>
-          {/* Subtle pulsing dot indicator */}
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            marginBottom: '8px',
-          }}>
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                style={{
-                  width: '10px',
-                  height: '10px',
-                  borderRadius: '50%',
-                  backgroundColor: '#5865F2',
-                  opacity: 0.6,
-                  animation: `pulse 1.4s ease-in-out ${i * 0.2}s infinite`,
-                }}
-              />
-            ))}
-          </div>
-          
-          {/* Status message */}
+          <img
+            src={loadingSpinner}
+            alt="Loading"
+            style={{
+              width: '72px',
+              height: '72px',
+              marginBottom: '24px',
+              animation: 'spin 1.2s linear infinite',
+            }}
+          />
+
           <p style={{
-            fontSize: '16px',
-            fontWeight: '500',
+            fontSize: '20px',
+            fontWeight: 700,
             margin: 0,
-            opacity: 0.9,
-            letterSpacing: '0.3px',
+            opacity: 0.95,
+            letterSpacing: '0.2px',
+            textShadow: '2px 2px 0 rgba(0, 0, 0, 0.9)',
+            WebkitTextStroke: '0.8px black',
           }}>
             {message}
           </p>
-          
-          {/* Progress bar */}
-          <div style={{
-            width: '200px',
-            height: '4px',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '2px',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              width: `${progress}%`,
-              height: '100%',
-              backgroundColor: '#5865F2',
-              borderRadius: '2px',
-              transition: 'width 0.5s ease-out',
-            }} />
-          </div>
-          
-          {/* Subtle hint for longer waits */}
+
           {initializationStep === 'exchanging_token' && (
             <p style={{
-              fontSize: '12px',
+              fontSize: '14px',
               margin: 0,
-              opacity: 0.5,
-              marginTop: '12px',
+              opacity: 0.85,
+              marginTop: '16px',
+              textShadow: '1px 1px 0 rgba(0, 0, 0, 0.8)',
+              WebkitTextStroke: '0.5px black',
             }}>
               First load may take a moment...
             </p>
           )}
         </div>
-        
-        {/* CSS animation for pulsing dots */}
+
         <style>{`
-          @keyframes pulse {
-            0%, 80%, 100% {
-              transform: scale(0.8);
-              opacity: 0.4;
-            }
-            40% {
-              transform: scale(1.2);
-              opacity: 1;
-            }
-          }
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         `}</style>
       </div>
     );
