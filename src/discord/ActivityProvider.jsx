@@ -349,7 +349,7 @@ export function ActivityProvider({ children }) {
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            filter: 'blur(12px) brightness(0.5)',
+            filter: 'blur(2px) brightness(0.5)',
             transform: 'scale(1.05)',
           }}
         />
@@ -369,15 +369,15 @@ export function ActivityProvider({ children }) {
             src={loadingSpinner}
             alt="Loading"
             style={{
-              width: '72px',
-              height: '72px',
-              marginBottom: '24px',
+              width: '120px',
+              height: '120px',
+              marginBottom: '32px',
               animation: 'spin 1.2s linear infinite',
             }}
           />
 
           <p style={{
-            fontSize: '20px',
+            fontSize: '32px',
             fontWeight: 700,
             margin: 0,
             opacity: 0.95,
@@ -390,10 +390,10 @@ export function ActivityProvider({ children }) {
 
           {initializationStep === 'exchanging_token' && (
             <p style={{
-              fontSize: '14px',
+              fontSize: '18px',
               margin: 0,
               opacity: 0.85,
-              marginTop: '16px',
+              marginTop: '20px',
               textShadow: '1px 1px 0 rgba(0, 0, 0, 0.8)',
               WebkitTextStroke: '0.5px black',
             }}>
