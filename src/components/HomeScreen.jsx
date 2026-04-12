@@ -48,8 +48,8 @@ export function HomeScreen({
         <button
           onClick={isMonitorAuthorized ? onMonitorClick : undefined}
           style={{
-            width: 44,
-            height: 44,
+            width: 80,
+            height: 80,
             padding: 0,
             border: "none",
             background: "transparent",
