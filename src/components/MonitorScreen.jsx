@@ -53,7 +53,7 @@ function ServiceCard({ name, connected, onConnect, apiBase, token }) {
   );
 }
 
-export function MonitorScreen({ onBack, discordAccessToken }) {
+export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
   const [logs, setLogs]     = useState([]);
   const [status, setStatus] = useState(null);
   const [thumb, setThumb]   = useState(null);
@@ -63,9 +63,10 @@ export function MonitorScreen({ onBack, discordAccessToken }) {
   const fileInputRef = useRef(null);
 
   const apiBase = API_BASE_URL;
-  const authHeaders = discordAccessToken
-    ? { Authorization: `Bearer ${discordAccessToken}` }
-    : {};
+  const authHeaders = {
+    ...(discordAccessToken ? { Authorization: `Bearer ${discordAccessToken}` } : {}),
+    ...(discordUsername ? { "X-Discord-Username": discordUsername } : {}),
+  };
 
   const fetchStatus = useCallback(async () => {
     try {

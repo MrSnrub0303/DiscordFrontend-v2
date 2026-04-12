@@ -285,7 +285,12 @@ export default function App() {
   const [players, setPlayers] = useState([]);
 
   const [appMode, setAppMode] = useState("HOME"); // "HOME", "GAME", "SPINNER", "EVENTS", or "MONITOR"
-  const [isMonitorAuthorized, setIsMonitorAuthorized] = useState(false);
+
+  // Authorized Discord usernames for the Monitor screen (checked client-side via SDK user data)
+  const MONITOR_AUTHORIZED_USERNAMES = ["barronh", "mclovin111.", "joshua667746", "grimescene"];
+  const isMonitorAuthorized = MONITOR_AUTHORIZED_USERNAMES.includes(
+    (currentUser?.username || "").toLowerCase()
+  );
 
   const [socket, setSocket] = useState(null);
 
@@ -1514,16 +1519,6 @@ export default function App() {
     initSocket();
   }, [currentUser?.username, currentUser?.accessToken, channelId, socket]);
 
-  // Check if current user is authorized to access the Monitor screen
-  useEffect(() => {
-    if (!currentUser?.accessToken) return;
-    fetch(`${API_BASE_URL}/monitor/status`, {
-      headers: { Authorization: `Bearer ${currentUser.accessToken}` },
-    })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data?.authorized) setIsMonitorAuthorized(true); })
-      .catch(() => {});
-  }, [currentUser?.accessToken]);
 
   useEffect(() => {
     return () => {
@@ -3391,6 +3386,7 @@ export default function App() {
       <MonitorScreen
         onBack={() => setAppMode("HOME")}
         discordAccessToken={currentUser?.accessToken}
+        discordUsername={currentUser?.username}
       />
     );
   }
