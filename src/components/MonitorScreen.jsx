@@ -37,46 +37,57 @@ function ServiceCard({ name, connected }) {
 }
 
 export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
-  const [logs, setLogs]     = useState([]);
-  const [status, setStatus] = useState(null);
-  const [thumb, setThumb]   = useState(null);
+  const [logs, setLogs]         = useState([]);
+  const [status, setStatus]     = useState(null);
+  const [thumb, setThumb]       = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
+  const [fetchError, setFetchError] = useState('');
   const logEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const apiBase = API_BASE_URL;
-  const authHeaders = {
-    ...(discordAccessToken ? { Authorization: `Bearer ${discordAccessToken}` } : {}),
-    ...(discordUsername ? { "X-Discord-Username": discordUsername } : {}),
-  };
 
   const fetchStatus = useCallback(async () => {
     try {
-      const resp = await fetch(`${apiBase}/monitor/status`, { headers: authHeaders });
-      if (resp.ok) setStatus(await resp.json());
-    } catch { /* swallow */ }
-  }, [apiBase, discordAccessToken]);
+      const resp = await fetch(`${apiBase}/monitor/status`);
+      if (resp.ok) {
+        setStatus(await resp.json());
+        setFetchError('');
+      } else {
+        setFetchError(`Status fetch failed: HTTP ${resp.status}`);
+      }
+    } catch (err) {
+      setFetchError(`Status fetch error: ${err.message} (url: ${apiBase}/monitor/status)`);
+    }
+  }, [apiBase]);
 
   const fetchLogs = useCallback(async () => {
     try {
-      const resp = await fetch(`${apiBase}/monitor/logs`, { headers: authHeaders });
+      const resp = await fetch(`${apiBase}/monitor/logs`);
       if (resp.ok) {
         const data = await resp.json();
         setLogs(data.logs || []);
       }
-    } catch { /* swallow */ }
-  }, [apiBase, discordAccessToken]);
+    } catch (err) {
+      console.error('[Monitor] logs fetch error:', err);
+    }
+  }, [apiBase]);
 
   const fetchThumbnail = useCallback(async () => {
     try {
-      const resp = await fetch(`${apiBase}/monitor/thumbnail`, { headers: authHeaders });
+      const resp = await fetch(`${apiBase}/monitor/thumbnail`, {
+        headers: {
+          ...(discordAccessToken ? { Authorization: `Bearer ${discordAccessToken}` } : {}),
+          ...(discordUsername ? { 'X-Discord-Username': discordUsername } : {}),
+        },
+      });
       if (resp.ok) {
         const blob = await resp.blob();
         setThumb(URL.createObjectURL(blob));
       }
     } catch { /* swallow */ }
-  }, [apiBase, discordAccessToken]);
+  }, [apiBase, discordAccessToken, discordUsername]);
 
   // Initial load
   useEffect(() => {
@@ -140,6 +151,12 @@ export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
 
       <div className="monitor-content">
         <h1 className="monitor-title">ESOC Monitor</h1>
+
+        {fetchError && (
+          <div style={{ background: '#3b1a1a', border: '1px solid #ff6b6b', borderRadius: 6, padding: '8px 12px', marginBottom: 12, color: '#ff6b6b', fontSize: '0.8em', fontFamily: 'monospace' }}>
+            {fetchError}
+          </div>
+        )}
 
         {/* ── Service status cards ── */}
         <div className="monitor-section">
