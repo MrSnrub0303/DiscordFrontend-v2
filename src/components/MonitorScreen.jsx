@@ -44,6 +44,7 @@ export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
   const [uploadMsg, setUploadMsg] = useState('');
   const [fetchError, setFetchError] = useState('');
   const logEndRef = useRef(null);
+  const logContainerRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const apiBase = API_BASE_URL;
@@ -103,9 +104,11 @@ export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
     return () => { clearInterval(logsInterval); clearInterval(statusInterval); };
   }, [fetchLogs, fetchStatus]);
 
-  // Auto-scroll log feed to bottom
+  // Auto-scroll log feed to bottom (scroll within the container, not the whole page)
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = logContainerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
   }, [logs]);
 
   async function handleUpload(e) {
@@ -118,7 +121,10 @@ export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
       form.append('thumbnail', file);
       const resp = await fetch(`${apiBase}/monitor/upload-thumbnail`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: {
+          ...(discordAccessToken ? { Authorization: `Bearer ${discordAccessToken}` } : {}),
+          ...(discordUsername ? { 'X-Discord-Username': discordUsername } : {}),
+        },
         body: form,
       });
       const data = await resp.json();
@@ -217,7 +223,7 @@ export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
         {/* ── Log feed ── */}
         <div className="monitor-section monitor-log-section">
           <h2 className="monitor-section-title">Live Logs</h2>
-          <div className="monitor-log-feed">
+          <div className="monitor-log-feed" ref={logContainerRef}>
             {logs.length === 0 && (
               <p className="monitor-log-empty">No log entries yet…</p>
             )}
@@ -240,7 +246,6 @@ export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
                 </span>
               </div>
             ))}
-            <div ref={logEndRef} />
           </div>
         </div>
       </div>
