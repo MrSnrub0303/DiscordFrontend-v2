@@ -48,8 +48,8 @@ export function HomeScreen({
         <button
           onClick={isMonitorAuthorized ? onMonitorClick : undefined}
           style={{
-            width: 80,
-            height: 80,
+            width: 100,
+            height: 100,
             padding: 0,
             border: "none",
             background: "transparent",
@@ -66,7 +66,7 @@ export function HomeScreen({
               width: "100%",
               height: "100%",
               objectFit: "contain",
-              filter: isMonitorAuthorized ? "none" : "grayscale(100%)",
+              filter: isMonitorAuthorized ? "drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5))" : "grayscale(100%) drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5))",
             }}
           />
           {!isMonitorAuthorized && (
