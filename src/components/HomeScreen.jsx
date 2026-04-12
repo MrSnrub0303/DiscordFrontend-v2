@@ -1,9 +1,13 @@
 import React from 'react';
 import '../styles/HomeScreen.css';
+
+// Set to true when an event is running, false to lock the button between events
+const EVENT_ACTIVE = false;
 import backgroundSpinner from '../assets/background-spinner.png';
 import playGameButton from '../assets/PlayGameHomeButton.png';
 import civAndMapButton from '../assets/CivAndMapHomeButton.png';
 import eventsButton from '../assets/EventsHomeButton.png';
+import lockIcon from '../assets/lock_icon.png';
 import aoe3Logo from '../assets/aoe3_de_logo.png';
 import discordAppText from '../assets/DiscordAppText.png';
 import soundOnIcon from '../assets/notification_sound_on.png';
@@ -21,7 +25,7 @@ export function HomeScreen({
   isLoading,
   loadingTarget,
 }) {
-  const isEventsLoading = loadingTarget === "EVENTS";
+  const isEventsLoading = EVENT_ACTIVE && loadingTarget === "EVENTS";
   const isSpinnerLoading = loadingTarget === "SPINNER";
   const isAnyLoading = isLoading || !!loadingTarget;
 
@@ -95,15 +99,18 @@ export function HomeScreen({
           </button>
 
           <button
-            className={`home-screen-button events-button ${isEventsLoading ? 'loading' : ''}`}
-            onMouseEnter={onButtonHover}
-            onClick={onButtonClick ? () => onButtonClick(onEventsClick) : onEventsClick}
-            disabled={isAnyLoading}
+            className={`home-screen-button events-button ${EVENT_ACTIVE ? (isEventsLoading ? 'loading' : '') : 'events-button--locked'}`}
+            onMouseEnter={EVENT_ACTIVE ? onButtonHover : undefined}
+            onClick={EVENT_ACTIVE ? (onButtonClick ? () => onButtonClick(onEventsClick) : onEventsClick) : undefined}
+            disabled={EVENT_ACTIVE ? isAnyLoading : true}
             style={{ backgroundImage: `url(${eventsButton})` }}
-            aria-label="Events"
-            title="Events"
+            aria-label={EVENT_ACTIVE ? "Events" : "Events (locked)"}
+            title={EVENT_ACTIVE ? "Events" : "Events - Coming Soon"}
           >
-            {isEventsLoading && <img src={loadingSpinner} alt="Loading" className="button-spinner" />}
+            {EVENT_ACTIVE
+              ? (isEventsLoading && <img src={loadingSpinner} alt="Loading" className="button-spinner" />)
+              : <img src={lockIcon} alt="Locked" className="events-lock-icon" />
+            }
           </button>
         </div>
 

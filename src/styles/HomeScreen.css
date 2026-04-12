@@ -139,6 +139,32 @@
   text-shadow: none;
 }
 
+/* ── Locked Events Button ── */
+
+.events-button--locked {
+  filter: grayscale(100%) drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5)) !important;
+  cursor: not-allowed !important;
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.events-button--locked:hover {
+  transform: none !important;
+  filter: grayscale(100%) drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5)) !important;
+}
+
+.events-lock-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+}
+
 /* ── Button Content ── */
 
 .home-screen-button {
