@@ -145,7 +145,6 @@
   filter: grayscale(100%) drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5)) !important;
   cursor: not-allowed !important;
   pointer-events: none;
-  opacity: 0.75;
 }
 
 .events-button--locked:hover {
