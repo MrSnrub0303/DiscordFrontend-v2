@@ -13,11 +13,14 @@ import discordAppText from '../assets/DiscordAppText.png';
 import soundOnIcon from '../assets/notification_sound_on.png';
 import soundOffIcon from '../assets/notification_sound_off.png';
 import loadingSpinner from '../assets/loadingspinner.png';
+import esocButton from '../assets/ESOCButton.png';
 
 export function HomeScreen({
   onGameClick,
   onSpinnerClick,
   onEventsClick,
+  onMonitorClick,
+  isMonitorAuthorized,
   onButtonHover,
   onButtonClick,
   musicEnabled,
@@ -40,6 +43,52 @@ export function HomeScreen({
           backgroundRepeat: "no-repeat",
         }}
       />
+      {/* ── ESOC Monitor button (top-left) ── */}
+      <div style={{ position: "fixed", top: 12, left: 12, zIndex: 999 }}>
+        <button
+          onClick={isMonitorAuthorized ? onMonitorClick : undefined}
+          style={{
+            width: 44,
+            height: 44,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            cursor: isMonitorAuthorized ? "pointer" : "not-allowed",
+            position: "relative",
+          }}
+          aria-label={isMonitorAuthorized ? "Open Monitor" : "Monitor (locked)"}
+          title={isMonitorAuthorized ? "ESOC Monitor" : "Monitor — not authorized"}
+        >
+          <img
+            src={esocButton}
+            alt="ESOC Monitor"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
+              filter: isMonitorAuthorized ? "none" : "grayscale(100%)",
+            }}
+          />
+          {!isMonitorAuthorized && (
+            <img
+              src={lockIcon}
+              alt="Locked"
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: 20,
+                height: 20,
+                objectFit: "contain",
+                pointerEvents: "none",
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.8))",
+              }}
+            />
+          )}
+        </button>
+      </div>
+
       <div style={{ position: "fixed", top: 12, right: 12, zIndex: 999 }}>
         <button
           onClick={onToggleMusic}

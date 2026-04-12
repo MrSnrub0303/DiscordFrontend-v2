@@ -1,0 +1,274 @@
+/* ── Monitor Screen Layout ── */
+
+.monitor-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1000;
+  overflow-y: auto;
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.monitor-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.85;
+  filter: brightness(0.5);
+}
+
+/* ── Back button ── */
+
+.monitor-back-btn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #fff;
+  font-family: "Trajan Pro Bold", serif;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 200ms;
+}
+
+.monitor-back-btn:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+/* ── Main content wrapper ── */
+
+.monitor-content {
+  width: min(860px, 96vw);
+  margin: 60px auto 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.monitor-title {
+  font-family: "Trajan Pro Bold", serif;
+  font-size: 1.8rem;
+  color: #f0d080;
+  text-align: center;
+  text-shadow: 0 0 16px rgba(240, 180, 0, 0.4);
+  margin: 0;
+}
+
+/* ── Sections ── */
+
+.monitor-section {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1.2rem 1.4rem;
+}
+
+.monitor-section-title {
+  font-family: "Trajan Pro Bold", serif;
+  font-size: 1rem;
+  color: #c8a832;
+  margin: 0 0 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ── Service cards ── */
+
+.monitor-services-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.monitor-service-card {
+  flex: 1 1 160px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 140px;
+}
+
+.monitor-service-name {
+  font-family: "Trajan Pro Bold", serif;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+}
+
+.monitor-service-status {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.monitor-service-btn {
+  margin-top: 0.3rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 200ms;
+}
+
+.monitor-service-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Status bar ── */
+
+.monitor-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 2rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.monitor-status-bar b {
+  color: #e2e8f0;
+}
+
+/* ── Thumbnail ── */
+
+.monitor-thumbnail-row {
+  display: flex;
+  gap: 1.2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.monitor-thumbnail-preview {
+  width: 240px;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.monitor-thumbnail-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.monitor-thumb-note {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.monitor-upload-btn {
+  align-self: flex-start;
+  background: rgba(100, 160, 255, 0.2);
+  border: 1px solid rgba(100, 160, 255, 0.45);
+  border-radius: 7px;
+  color: #93c5fd;
+  font-size: 0.85rem;
+  padding: 6px 18px;
+  cursor: pointer;
+  transition: background 200ms;
+}
+
+.monitor-upload-btn:hover {
+  background: rgba(100, 160, 255, 0.35);
+}
+
+.monitor-upload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.monitor-upload-msg {
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.monitor-upload-msg.success { color: #4ade80; }
+.monitor-upload-msg.error   { color: #ff6b6b; }
+
+/* ── Log feed ── */
+
+.monitor-log-section {
+  flex: 1;
+}
+
+.monitor-log-feed {
+  height: 320px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.75rem;
+}
+
+.monitor-log-entry {
+  display: flex;
+  gap: 0.5rem;
+  line-height: 1.4;
+  flex-wrap: nowrap;
+}
+
+.monitor-log-time {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.monitor-log-category {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.monitor-log-message {
+  word-break: break-word;
+  flex: 1;
+}
+
+.monitor-log-empty {
+  color: #64748b;
+  font-style: italic;
+  margin: auto;
+  text-align: center;
+}
+
+/* Scrollbar styling */
+.monitor-log-feed::-webkit-scrollbar { width: 6px; }
+.monitor-log-feed::-webkit-scrollbar-track { background: transparent; }
+.monitor-log-feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
+/* ── Responsive ── */
+
+@media (max-width: 600px) {
+  .monitor-content { margin: 56px auto 24px; }
+  .monitor-thumbnail-preview { width: 100%; }
+  .monitor-log-feed { height: 220px; }
+}

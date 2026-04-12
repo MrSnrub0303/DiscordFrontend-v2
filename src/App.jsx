@@ -10,6 +10,7 @@ import "./App.css";
 import { HomeScreen } from "./components/HomeScreen";
 import { SpinnerScreen } from "./components/SpinnerScreen";
 import { EventsScreen } from "./components/EventsScreen";
+import { MonitorScreen } from "./components/MonitorScreen";
 import questions from "./questions.json";
 import { useDiscordActivity } from "./discord/useDiscordActivity";
 import { io } from "socket.io-client";
@@ -283,7 +284,8 @@ const SCREEN_TRANSITION_MS = 1000;
 export default function App() {
   const [players, setPlayers] = useState([]);
 
-  const [appMode, setAppMode] = useState("HOME"); // "HOME", "GAME", or "SPINNER"
+  const [appMode, setAppMode] = useState("HOME"); // "HOME", "GAME", "SPINNER", "EVENTS", or "MONITOR"
+  const [isMonitorAuthorized, setIsMonitorAuthorized] = useState(false);
 
   const [socket, setSocket] = useState(null);
 
@@ -1511,6 +1513,17 @@ export default function App() {
 
     initSocket();
   }, [currentUser?.username, currentUser?.accessToken, channelId, socket]);
+
+  // Check if current user is authorized to access the Monitor screen
+  useEffect(() => {
+    if (!currentUser?.accessToken) return;
+    fetch(`${API_BASE_URL}/monitor/status`, {
+      headers: { Authorization: `Bearer ${currentUser.accessToken}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.authorized) setIsMonitorAuthorized(true); })
+      .catch(() => {});
+  }, [currentUser?.accessToken]);
 
   useEffect(() => {
     return () => {
@@ -3340,6 +3353,8 @@ export default function App() {
               }
             });
           }}
+          onMonitorClick={() => setAppMode("MONITOR")}
+          isMonitorAuthorized={isMonitorAuthorized}
           onButtonHover={playHoverSound}
           onButtonClick={(handler) => {
             playClickSound();
@@ -3365,6 +3380,18 @@ export default function App() {
         )}
         {renderScreenTransitionOverlay()}
       </>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Render Monitor
+  // ─────────────────────────────────────────────────────────────────
+  if (appMode === "MONITOR") {
+    return (
+      <MonitorScreen
+        onBack={() => setAppMode("HOME")}
+        discordAccessToken={currentUser?.accessToken}
+      />
     );
   }
 
