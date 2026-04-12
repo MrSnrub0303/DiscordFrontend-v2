@@ -22,42 +22,21 @@ const CATEGORY_COLORS = {
   Monitor:      '#fbbf24',
 };
 
-function ServiceCard({ name, connected, onConnect, apiBase, discordSdk }) {
+function ServiceCard({ name, connected }) {
   const statusColor = connected === true ? '#4ade80' : connected === false ? '#ff6b6b' : '#94a3b8';
-  const statusText  = connected === true ? 'Connected' : connected === false ? 'Re-authorize' : 'Not connected';
-
-  const oauthService = name.toLowerCase();
-
-  function handleConnect() {
-    const url = `${apiBase}/monitor/auth/${oauthService}`;
-    // Discord Activities block window.open — use the SDK command instead
-    if (discordSdk?.commands?.openExternalLink) {
-      discordSdk.commands.openExternalLink({ url });
-    } else {
-      window.open(url, '_blank');
-    }
-    // Poll for status change after user completes OAuth
-    if (onConnect) setTimeout(onConnect, 15000);
-  }
+  const statusText  = connected === true ? 'Connected' : connected === false ? 'Token expired' : 'Connecting…';
 
   return (
     <div className="monitor-service-card">
       <div className="monitor-service-name">{name}</div>
       <div className="monitor-service-status" style={{ color: statusColor }}>
-        {statusText}
+        <span style={{ marginRight: 6, fontSize: '0.7em' }}>●</span>{statusText}
       </div>
-      <button
-        className="monitor-service-btn"
-        onClick={handleConnect}
-        title={`Connect / Re-authorize ${name}`}
-      >
-        {connected ? 'Re-authorize' : 'Connect'}
-      </button>
     </div>
   );
 }
 
-export function MonitorScreen({ onBack, discordAccessToken, discordUsername, discordSdk }) {
+export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
   const [logs, setLogs]     = useState([]);
   const [status, setStatus] = useState(null);
   const [thumb, setThumb]   = useState(null);
@@ -166,27 +145,9 @@ export function MonitorScreen({ onBack, discordAccessToken, discordUsername, dis
         <div className="monitor-section">
           <h2 className="monitor-section-title">Service Status</h2>
           <div className="monitor-services-row">
-            <ServiceCard
-              name="Twitch"
-              connected={status?.twitchTokenValid}
-              apiBase={apiBase}
-              discordSdk={discordSdk}
-              onConnect={fetchStatus}
-            />
-            <ServiceCard
-              name="Restream"
-              connected={status?.restreamTokenValid}
-              apiBase={apiBase}
-              discordSdk={discordSdk}
-              onConnect={fetchStatus}
-            />
-            <ServiceCard
-              name="YouTube"
-              connected={status?.youtubeTokenValid}
-              apiBase={apiBase}
-              discordSdk={discordSdk}
-              onConnect={fetchStatus}
-            />
+            <ServiceCard name="Twitch"   connected={status?.twitchTokenValid} />
+            <ServiceCard name="Restream" connected={status?.restreamTokenValid} />
+            <ServiceCard name="YouTube"  connected={status?.youtubeTokenValid} />
           </div>
 
           <div className="monitor-status-bar">
