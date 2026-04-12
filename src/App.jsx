@@ -286,16 +286,9 @@ export default function App() {
 
   const [appMode, setAppMode] = useState("HOME"); // "HOME", "GAME", "SPINNER", "EVENTS", or "MONITOR"
 
-  // Authorized Discord usernames for the Monitor screen (checked client-side via SDK user data)
-  const MONITOR_AUTHORIZED_USERNAMES = ["barronh", "mclovin111.", "joshua667746", "grimescene"];
-  const isMonitorAuthorized = MONITOR_AUTHORIZED_USERNAMES.includes(
-    (currentUser?.username || "").toLowerCase()
-  );
-
   const [socket, setSocket] = useState(null);
 
   const {
-    voiceChannel,
     participants,
     currentUser,
     instanceId,
@@ -304,6 +297,12 @@ export default function App() {
     isInVoiceChannel,
     ready,
   } = useDiscordActivity();
+
+  // Authorized Discord usernames for the Monitor screen (checked client-side via SDK user data)
+  const MONITOR_AUTHORIZED_USERNAMES = ["barronh", "mclovin111.", "joshua667746", "grimescene"];
+  const isMonitorAuthorized = MONITOR_AUTHORIZED_USERNAMES.includes(
+    (currentUser?.username || "").toLowerCase()
+  );
 
   const currentPlayerId = currentUser?.id ?? null;
 
