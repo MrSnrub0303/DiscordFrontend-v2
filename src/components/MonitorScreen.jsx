@@ -22,18 +22,22 @@ const CATEGORY_COLORS = {
   Monitor:      '#fbbf24',
 };
 
-function ServiceCard({ name, connected, onConnect, apiBase, token }) {
+function ServiceCard({ name, connected, onConnect, apiBase, discordSdk }) {
   const statusColor = connected === true ? '#4ade80' : connected === false ? '#ff6b6b' : '#94a3b8';
   const statusText  = connected === true ? 'Connected' : connected === false ? 'Re-authorize' : 'Not connected';
 
   const oauthService = name.toLowerCase();
 
   function handleConnect() {
-    // Opens a new tab to the server-side OAuth redirect
     const url = `${apiBase}/monitor/auth/${oauthService}`;
-    window.open(url, '_blank', 'width=600,height=700');
-    // Poll for status change after user completes OAuth (check after 10 s)
-    if (onConnect) setTimeout(onConnect, 10000);
+    // Discord Activities block window.open — use the SDK command instead
+    if (discordSdk?.commands?.openExternalLink) {
+      discordSdk.commands.openExternalLink({ url });
+    } else {
+      window.open(url, '_blank');
+    }
+    // Poll for status change after user completes OAuth
+    if (onConnect) setTimeout(onConnect, 15000);
   }
 
   return (
@@ -53,7 +57,7 @@ function ServiceCard({ name, connected, onConnect, apiBase, token }) {
   );
 }
 
-export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
+export function MonitorScreen({ onBack, discordAccessToken, discordUsername, discordSdk }) {
   const [logs, setLogs]     = useState([]);
   const [status, setStatus] = useState(null);
   const [thumb, setThumb]   = useState(null);
@@ -166,21 +170,21 @@ export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
               name="Twitch"
               connected={status?.twitchTokenValid}
               apiBase={apiBase}
-              token={discordAccessToken}
+              discordSdk={discordSdk}
               onConnect={fetchStatus}
             />
             <ServiceCard
               name="Restream"
               connected={status?.restreamTokenValid}
               apiBase={apiBase}
-              token={discordAccessToken}
+              discordSdk={discordSdk}
               onConnect={fetchStatus}
             />
             <ServiceCard
               name="YouTube"
               connected={status?.youtubeTokenValid}
               apiBase={apiBase}
-              token={discordAccessToken}
+              discordSdk={discordSdk}
               onConnect={fetchStatus}
             />
           </div>

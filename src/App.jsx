@@ -289,6 +289,7 @@ export default function App() {
   const [socket, setSocket] = useState(null);
 
   const {
+    sdk,
     participants,
     currentUser,
     instanceId,
@@ -3386,6 +3387,7 @@ export default function App() {
         onBack={() => setAppMode("HOME")}
         discordAccessToken={currentUser?.accessToken}
         discordUsername={currentUser?.username}
+        discordSdk={sdk}
       />
     );
   }
