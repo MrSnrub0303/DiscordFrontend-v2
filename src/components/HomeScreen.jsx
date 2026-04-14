@@ -2,7 +2,7 @@ import React from 'react';
 import '../styles/HomeScreen.css';
 
 // Set to true when an event is running, false to lock the button between events
-const EVENT_ACTIVE = false;
+const EVENT_ACTIVE = true;
 import backgroundSpinner from '../assets/background-spinner.png';
 import playGameButton from '../assets/PlayGameHomeButton.png';
 import civAndMapButton from '../assets/CivAndMapHomeButton.png';

@@ -74,7 +74,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
 
       const { player } = data;
       setRegisterSuccess(
-        `${player.name} registered — ${player.wins} qualifying win${player.wins !== 1 ? 's' : ''}!`
+        `${player.name} registered — best streak: ${player.wins}!`
       );
       setUsername('');
       await fetchLeaderboard();
@@ -133,7 +133,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
           <span className="back-arrow">←</span>
           Back
         </button>
-        <h1 className="events-title">GGplz Challenge – 3v3 Ranked Grind</h1>
+        <h1 className="events-title">GGplz Challenge – Spring Rabbit Hunt</h1>
       </div>
 
       {/* AoE3 logo bottom-left */}
@@ -161,7 +161,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
               <span className="events-lb-col-rank">#</span>
               <span className="events-lb-col-name">Player</span>
               {isRefreshing && <span style={{ marginLeft: 'auto', opacity: 0.6, fontSize: '0.7rem', fontStyle: 'italic' }}>Refreshing scores...</span>}
-              <span className="events-lb-col-wins">Qualifying Wins</span>
+              <span className="events-lb-col-wins">Best Streak</span>
             </div>
             <div className="events-leaderboard-body">
               {players.length === 0 ? (
