@@ -169,7 +169,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
       </div>
 
       {/* Bottom-left: countdown timer stacked above AoE3 logo */}
-      <div style={{ position: 'fixed', bottom: 16, left: 16, zIndex: 999, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, pointerEvents: 'none' }}>
+      <div style={{ position: 'fixed', bottom: 16, left: 16, zIndex: 999, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
         {countdown && (
           <div className="events-countdown-corner">
             <span className="events-countdown-unit">
