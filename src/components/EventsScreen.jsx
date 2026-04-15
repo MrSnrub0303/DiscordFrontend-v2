@@ -167,56 +167,37 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
         <h1 className="events-title">GGplz Challenge – Spring Rabbit Hunt</h1>
       </div>
 
-      {/* AoE3 logo bottom-left */}
-      <img
-        src={aoe3Logo}
-        alt="Age of Empires III DE"
-        style={{
-          position: 'fixed',
-          bottom: 16,
-          left: 16,
-          width: '16vw',
-          height: 'auto',
-          zIndex: 999,
-          pointerEvents: 'none',
-        }}
-      />
+      {/* Bottom-left: timer centered above AoE3 logo */}
+      <div style={{ position: 'fixed', bottom: 16, left: 16, zIndex: 999, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, pointerEvents: 'none', width: '16vw' }}>
+        {countdown && (
+          <div className="events-countdown-corner">
+            <span className="events-countdown-unit">
+              <span className="events-countdown-value">{String(countdown.days).padStart(2, '0')}</span>
+              <span className="events-countdown-unit-label">d</span>
+            </span>
+            <span className="events-countdown-sep">:</span>
+            <span className="events-countdown-unit">
+              <span className="events-countdown-value">{String(countdown.hours).padStart(2, '0')}</span>
+              <span className="events-countdown-unit-label">h</span>
+            </span>
+            <span className="events-countdown-sep">:</span>
+            <span className="events-countdown-unit">
+              <span className="events-countdown-value">{String(countdown.minutes).padStart(2, '0')}</span>
+              <span className="events-countdown-unit-label">m</span>
+            </span>
+            <span className="events-countdown-sep">:</span>
+            <span className="events-countdown-unit">
+              <span className="events-countdown-value">{String(countdown.seconds).padStart(2, '0')}</span>
+              <span className="events-countdown-unit-label">s</span>
+            </span>
+          </div>
+        )}
+        <img src={aoe3Logo} alt="Age of Empires III DE" style={{ width: '100%', height: 'auto' }} />
+      </div>
 
       {/* Main content */}
       <div className="events-screen-content">
         <div className="events-center-column">
-
-          {/* ── Event Countdown ── */}
-          <div className="events-countdown">
-            {countdown ? (
-              <>
-                <span className="events-countdown-label">Event ends in</span>
-                <span className="events-countdown-timer">
-                  <span className="events-countdown-unit">
-                    <span className="events-countdown-value">{String(countdown.days).padStart(2, '0')}</span>
-                    <span className="events-countdown-unit-label">d</span>
-                  </span>
-                  <span className="events-countdown-sep">:</span>
-                  <span className="events-countdown-unit">
-                    <span className="events-countdown-value">{String(countdown.hours).padStart(2, '0')}</span>
-                    <span className="events-countdown-unit-label">h</span>
-                  </span>
-                  <span className="events-countdown-sep">:</span>
-                  <span className="events-countdown-unit">
-                    <span className="events-countdown-value">{String(countdown.minutes).padStart(2, '0')}</span>
-                    <span className="events-countdown-unit-label">m</span>
-                  </span>
-                  <span className="events-countdown-sep">:</span>
-                  <span className="events-countdown-unit">
-                    <span className="events-countdown-value">{String(countdown.seconds).padStart(2, '0')}</span>
-                    <span className="events-countdown-unit-label">s</span>
-                  </span>
-                </span>
-              </>
-            ) : (
-              <span className="events-countdown-label events-countdown-label--ended">Event has ended</span>
-            )}
-          </div>
 
           {/* ── Leaderboard ── */}
           <div className="events-leaderboard">

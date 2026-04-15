@@ -123,67 +123,45 @@
   min-height: 0;
 }
 
-/* ── Event Countdown ── */
+/* ── Corner countdown timer (centered above AoE3 logo, bottom-left) ── */
 
-.events-countdown {
+.events-countdown-corner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 16px;
-  background: rgba(0, 0, 0, 0.72);
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  border-radius: 6px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   font-family: "Trajan Pro Bold", serif;
-  flex-shrink: 0;
-}
-
-.events-countdown-label {
-  font-size: 0.72rem;
-  color: #ffd700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  opacity: 0.85;
-  white-space: nowrap;
-}
-
-.events-countdown-label--ended {
-  opacity: 1;
-  color: #ffb3b3;
-}
-
-.events-countdown-timer {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 215, 0, 0.28);
+  border-radius: 5px;
+  padding: 5px 10px 4px;
+  backdrop-filter: blur(4px);
 }
 
 .events-countdown-unit {
   display: flex;
   align-items: baseline;
-  gap: 2px;
+  gap: 1px;
 }
 
 .events-countdown-value {
-  font-size: 1.15rem;
+  font-size: 1rem;
   color: #ffd700;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 8px rgba(255, 215, 0, 0.45);
-  min-width: 1.6ch;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
+  min-width: 1.5ch;
   text-align: right;
 }
 
 .events-countdown-unit-label {
-  font-size: 0.62rem;
+  font-size: 0.55rem;
   color: rgba(255, 215, 0, 0.6);
   text-transform: lowercase;
-  letter-spacing: 0;
 }
 
 .events-countdown-sep {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: rgba(255, 215, 0, 0.4);
   margin: 0 1px;
   line-height: 1;
