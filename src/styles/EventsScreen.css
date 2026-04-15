@@ -170,7 +170,6 @@
 .events-leaderboard {
   width: 100%;
   background-color: transparent;
-  background-size: 100% 100%;
   background-repeat: no-repeat;
   border: none;
   border-radius: 0;
@@ -181,13 +180,15 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background-size: 100% 120%;
+  background-position: top center;
   padding: 20px 28px 36px;
 }
 
 .events-leaderboard-header {
   display: flex;
   align-items: center;
-  padding: 14px 16px;
+  padding: 20px 16px;
   background: transparent;
   border-bottom: 1px solid rgba(255, 215, 0, 0.35);
   font-size: 0.85rem;
@@ -229,9 +230,9 @@
   background: rgba(255, 215, 0, 0.07);
 }
 
-.events-lb-row--gold   { color: #ffd700; text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 12px rgba(255,200,0,0.3); }
-.events-lb-row--silver { color: #d8d8d8; text-shadow: 0 1px 4px rgba(0,0,0,0.95); }
-.events-lb-row--bronze { color: #e0943a; text-shadow: 0 1px 4px rgba(0,0,0,0.95); }
+.events-lb-row--gold   { color: #ffd700; text-shadow: 0 1px 5px rgba(0,0,0,0.95), 0 0 12px rgba(255,200,0,0.3); }
+.events-lb-row--silver { color: #ffffff; text-shadow: 0 1px 5px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8); }
+.events-lb-row--bronze { color: #ffb86c; text-shadow: 0 1px 5px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8); }
 
 .events-lb-col-rank {
   width: 36px;
