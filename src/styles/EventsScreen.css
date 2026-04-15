@@ -181,7 +181,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 20px 28px 36px;
+  padding: 10px 28px 48px; /* top: shift content up ↑ | bottom: extend scroll area ↓ */
 }
 
 .events-leaderboard-header {
@@ -203,10 +203,23 @@
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
+  position: relative;
 }
 
 .events-leaderboard-body::-webkit-scrollbar {
   display: none;
+}
+
+.events-leaderboard-body::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(to bottom, transparent, rgba(30, 20, 10, 0.85));
+  pointer-events: none;
+  flex-shrink: 0;
 }
 
 .events-lb-row {
