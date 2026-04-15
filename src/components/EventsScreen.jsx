@@ -9,6 +9,36 @@ import backgroundSpinner from '../assets/background-spinner.png';
 import registerPanel from '../assets/RegisterHerePanel.png';
 import nicknameBg from '../assets/uiskirmishnickname_textentry.png';
 
+// GGplz Challenge – Spring Rabbit Hunt (Apr 14 2026 → May 1 2026 10:00 PM PST)
+const TOURNAMENT_END = new Date(1777701600 * 1000); // 2026-05-02 06:00 UTC
+
+function useEventCountdown(endDate) {
+  const [remaining, setRemaining] = useState(() => {
+    const diff = endDate - Date.now();
+    if (diff <= 0) return null;
+    return {
+      days:    Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours:   Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+      seconds: Math.floor((diff % (1000 * 60)) / 1000),
+    };
+  });
+  useEffect(() => {
+    const id = setInterval(() => {
+      const diff = endDate - Date.now();
+      if (diff <= 0) { setRemaining(null); return; }
+      setRemaining({
+        days:    Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours:   Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((diff % (1000 * 60)) / 1000),
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [endDate]);
+  return remaining;
+}
+
 export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabled, onToggleMusic, initialPlayers = [] }) {
   const [players, setPlayers] = useState(initialPlayers);
   const [username, setUsername] = useState('');
@@ -16,6 +46,7 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
   const [registerError, setRegisterError] = useState('');
   const [registerSuccess, setRegisterSuccess] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const countdown = useEventCountdown(TOURNAMENT_END);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
@@ -154,6 +185,38 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
       {/* Main content */}
       <div className="events-screen-content">
         <div className="events-center-column">
+
+          {/* ── Event Countdown ── */}
+          <div className="events-countdown">
+            {countdown ? (
+              <>
+                <span className="events-countdown-label">Event ends in</span>
+                <span className="events-countdown-timer">
+                  <span className="events-countdown-unit">
+                    <span className="events-countdown-value">{String(countdown.days).padStart(2, '0')}</span>
+                    <span className="events-countdown-unit-label">d</span>
+                  </span>
+                  <span className="events-countdown-sep">:</span>
+                  <span className="events-countdown-unit">
+                    <span className="events-countdown-value">{String(countdown.hours).padStart(2, '0')}</span>
+                    <span className="events-countdown-unit-label">h</span>
+                  </span>
+                  <span className="events-countdown-sep">:</span>
+                  <span className="events-countdown-unit">
+                    <span className="events-countdown-value">{String(countdown.minutes).padStart(2, '0')}</span>
+                    <span className="events-countdown-unit-label">m</span>
+                  </span>
+                  <span className="events-countdown-sep">:</span>
+                  <span className="events-countdown-unit">
+                    <span className="events-countdown-value">{String(countdown.seconds).padStart(2, '0')}</span>
+                    <span className="events-countdown-unit-label">s</span>
+                  </span>
+                </span>
+              </>
+            ) : (
+              <span className="events-countdown-label events-countdown-label--ended">Event has ended</span>
+            )}
+          </div>
 
           {/* ── Leaderboard ── */}
           <div className="events-leaderboard">

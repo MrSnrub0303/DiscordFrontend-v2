@@ -123,6 +123,72 @@
   min-height: 0;
 }
 
+/* ── Event Countdown ── */
+
+.events-countdown {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  font-family: "Trajan Pro Bold", serif;
+  flex-shrink: 0;
+}
+
+.events-countdown-label {
+  font-size: 0.72rem;
+  color: #ffd700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.events-countdown-label--ended {
+  opacity: 1;
+  color: #ffb3b3;
+}
+
+.events-countdown-timer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.events-countdown-unit {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.events-countdown-value {
+  font-size: 1.15rem;
+  color: #ffd700;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.45);
+  min-width: 1.6ch;
+  text-align: right;
+}
+
+.events-countdown-unit-label {
+  font-size: 0.62rem;
+  color: rgba(255, 215, 0, 0.6);
+  text-transform: lowercase;
+  letter-spacing: 0;
+}
+
+.events-countdown-sep {
+  font-size: 1rem;
+  color: rgba(255, 215, 0, 0.4);
+  margin: 0 1px;
+  line-height: 1;
+}
+
 /* ── Leaderboard ── */
 
 .events-leaderboard {
