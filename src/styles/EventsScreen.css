@@ -123,44 +123,68 @@
   min-height: 0;
 }
 
-/* ── Corner countdown timer (above AoE3 logo, bottom-left) ── */
+/* ── Event Countdown ── */
 
-.events-countdown-corner {
+.events-countdown {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 3px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   font-family: "Trajan Pro Bold", serif;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid rgba(255, 215, 0, 0.28);
-  border-radius: 5px;
-  padding: 5px 10px 4px;
-  backdrop-filter: blur(4px);
+  flex-shrink: 0;
+}
+
+.events-countdown-label {
+  font-size: 0.72rem;
+  color: #ffd700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.events-countdown-label--ended {
+  opacity: 1;
+  color: #ffb3b3;
+}
+
+.events-countdown-timer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .events-countdown-unit {
   display: flex;
   align-items: baseline;
-  gap: 1px;
+  gap: 2px;
 }
 
 .events-countdown-value {
-  font-size: 1rem;
+  font-size: 1.15rem;
   color: #ffd700;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
-  min-width: 1.5ch;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.45);
+  min-width: 1.6ch;
   text-align: right;
 }
 
 .events-countdown-unit-label {
-  font-size: 0.55rem;
-  color: rgba(255, 215, 0, 0.55);
+  font-size: 0.62rem;
+  color: rgba(255, 215, 0, 0.6);
   text-transform: lowercase;
+  letter-spacing: 0;
 }
 
 .events-countdown-sep {
-  font-size: 0.9rem;
-  color: rgba(255, 215, 0, 0.35);
+  font-size: 1rem;
+  color: rgba(255, 215, 0, 0.4);
   margin: 0 1px;
   line-height: 1;
 }
@@ -169,40 +193,34 @@
 
 .events-leaderboard {
   width: 100%;
-  background-color: transparent;
-  background-repeat: no-repeat;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   font-family: "Trajan Pro Bold", serif;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-size: 100% 120%;
-  background-position: top center;
-  padding: 20px 28px 36px;
 }
 
 .events-leaderboard-header {
   display: flex;
   align-items: center;
-  padding: 20px 16px;
-  background: transparent;
-  border-bottom: 1px solid rgba(255, 215, 0, 0.35);
-  font-size: 0.85rem;
+  padding: 10px 16px;
+  background: rgba(255, 215, 0, 0.12);
+  border-bottom: 1px solid rgba(255, 215, 0, 0.25);
+  font-size: 0.78rem;
   color: #ffd700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.7);
 }
 
 .events-leaderboard-body {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
 }
@@ -215,11 +233,10 @@
   display: flex;
   align-items: center;
   padding: 10px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  color: #f5ecd4;
-  font-size: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #e8d8b0;
+  font-size: 0.95rem;
   transition: background 0.15s;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95), 0 0 10px rgba(0, 0, 0, 0.7);
 }
 
 .events-lb-row:last-child {
@@ -230,9 +247,9 @@
   background: rgba(255, 215, 0, 0.07);
 }
 
-.events-lb-row--gold   { color: #ffd700; text-shadow: 0 1px 5px rgba(0,0,0,0.95), 0 0 12px rgba(255,200,0,0.3); }
-.events-lb-row--silver { color: #ffffff; text-shadow: 0 1px 5px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8); }
-.events-lb-row--bronze { color: #ffb86c; text-shadow: 0 1px 5px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8); }
+.events-lb-row--gold   { color: #ffd700; }
+.events-lb-row--silver { color: #c0c0c0; }
+.events-lb-row--bronze { color: #cd7f32; }
 
 .events-lb-col-rank {
   width: 36px;

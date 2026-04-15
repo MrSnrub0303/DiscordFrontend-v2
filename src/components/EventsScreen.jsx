@@ -8,7 +8,6 @@ import aoe3Logo from '../assets/aoe3_de_logo.png';
 import backgroundSpinner from '../assets/background-spinner.png';
 import registerPanel from '../assets/RegisterHerePanel.png';
 import nicknameBg from '../assets/uiskirmishnickname_textentry.png';
-import leaderboardBg from '../assets/event_leaderboard.png';
 
 // GGplz Challenge – Spring Rabbit Hunt (Apr 14 2026 → May 1 2026 10:00 PM PST)
 const TOURNAMENT_END = new Date(1777701600 * 1000); // 2026-05-02 06:00 UTC
@@ -168,47 +167,59 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
         <h1 className="events-title">GGplz Challenge – Spring Rabbit Hunt</h1>
       </div>
 
-      {/* Bottom-left: countdown timer stacked above AoE3 logo */}
-      <div style={{ position: 'fixed', bottom: 16, left: 16, zIndex: 999, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
-        {countdown && (
-          <div className="events-countdown-corner">
-            <span className="events-countdown-unit">
-              <span className="events-countdown-value">{String(countdown.days).padStart(2, '0')}</span>
-              <span className="events-countdown-unit-label">d</span>
-            </span>
-            <span className="events-countdown-sep">:</span>
-            <span className="events-countdown-unit">
-              <span className="events-countdown-value">{String(countdown.hours).padStart(2, '0')}</span>
-              <span className="events-countdown-unit-label">h</span>
-            </span>
-            <span className="events-countdown-sep">:</span>
-            <span className="events-countdown-unit">
-              <span className="events-countdown-value">{String(countdown.minutes).padStart(2, '0')}</span>
-              <span className="events-countdown-unit-label">m</span>
-            </span>
-            <span className="events-countdown-sep">:</span>
-            <span className="events-countdown-unit">
-              <span className="events-countdown-value">{String(countdown.seconds).padStart(2, '0')}</span>
-              <span className="events-countdown-unit-label">s</span>
-            </span>
-          </div>
-        )}
-        <img
-          src={aoe3Logo}
-          alt="Age of Empires III DE"
-          style={{ width: '16vw', height: 'auto' }}
-        />
-      </div>
+      {/* AoE3 logo bottom-left */}
+      <img
+        src={aoe3Logo}
+        alt="Age of Empires III DE"
+        style={{
+          position: 'fixed',
+          bottom: 16,
+          left: 16,
+          width: '16vw',
+          height: 'auto',
+          zIndex: 999,
+          pointerEvents: 'none',
+        }}
+      />
 
       {/* Main content */}
       <div className="events-screen-content">
         <div className="events-center-column">
 
+          {/* ── Event Countdown ── */}
+          <div className="events-countdown">
+            {countdown ? (
+              <>
+                <span className="events-countdown-label">Event ends in</span>
+                <span className="events-countdown-timer">
+                  <span className="events-countdown-unit">
+                    <span className="events-countdown-value">{String(countdown.days).padStart(2, '0')}</span>
+                    <span className="events-countdown-unit-label">d</span>
+                  </span>
+                  <span className="events-countdown-sep">:</span>
+                  <span className="events-countdown-unit">
+                    <span className="events-countdown-value">{String(countdown.hours).padStart(2, '0')}</span>
+                    <span className="events-countdown-unit-label">h</span>
+                  </span>
+                  <span className="events-countdown-sep">:</span>
+                  <span className="events-countdown-unit">
+                    <span className="events-countdown-value">{String(countdown.minutes).padStart(2, '0')}</span>
+                    <span className="events-countdown-unit-label">m</span>
+                  </span>
+                  <span className="events-countdown-sep">:</span>
+                  <span className="events-countdown-unit">
+                    <span className="events-countdown-value">{String(countdown.seconds).padStart(2, '0')}</span>
+                    <span className="events-countdown-unit-label">s</span>
+                  </span>
+                </span>
+              </>
+            ) : (
+              <span className="events-countdown-label events-countdown-label--ended">Event has ended</span>
+            )}
+          </div>
+
           {/* ── Leaderboard ── */}
-          <div
-            className="events-leaderboard"
-            style={{ backgroundImage: `url(${leaderboardBg})` }}
-          >
+          <div className="events-leaderboard">
             <div className="events-leaderboard-header">
               <span className="events-lb-col-rank">#</span>
               <span className="events-lb-col-name">Player</span>
