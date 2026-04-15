@@ -121,6 +121,7 @@
   min-width: 340px;
   max-width: 760px;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* ── Corner countdown timer (above AoE3 logo, bottom-left) ── */
@@ -199,6 +200,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
 }
