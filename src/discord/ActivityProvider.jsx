@@ -264,14 +264,24 @@ export function ActivityProvider({ children }) {
     const handleStart = async () => {
       try {
         addDebugLog('Activity lifecycle: starting...');
-        
+
       } catch (err) {
-        
+
       }
     };
 
     handleStart();
   }, [sdk, ready]);
+
+  useEffect(() => {
+    if (ready && showLoadingOverlay && !loadingFadingOut) {
+      setLoadingFadingOut(true);
+      const timer = setTimeout(() => {
+        setShowLoadingOverlay(false);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [ready, showLoadingOverlay, loadingFadingOut]);
 
   // Map initialization steps to user-friendly messages and progress
   const getLoadingInfo = () => {
@@ -329,16 +339,6 @@ export function ActivityProvider({ children }) {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (ready && showLoadingOverlay && !loadingFadingOut) {
-      setLoadingFadingOut(true);
-      const timer = setTimeout(() => {
-        setShowLoadingOverlay(false);
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [ready, showLoadingOverlay, loadingFadingOut]);
 
   const { message } = getLoadingInfo();
 
