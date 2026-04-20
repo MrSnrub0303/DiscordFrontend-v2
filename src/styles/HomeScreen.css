@@ -50,7 +50,7 @@
 
 .home-panel {
   position: relative;
-  margin-left: 20px;
+  margin-left: 50px;
   width: 240px;
   min-width: 200px;
   height: 100%;
@@ -86,9 +86,9 @@
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    rgba(200, 164, 32, 0.6) 15%,
-    rgba(200, 164, 32, 0.8) 50%,
-    rgba(200, 164, 32, 0.6) 85%,
+    rgba(200, 164, 32, 0.8) 10%,
+    rgba(200, 164, 32, 1.0) 50%,
+    rgba(200, 164, 32, 0.8) 90%,
     transparent 100%
   );
   z-index: 1;
@@ -116,7 +116,7 @@
 /* ── AoE3 Logo ── */
 
 .home-panel-logo {
-  width: 88%;
+  width: 95%;
   height: auto;
   object-fit: contain;
   margin-top: 12px;
@@ -127,7 +127,7 @@
 /* ── Gold Divider ── */
 
 .home-gold-divider {
-  width: 95%;
+  width: 100%;
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.55));
