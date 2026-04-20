@@ -231,7 +231,8 @@
   outline: none;
   user-select: none;
   line-height: 1;
-  padding-top: -15px;
+  padding: 0;
+  transform: translateY(-15px);
 }
 
 .home-monitor-btn:hover:not(:disabled) {
