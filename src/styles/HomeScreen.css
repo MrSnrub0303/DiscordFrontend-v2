@@ -213,7 +213,7 @@
   background-color: transparent;
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  background-position: 50% 53%;
+  background-position: center;
   cursor: pointer;
   font-family: 'Trajan Pro Bold', serif;
   font-size: 1.00rem;
@@ -232,6 +232,7 @@
   user-select: none;
   line-height: 1;
   padding: 0;
+  padding-top: 2px;
 }
 
 .home-monitor-btn:hover:not(:disabled) {
