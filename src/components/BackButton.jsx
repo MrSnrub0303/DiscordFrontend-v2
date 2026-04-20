@@ -50,7 +50,7 @@ export function BackButton({ onClick, onMouseEnter, style = {} }) {
           position: 'absolute',
           left: 10,
           top: '50%',
-          transform: 'translateY(-58%)',
+          transform: 'translateY(-65%)',
           width: 22,
           height: 22,
           objectFit: 'contain',
