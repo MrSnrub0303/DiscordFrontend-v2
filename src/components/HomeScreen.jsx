@@ -135,7 +135,8 @@ export function HomeScreen({
           {/* Monitor button */}
           <button
             className={`home-monitor-btn${!isMonitorAuthorized ? ' home-monitor-btn--locked' : ''}`}
-            onClick={isMonitorAuthorized ? onMonitorClick : undefined}
+            onClick={isMonitorAuthorized ? (onButtonClick ? () => onButtonClick(onMonitorClick) : onMonitorClick) : undefined}
+            onMouseEnter={isMonitorAuthorized ? onButtonHover : undefined}
             onMouseDown={() => isMonitorAuthorized && setMonitorPressed(true)}
             onMouseUp={() => setMonitorPressed(false)}
             onMouseLeave={() => setMonitorPressed(false)}

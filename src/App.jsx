@@ -1810,7 +1810,7 @@ export default function App() {
   }, [showResult, musicEnabled]);
 
   const toggleMusic = (e) => {
-    e.stopPropagation();
+    e?.stopPropagation();
     const newValue = !musicEnabled;
     setMusicEnabled(newValue);
 

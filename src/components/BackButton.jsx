@@ -17,10 +17,10 @@ export function BackButton({ onClick, onMouseEnter, style = {} }) {
       onMouseUp={() => setPressed(false)}
       aria-label="Back to home"
       style={{
+        position: 'relative',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-start',
-        gap: 8,
+        justifyContent: 'center',
         backgroundImage: `url(${pressed ? buttonRedClicked : buttonRedAvailable})`,
         backgroundSize: '100% 100%',
         backgroundRepeat: 'no-repeat',
@@ -42,10 +42,20 @@ export function BackButton({ onClick, onMouseEnter, style = {} }) {
         ...style,
       }}
     >
+      {/* Icon pinned to the left; text remains centered in the full button */}
       <img
         src={hovered ? backHover : backNormal}
         alt=""
-        style={{ width: 22, height: 22, objectFit: 'contain', flexShrink: 0, pointerEvents: 'none' }}
+        style={{
+          position: 'absolute',
+          left: 10,
+          top: '50%',
+          transform: 'translateY(-58%)',
+          width: 22,
+          height: 22,
+          objectFit: 'contain',
+          pointerEvents: 'none',
+        }}
       />
       Back
     </button>
