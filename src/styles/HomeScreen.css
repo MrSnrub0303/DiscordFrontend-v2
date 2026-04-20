@@ -59,6 +59,7 @@
   display: flex;
   flex-direction: column;
   /* Gold trim on the right edge */
+  border-left: 2px solid rgba(200, 164, 32, 0.85);
   border-right: 2px solid rgba(200, 164, 32, 0.85);
   box-shadow:
     4px 0 24px rgba(0, 0, 0, 0.7),
@@ -74,29 +75,6 @@
   background-repeat: no-repeat;
   opacity: 0.5;
   z-index: 0;
-}
-
-/* Thin gold accent lines on left edge */
-.home-panel-border-left {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(200, 164, 32, 0.8) 10%,
-    rgba(200, 164, 32, 1.0) 50%,
-    rgba(200, 164, 32, 0.8) 90%,
-    transparent 100%
-  );
-  z-index: 1;
-  pointer-events: none;
-}
-
-.home-panel-border-right {
-  display: none; /* right border handled by border-right on .home-panel */
 }
 
 /* ── Panel Content ── */
