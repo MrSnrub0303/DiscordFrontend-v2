@@ -232,7 +232,7 @@
   user-select: none;
   line-height: 1;
   padding: 0;
-  padding-top: 2px;
+  padding-top: -3px;
 }
 
 .home-monitor-btn:hover:not(:disabled) {
