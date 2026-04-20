@@ -17,9 +17,9 @@ export function BackButton({ onClick, onMouseEnter, style = {} }) {
       onMouseUp={() => setPressed(false)}
       aria-label="Back to home"
       style={{
-        display: 'flex',
+        display: 'inline-flex',
         alignItems: 'center',
-        justifyContent: 'flex-start',
+        justifyContent: 'center',
         gap: 8,
         backgroundImage: `url(${pressed ? buttonRedClicked : buttonRedAvailable})`,
         backgroundSize: '100% 100%',
@@ -28,17 +28,15 @@ export function BackButton({ onClick, onMouseEnter, style = {} }) {
         border: 'none',
         cursor: 'pointer',
         fontFamily: '"Trajan Pro Bold", serif',
-        fontSize: '0.85rem',
+        fontSize: '0.9rem',
         color: '#e8d090',
         textShadow: '1px 2px 3px rgba(0,0,0,0.8)',
         letterSpacing: '0.5px',
         filter: 'drop-shadow(0 2px 7px rgba(0,0,0,0.6))',
         transition: 'transform 150ms ease, filter 150ms ease',
-        /* ButtonRed aspect ratio 166:37 = 4.49:1. Render at ~200px wide. */
-        width: 200,
-        height: 45,
-        padding: '0 10px',
-        lineHeight: '1',
+        width: 160,
+        height: 44,
+        padding: '0 8px',
         ...style,
       }}
     >

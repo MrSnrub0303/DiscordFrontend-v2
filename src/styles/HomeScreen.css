@@ -20,40 +20,46 @@
   z-index: 0;
 }
 
-/* ── Smoke Layer (seamless left-to-right scroll via background-position) ──
-   smoke image is 3840×1024px. At height=200px the scaled width = 750px.
-   Animating background-position-x by 750px creates a perfect seamless loop.
-── */
+/* ── Smoke Layer (seamless left-to-right scroll) ── */
 
 .home-smoke-layer {
   position: absolute;
   bottom: 0;
   left: 0;
-  right: 0;
+  width: 100%;
   height: 200px;
   z-index: 1;
+  overflow: hidden;
   pointer-events: none;
-  background-image: url('../assets/loadscreen_smoke.png');
-  background-repeat: repeat-x;
-  background-size: 750px 200px;
-  background-position: 0 bottom;
-  animation: smokeScrollBg 40s linear infinite;
-  will-change: background-position;
 }
 
-@keyframes smokeScrollBg {
-  from { background-position-x: 0; }
-  to   { background-position-x: 750px; }
+.home-smoke-scroll {
+  display: flex;
+  width: 200%;
+  height: 100%;
+  animation: smokeScroll 50s linear infinite;
+  will-change: transform;
 }
 
-/* ── Responsive ── */
+.home-smoke-img {
+  width: 50%;
+  height: 100%;
+  object-fit: cover;
+  object-position: bottom;
+  user-select: none;
+}
+
+@keyframes smokeScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
 
 /* ── Left Sidebar Panel ── */
 
 .home-panel {
   position: relative;
-  width: 240px;
-  min-width: 200px;
+  width: 300px;
+  min-width: 220px;
   height: 100%;
   z-index: 2;
   flex-shrink: 0;
@@ -108,9 +114,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 10px 16px;
+  padding: 16px 14px 20px;
   height: 100%;
-  gap: 8px;
+  gap: 10px;
   box-sizing: border-box;
 }
 
@@ -147,8 +153,8 @@
 }
 
 .home-panel-btn {
-  width: 100%;
-  aspect-ratio: 820 / 467;
+  width: 94%;
+  aspect-ratio: 2.2 / 1;
   border: none;
   background-color: transparent;
   background-size: contain;
@@ -206,9 +212,8 @@
 /* ── Monitor Button ── */
 
 .home-monitor-btn {
-  width: 90%;
-  /* Preserve ButtonRed aspect ratio (166×37) — no fixed height */
-  aspect-ratio: 166 / 37;
+  width: 88%;
+  height: 46px;
   border: none;
   background-color: transparent;
   background-size: 100% 100%;
@@ -216,22 +221,20 @@
   background-position: center;
   cursor: pointer;
   font-family: 'Trajan Pro Bold', serif;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: #e8d090;
   text-shadow: 1px 2px 3px rgba(0, 0, 0, 0.85);
   letter-spacing: 1.5px;
   filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.6));
   transition: transform 200ms ease, filter 200ms ease;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   margin-top: auto;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   outline: none;
   user-select: none;
-  line-height: 1;
-  padding: 0;
 }
 
 .home-monitor-btn:hover:not(:disabled) {
