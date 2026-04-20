@@ -20,46 +20,38 @@
   z-index: 0;
 }
 
-/* ── Smoke Layer (seamless left-to-right scroll) ── */
+/* ── Smoke Layer (seamless left-to-right scroll via background-position) ──
+   smoke image is 3840×1024px. At height=200px the scaled width = 750px.
+   Animating background-position-x by 750px creates a perfect seamless loop.
+── */
 
 .home-smoke-layer {
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 100%;
+  right: 0;
   height: 200px;
   z-index: 1;
-  overflow: hidden;
   pointer-events: none;
+  background-image: url('../assets/loadscreen_smoke.png');
+  background-repeat: repeat-x;
+  background-size: 750px 200px;
+  background-position: 0 bottom;
+  animation: smokeScrollBg 40s linear infinite;
+  will-change: background-position;
 }
 
-.home-smoke-scroll {
-  display: flex;
-  width: 200%;
-  height: 100%;
-  animation: smokeScroll 50s linear infinite;
-  will-change: transform;
-}
-
-.home-smoke-img {
-  width: 50%;
-  height: 100%;
-  object-fit: cover;
-  object-position: bottom;
-  user-select: none;
-}
-
-@keyframes smokeScroll {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+@keyframes smokeScrollBg {
+  from { background-position-x: 0; }
+  to   { background-position-x: 750px; }
 }
 
 /* ── Left Sidebar Panel ── */
 
 .home-panel {
   position: relative;
-  width: 300px;
-  min-width: 220px;
+  width: 240px;
+  min-width: 200px;
   height: 100%;
   z-index: 2;
   flex-shrink: 0;
@@ -68,8 +60,8 @@
   /* Gold trim on the right edge */
   border-right: 2px solid rgba(200, 164, 32, 0.85);
   box-shadow:
-    4px 0 24px rgba(0, 0, 0, 0.7),   /* panel shadow */
-    inset -1px 0 6px rgba(200, 164, 32, 0.15); /* inner gold glow */
+    4px 0 24px rgba(0, 0, 0, 0.7),
+    inset -1px 0 6px rgba(200, 164, 32, 0.15);
 }
 
 /* Marble background at 50% opacity */
@@ -114,9 +106,9 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px 14px 20px;
+  padding: 12px 10px 16px;
   height: 100%;
-  gap: 10px;
+  gap: 8px;
   box-sizing: border-box;
 }
 
@@ -153,8 +145,9 @@
 }
 
 .home-panel-btn {
-  width: 94%;
-  aspect-ratio: 2.2 / 1;
+  width: 100%;
+  /* Exact image dimensions: 820×467px */
+  aspect-ratio: 820 / 467;
   border: none;
   background-color: transparent;
   background-size: contain;
@@ -212,8 +205,9 @@
 /* ── Monitor Button ── */
 
 .home-monitor-btn {
-  width: 88%;
-  height: 46px;
+  width: 90%;
+  /* Preserve ButtonRed aspect ratio (166×37) — no fixed height */
+  aspect-ratio: 166 / 37;
   border: none;
   background-color: transparent;
   background-size: 100% 100%;
@@ -221,20 +215,22 @@
   background-position: center;
   cursor: pointer;
   font-family: 'Trajan Pro Bold', serif;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   color: #e8d090;
   text-shadow: 1px 2px 3px rgba(0, 0, 0, 0.85);
   letter-spacing: 1.5px;
   filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.6));
   transition: transform 200ms ease, filter 200ms ease;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   margin-top: auto;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   outline: none;
   user-select: none;
+  line-height: 1;
+  padding: 0;
 }
 
 .home-monitor-btn:hover:not(:disabled) {
@@ -306,7 +302,6 @@
   }
 
   .home-monitor-btn {
-    height: 40px;
     font-size: 0.82rem;
   }
 }
@@ -329,7 +324,7 @@
 /* Respect reduced motion */
 
 @media (prefers-reduced-motion: reduce) {
-  .home-smoke-scroll {
+  .home-smoke-layer {
     animation: none;
   }
 
