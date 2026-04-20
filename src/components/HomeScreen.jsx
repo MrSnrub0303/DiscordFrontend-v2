@@ -17,7 +17,6 @@ import loadingSpinner from '../assets/loadingspinner.png';
 import goldDivider from '../assets/GoldDivider.png';
 import buttonRedAvailable from '../assets/ButtonRedAvailable.png';
 import buttonRedClicked from '../assets/ButtonRedClicked.png';
-import smokeImg from '../assets/loadscreen_smoke.png';
 
 export function HomeScreen({
   onGameClick,
@@ -48,13 +47,8 @@ export function HomeScreen({
         style={{ backgroundImage: `url(${backgroundImg})` }}
       />
 
-      {/* Smoke layer - seamlessly scrolling at the bottom */}
-      <div className="home-smoke-layer">
-        <div className="home-smoke-scroll">
-          <img src={smokeImg} alt="" className="home-smoke-img" draggable={false} />
-          <img src={smokeImg} alt="" className="home-smoke-img" draggable={false} />
-        </div>
-      </div>
+      {/* Smoke layer - pure CSS background-image scroll, seamless repeat-x */}
+      <div className="home-smoke-layer" />
 
       {/* Volume control - top right */}
       <VolumeControl
