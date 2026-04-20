@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import '../styles/HomeScreen.css';
 import { VolumeControl } from './VolumeControl';
-
-// Set to true when an event is running, false to lock the button between events
-const EVENT_ACTIVE = true;
-
 import backgroundImg from '../assets/background-spinner.png';
 import marbleBg from '../assets/marblebg2.png';
 import playGameButton from '../assets/PlayGameHomeButtonNew.png';
@@ -17,6 +13,9 @@ import loadingSpinner from '../assets/loadingspinner.png';
 import goldDivider from '../assets/GoldDivider.png';
 import buttonRedAvailable from '../assets/ButtonRedAvailable.png';
 import buttonRedClicked from '../assets/ButtonRedClicked.png';
+
+// Set to true when an event is running, false to lock the button between events
+const EVENT_ACTIVE = true;
 
 export function HomeScreen({
   onGameClick,
