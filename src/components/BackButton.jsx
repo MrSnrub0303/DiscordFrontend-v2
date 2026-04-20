@@ -17,9 +17,9 @@ export function BackButton({ onClick, onMouseEnter, style = {} }) {
       onMouseUp={() => setPressed(false)}
       aria-label="Back to home"
       style={{
-        display: 'inline-flex',
+        display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         gap: 8,
         backgroundImage: `url(${pressed ? buttonRedClicked : buttonRedAvailable})`,
         backgroundSize: '100% 100%',
@@ -36,7 +36,9 @@ export function BackButton({ onClick, onMouseEnter, style = {} }) {
         transition: 'transform 150ms ease, filter 150ms ease',
         width: 160,
         height: 44,
-        padding: '0 8px',
+        /* Shift content up to compensate for shadow baked into ButtonRed image */
+        padding: '0 8px 5px 8px',
+        lineHeight: '1',
         ...style,
       }}
     >

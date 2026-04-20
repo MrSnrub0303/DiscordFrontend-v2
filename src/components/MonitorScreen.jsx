@@ -37,7 +37,7 @@ function ServiceCard({ name, connected }) {
   );
 }
 
-export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
+export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discordUsername }) {
   const [logs, setLogs]         = useState([]);
   const [status, setStatus]     = useState(null);
   const [thumb, setThumb]       = useState(null);
@@ -155,7 +155,7 @@ export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
 
       {/* Back button */}
       <div style={{ position: 'fixed', top: 12, left: 12, zIndex: 1100 }}>
-        <BackButton onClick={onBack} />
+        <BackButton onClick={onBack} onMouseEnter={onBackHover} />
       </div>
 
       <div className="monitor-content">

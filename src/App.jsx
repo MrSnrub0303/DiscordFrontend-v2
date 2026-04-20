@@ -3399,7 +3399,8 @@ export default function App() {
   if (appMode === "MONITOR") {
     return (
       <MonitorScreen
-        onBack={() => setAppMode("HOME")}
+        onBack={() => { playClickSound(); setAppMode("HOME"); }}
+        onBackHover={playHoverSound}
         discordAccessToken={currentUser?.accessToken}
         discordUsername={currentUser?.username}
       />
@@ -3867,8 +3868,8 @@ export default function App() {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
-          padding: "20px",
+          justifyContent: "flex-start",
+          padding: "8px 20px 20px",
           boxSizing: "border-box",
         }}
       >

@@ -9,6 +9,8 @@ export function VolumeControl({ musicEnabled, onToggleMusic, volume = 1.0, onVol
   const sliderRef = useRef(null);
   const draggingRef = useRef(false);
   const hoveredRef = useRef(false);
+  // Remember volume before muting so unmute can restore it
+  const preMuteVolumeRef = useRef(volume > 0 ? volume : 1.0);
 
   const computeVolume = useCallback((clientX) => {
     if (!sliderRef.current) return;
@@ -29,7 +31,6 @@ export function VolumeControl({ musicEnabled, onToggleMusic, volume = 1.0, onVol
     };
     const handleMouseUp = () => {
       draggingRef.current = false;
-      // Hide slider if mouse left the container while dragging
       if (!hoveredRef.current) setHovered(false);
     };
     document.addEventListener('mousemove', handleMouseMove);
@@ -48,6 +49,18 @@ export function VolumeControl({ musicEnabled, onToggleMusic, volume = 1.0, onVol
   const handleLeave = () => {
     hoveredRef.current = false;
     if (!draggingRef.current) setHovered(false);
+  };
+
+  const handleToggle = () => {
+    if (musicEnabled) {
+      // About to mute — save current volume, slide to 0
+      if (volume > 0) preMuteVolumeRef.current = volume;
+      onVolumeChange?.(0);
+    } else {
+      // About to unmute — restore saved volume
+      onVolumeChange?.(preMuteVolumeRef.current);
+    }
+    onToggleMusic?.();
   };
 
   return (
@@ -96,8 +109,8 @@ export function VolumeControl({ musicEnabled, onToggleMusic, volume = 1.0, onVol
               top: '50%',
               left: `${volume * 100}%`,
               transform: 'translate(-50%, -50%)',
-              width: 24,
-              height: 24,
+              width: 19,
+              height: 19,
               objectFit: 'contain',
               pointerEvents: 'none',
               filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))',
@@ -106,7 +119,7 @@ export function VolumeControl({ musicEnabled, onToggleMusic, volume = 1.0, onVol
         </div>
       )}
       <button
-        onClick={onToggleMusic}
+        onClick={handleToggle}
         style={{
           width: 44,
           height: 44,
