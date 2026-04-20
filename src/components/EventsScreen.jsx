@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import '../styles/EventsScreen.css';
-import btnNormal from '../assets/combobox_button_normal.png';
+import { BackButton } from './BackButton';
+import { VolumeControl } from './VolumeControl';
 import topBarBg from '../assets/marblebg2.png';
-import soundOnIcon from '../assets/notification_sound_on.png';
-import soundOffIcon from '../assets/notification_sound_off.png';
+import marbleBg from '../assets/marblebg2.png';
 import aoe3Logo from '../assets/aoe3_de_logo.png';
 import backgroundSpinner from '../assets/background-spinner.png';
 import registerPanel from '../assets/RegisterHerePanel.png';
 import nicknameBg from '../assets/uiskirmishnickname_textentry.png';
+import btnNormal from '../assets/combobox_button_normal.png';
 
 // GGplz Challenge – Spring Rabbit Hunt (Apr 14 2026 → May 1 2026 10:00 PM PST)
 const TOURNAMENT_END = new Date(1777701600 * 1000); // 2026-05-02 06:00 UTC
@@ -39,7 +40,16 @@ function useEventCountdown(endDate) {
   return remaining;
 }
 
-export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabled, onToggleMusic, initialPlayers = [] }) {
+export function EventsScreen({
+  onBackClick,
+  onBackHover,
+  onBackPress,
+  musicEnabled,
+  onToggleMusic,
+  musicVolume,
+  onVolumeChange,
+  initialPlayers = [],
+}) {
   const [players, setPlayers] = useState(initialPlayers);
   const [username, setUsername] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
@@ -125,45 +135,23 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
       className="events-screen-container"
       style={{ backgroundImage: `url(${backgroundSpinner})` }}
     >
-      {/* Music toggle */}
-      <div style={{ position: 'fixed', top: 12, right: 12, zIndex: 999 }}>
-        <button
-          onClick={onToggleMusic}
-          style={{
-            width: 44,
-            height: 44,
-            padding: 6,
-            borderRadius: 8,
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-          }}
-          aria-label={musicEnabled ? 'Turn music off' : 'Turn music on'}
-          title={musicEnabled ? 'Music On (click to mute)' : 'Music Off (click to enable)'}
-        >
-          <img
-            src={musicEnabled ? soundOnIcon : soundOffIcon}
-            alt={musicEnabled ? 'music on' : 'music off'}
-            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-          />
-        </button>
-      </div>
+      {/* Volume control */}
+      <VolumeControl
+        musicEnabled={musicEnabled}
+        onToggleMusic={onToggleMusic}
+        volume={musicVolume}
+        onVolumeChange={onVolumeChange}
+      />
 
       {/* Marble top bar */}
       <div
         className="events-screen-header"
         style={{ backgroundImage: `url(${topBarBg})` }}
       >
-        <button
-          className="events-back-button"
+        <BackButton
           onClick={onBackPress ? () => onBackPress(onBackClick) : onBackClick}
           onMouseEnter={onBackHover}
-          aria-label="Back to home"
-          style={{ backgroundImage: `url(${btnNormal})` }}
-        >
-          <span className="back-arrow">←</span>
-          Back
-        </button>
+        />
         <h1 className="events-title">GGplz Challenge – Spring Rabbit Hunt</h1>
       </div>
 
@@ -201,6 +189,11 @@ export function EventsScreen({ onBackClick, onBackHover, onBackPress, musicEnabl
 
           {/* ── Leaderboard ── */}
           <div className="events-leaderboard">
+            {/* Marble background overlay */}
+            <div
+              className="events-lb-marble"
+              style={{ backgroundImage: `url(${marbleBg})` }}
+            />
             <div className="events-leaderboard-header">
               <span className="events-lb-col-rank">#</span>
               <span className="events-lb-col-name">Player</span>

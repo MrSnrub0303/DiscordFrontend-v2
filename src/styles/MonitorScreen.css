@@ -30,33 +30,13 @@
   filter: brightness(0.5);
 }
 
-/* ── Back button ── */
-
-.monitor-back-btn {
-  position: fixed;
-  top: 12px;
-  left: 12px;
-  z-index: 1100;
-  background: rgba(0, 0, 0, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  color: #fff;
-  font-family: "Trajan Pro Bold", serif;
-  font-size: 0.85rem;
-  padding: 6px 14px;
-  cursor: pointer;
-  transition: background 200ms;
-}
-
-.monitor-back-btn:hover {
-  background: rgba(0, 0, 0, 0.85);
-}
+/* Back button handled by shared BackButton component */
 
 /* ── Main content wrapper ── */
 
 .monitor-content {
   width: min(860px, 96vw);
-  margin: 60px auto 40px;
+  margin: 72px auto 40px;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -74,10 +54,24 @@
 /* ── Sections ── */
 
 .monitor-section {
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   padding: 1.2rem 1.4rem;
+  position: relative;
+  isolation: isolate;
+}
+
+.monitor-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url('../assets/marblebg2.png');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.5;
+  border-radius: 10px;
 }
 
 .monitor-section-title {

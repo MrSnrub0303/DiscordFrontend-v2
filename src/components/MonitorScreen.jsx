@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import backgroundSpinner from '../assets/background-spinner.png';
 import '../styles/MonitorScreen.css';
+import { BackButton } from './BackButton';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -153,7 +154,9 @@ export function MonitorScreen({ onBack, discordAccessToken, discordUsername }) {
       />
 
       {/* Back button */}
-      <button className="monitor-back-btn" onClick={onBack}>← Back</button>
+      <div style={{ position: 'fixed', top: 12, left: 12, zIndex: 1100 }}>
+        <BackButton onClick={onBack} />
+      </div>
 
       <div className="monitor-content">
         <h1 className="monitor-title">ESOC Monitor</h1>

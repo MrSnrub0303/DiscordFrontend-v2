@@ -1,19 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import '../styles/HomeScreen.css';
+import { VolumeControl } from './VolumeControl';
 
 // Set to true when an event is running, false to lock the button between events
 const EVENT_ACTIVE = true;
-import backgroundSpinner from '../assets/background-spinner.png';
-import playGameButton from '../assets/PlayGameHomeButton.png';
-import civAndMapButton from '../assets/CivAndMapHomeButton.png';
-import eventsButton from '../assets/EventsHomeButton.png';
+
+import backgroundImg from '../assets/background-spinner.png';
+import marbleBg from '../assets/marblebg2.png';
+import playGameButton from '../assets/PlayGameHomeButtonNew.png';
+import civAndMapButton from '../assets/CivAndMapHomeButtonNew.png';
+import eventsButton from '../assets/EventsHomeButtonNew.png';
 import lockIcon from '../assets/lock_icon.png';
 import aoe3Logo from '../assets/aoe3_de_logo.png';
-import discordAppText from '../assets/DiscordAppText.png';
-import soundOnIcon from '../assets/notification_sound_on.png';
-import soundOffIcon from '../assets/notification_sound_off.png';
+import discordAppText from '../assets/DiscordAppTextNew.png';
 import loadingSpinner from '../assets/loadingspinner.png';
-import esocButton from '../assets/ESOCButton.png';
+import goldDivider from '../assets/GoldDivider.png';
+import buttonRedAvailable from '../assets/ButtonRedAvailable.png';
+import buttonRedClicked from '../assets/ButtonRedClicked.png';
+import smokeImg from '../assets/loadscreen_smoke.png';
 
 export function HomeScreen({
   onGameClick,
@@ -25,147 +29,146 @@ export function HomeScreen({
   onButtonClick,
   musicEnabled,
   onToggleMusic,
+  musicVolume,
+  onVolumeChange,
   isLoading,
   loadingTarget,
 }) {
-  const isEventsLoading = EVENT_ACTIVE && loadingTarget === "EVENTS";
-  const isSpinnerLoading = loadingTarget === "SPINNER";
+  const [monitorPressed, setMonitorPressed] = useState(false);
+
+  const isEventsLoading = EVENT_ACTIVE && loadingTarget === 'EVENTS';
+  const isSpinnerLoading = loadingTarget === 'SPINNER';
   const isAnyLoading = isLoading || !!loadingTarget;
 
   return (
     <div className="home-screen-container">
+      {/* Background */}
       <div
         className="home-screen-background"
-        style={{
-          backgroundImage: `url(${backgroundSpinner})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
+        style={{ backgroundImage: `url(${backgroundImg})` }}
       />
-      {/* ── ESOC Monitor button (top-left) ── */}
-      <div style={{ position: "fixed", top: 12, left: 12, zIndex: 999 }}>
-        <button
-          onClick={isMonitorAuthorized ? onMonitorClick : undefined}
-          style={{
-            width: 100,
-            height: 100,
-            padding: 0,
-            border: "none",
-            background: "transparent",
-            cursor: isMonitorAuthorized ? "pointer" : "not-allowed",
-            position: "relative",
-          }}
-          aria-label={isMonitorAuthorized ? "Open Monitor" : "Monitor (locked)"}
-          title={isMonitorAuthorized ? "ESOC Monitor" : "Monitor — not authorized"}
-        >
-          <img
-            src={esocButton}
-            alt="ESOC Monitor"
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-              filter: isMonitorAuthorized ? "drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5))" : "grayscale(100%) drop-shadow(0 10px 20px rgba(0, 0, 0, 0.5))",
-            }}
-          />
-          {!isMonitorAuthorized && (
-            <img
-              src={lockIcon}
-              alt="Locked"
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: 20,
-                height: 20,
-                objectFit: "contain",
-                pointerEvents: "none",
-                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.8))",
-              }}
-            />
-          )}
-        </button>
-      </div>
 
-      <div style={{ position: "fixed", top: 12, right: 12, zIndex: 999 }}>
-        <button
-          onClick={onToggleMusic}
-          style={{
-            width: 44,
-            height: 44,
-            padding: 6,
-            borderRadius: 8,
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-          }}
-          aria-label={musicEnabled ? "Turn music off" : "Turn music on"}
-          title={
-            musicEnabled
-              ? "Music On (click to mute)"
-              : "Music Off (click to enable)"
-          }
-        >
-          <img
-            src={musicEnabled ? soundOnIcon : soundOffIcon}
-            alt={musicEnabled ? "music on" : "music off"}
-            style={{ width: "100%", height: "100%", objectFit: "contain" }}
-          />
-        </button>
-      </div>
-
-      <div className="home-screen-content">
-        <div className="home-screen-header">
-          <img src={aoe3Logo} alt="Age of Empires III DE" className="home-screen-logo" />
-          <img src={discordAppText} alt="Discord App" className="home-screen-discord-text" />
+      {/* Smoke layer - seamlessly scrolling at the bottom */}
+      <div className="home-smoke-layer">
+        <div className="home-smoke-scroll">
+          <img src={smokeImg} alt="" className="home-smoke-img" draggable={false} />
+          <img src={smokeImg} alt="" className="home-smoke-img" draggable={false} />
         </div>
+      </div>
 
-        <div className="home-screen-buttons">
-          <button 
-            className={`home-screen-button game-button ${isLoading ? 'loading' : ''}`}
-            onMouseEnter={onButtonHover}
-            onClick={onButtonClick ? () => onButtonClick(onGameClick) : onGameClick}
-            disabled={isAnyLoading}
-            style={{ backgroundImage: `url(${playGameButton})` }}
-            aria-label="Play game"
-            title="Play Game"
-          >
-            {isLoading && <img src={loadingSpinner} alt="Loading" className="button-spinner" />}
-          </button>
+      {/* Volume control - top right */}
+      <VolumeControl
+        musicEnabled={musicEnabled}
+        onToggleMusic={onToggleMusic}
+        volume={musicVolume}
+        onVolumeChange={onVolumeChange}
+      />
 
-          <button 
-            className={`home-screen-button spinner-button ${isSpinnerLoading ? 'loading' : ''}`}
-            onMouseEnter={onButtonHover}
-            onClick={onButtonClick ? () => onButtonClick(onSpinnerClick) : onSpinnerClick}
-            disabled={isAnyLoading}
-            style={{ backgroundImage: `url(${civAndMapButton})` }}
-            aria-label="Civ and map randomiser"
-            title="Civ & Map"
-          >
-            {isSpinnerLoading && <img src={loadingSpinner} alt="Loading" className="button-spinner" />}
-          </button>
+      {/* Left sidebar panel */}
+      <div className="home-panel">
+        {/* Marble bg at 50% opacity */}
+        <div
+          className="home-panel-marble"
+          style={{ backgroundImage: `url(${marbleBg})` }}
+        />
 
+        {/* Gold border lines */}
+        <div className="home-panel-border-left" />
+        <div className="home-panel-border-right" />
+
+        {/* Panel content */}
+        <div className="home-panel-content">
+          {/* AoE3 Logo */}
+          <img
+            src={aoe3Logo}
+            alt="Age of Empires III DE"
+            className="home-panel-logo"
+          />
+
+          {/* Gold divider */}
+          <img src={goldDivider} alt="" className="home-gold-divider" />
+
+          {/* Game buttons */}
+          <div className="home-panel-buttons">
+            <button
+              className={`home-panel-btn${isLoading ? ' loading' : ''}`}
+              onClick={onButtonClick ? () => onButtonClick(onGameClick) : onGameClick}
+              onMouseEnter={onButtonHover}
+              disabled={isAnyLoading}
+              style={{ backgroundImage: `url(${playGameButton})` }}
+              aria-label="Play game"
+              title="Play Game"
+            >
+              {isLoading && (
+                <img src={loadingSpinner} alt="Loading" className="home-btn-spinner" />
+              )}
+            </button>
+
+            <button
+              className={`home-panel-btn${isSpinnerLoading ? ' loading' : ''}`}
+              onClick={onButtonClick ? () => onButtonClick(onSpinnerClick) : onSpinnerClick}
+              onMouseEnter={onButtonHover}
+              disabled={isAnyLoading}
+              style={{ backgroundImage: `url(${civAndMapButton})` }}
+              aria-label="Civ and map randomiser"
+              title="Civ & Map"
+            >
+              {isSpinnerLoading && (
+                <img src={loadingSpinner} alt="Loading" className="home-btn-spinner" />
+              )}
+            </button>
+
+            <button
+              className={`home-panel-btn${EVENT_ACTIVE ? (isEventsLoading ? ' loading' : '') : ' events-btn--locked'}`}
+              onClick={EVENT_ACTIVE ? (onButtonClick ? () => onButtonClick(onEventsClick) : onEventsClick) : undefined}
+              onMouseEnter={EVENT_ACTIVE ? onButtonHover : undefined}
+              disabled={EVENT_ACTIVE ? isAnyLoading : true}
+              style={{ backgroundImage: `url(${eventsButton})` }}
+              aria-label={EVENT_ACTIVE ? 'Events' : 'Events (locked)'}
+              title={EVENT_ACTIVE ? 'Events' : 'Events - Coming Soon'}
+            >
+              {EVENT_ACTIVE
+                ? (isEventsLoading && (
+                    <img src={loadingSpinner} alt="Loading" className="home-btn-spinner" />
+                  ))
+                : <img src={lockIcon} alt="Locked" className="events-lock-icon" />
+              }
+            </button>
+          </div>
+
+          {/* Gold divider */}
+          <img src={goldDivider} alt="" className="home-gold-divider" />
+
+          {/* Monitor button */}
           <button
-            className={`home-screen-button events-button ${EVENT_ACTIVE ? (isEventsLoading ? 'loading' : '') : 'events-button--locked'}`}
-            onMouseEnter={EVENT_ACTIVE ? onButtonHover : undefined}
-            onClick={EVENT_ACTIVE ? (onButtonClick ? () => onButtonClick(onEventsClick) : onEventsClick) : undefined}
-            disabled={EVENT_ACTIVE ? isAnyLoading : true}
-            style={{ backgroundImage: `url(${eventsButton})` }}
-            aria-label={EVENT_ACTIVE ? "Events" : "Events (locked)"}
-            title={EVENT_ACTIVE ? "Events" : "Events - Coming Soon"}
+            className={`home-monitor-btn${!isMonitorAuthorized ? ' home-monitor-btn--locked' : ''}`}
+            onClick={isMonitorAuthorized ? onMonitorClick : undefined}
+            onMouseDown={() => isMonitorAuthorized && setMonitorPressed(true)}
+            onMouseUp={() => setMonitorPressed(false)}
+            onMouseLeave={() => setMonitorPressed(false)}
+            disabled={!isMonitorAuthorized}
+            style={{
+              backgroundImage: `url(${monitorPressed ? buttonRedClicked : buttonRedAvailable})`,
+            }}
+            aria-label={isMonitorAuthorized ? 'Open Monitor' : 'Monitor (locked)'}
+            title={isMonitorAuthorized ? 'ESOC Monitor' : 'Monitor — not authorized'}
           >
-            {EVENT_ACTIVE
-              ? (isEventsLoading && <img src={loadingSpinner} alt="Loading" className="button-spinner" />)
-              : <img src={lockIcon} alt="Locked" className="events-lock-icon" />
-            }
+            {!isMonitorAuthorized && (
+              <img src={lockIcon} alt="" className="monitor-lock-icon" />
+            )}
+            Monitor
           </button>
         </div>
+      </div>
 
-        <div className="home-screen-footer">
-          <p className="home-screen-info">Select an option</p>
-        </div>
+      {/* Discord App text - right area */}
+      <div className="home-discord-text-area">
+        <img
+          src={discordAppText}
+          alt="Discord App!"
+          className="home-discord-text"
+          draggable={false}
+        />
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { DISCORD_CLIENT_ID } from './config';
 import { ActivityContext } from './ActivityContext';
 import loadingSpinner from '../assets/loadingspinner.png';
-import ServerLoadingBackground from '../assets/ServerLoadingBackground.png';
+import ServerLoadingBackground from '../assets/LoadingScreenNew.png';
 
 export { ActivityContext };
 

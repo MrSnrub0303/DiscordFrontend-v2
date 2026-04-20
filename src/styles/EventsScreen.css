@@ -38,46 +38,7 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Back Button ── */
-
-.events-back-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 187px;
-  aspect-ratio: 374 / 58;
-  min-height: 29px;
-  padding: 0;
-  background-color: transparent;
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  background-position: center;
-  color: #ffffff;
-  border: none;
-  border-radius: 0;
-  font-family: "Trajan Pro Bold", serif;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 250ms cubic-bezier(0.2, 0.9, 0.2, 1);
-  text-shadow: 1px 2px 3px rgba(0, 0, 0, 0.75);
-  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.45));
-}
-
-.events-back-button:hover {
-  transform: translateY(-2px) scale(1.05);
-  filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.65));
-}
-
-.events-back-button:active {
-  transform: scale(0.98);
-}
-
-.back-arrow {
-  font-size: 1.2rem;
-  font-weight: bold;
-}
+/* Back button handled by shared BackButton component */
 
 /* ── Title ── */
 
@@ -171,7 +132,7 @@
 
 .events-leaderboard {
   width: 100%;
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(0, 0, 0, 0.55);
   border: 1px solid rgba(255, 215, 0, 0.3);
   border-radius: 6px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
@@ -181,6 +142,26 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+}
+
+/* Marble background at 50% opacity */
+.events-lb-marble {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 6px;
+}
+
+.events-leaderboard-header,
+.events-leaderboard-body {
+  position: relative;
+  z-index: 1;
 }
 
 .events-leaderboard-header {
@@ -402,11 +383,6 @@
     padding: 0.75rem 1rem;
   }
 
-  .events-back-button {
-    width: 156px;
-    font-size: 0.8rem;
-  }
-
   .events-title {
     font-size: 1.2rem;
   }
@@ -415,11 +391,6 @@
 @media (max-width: 480px) {
   .events-screen-header {
     padding: 0.5rem 0.75rem;
-  }
-
-  .events-back-button {
-    width: 134px;
-    font-size: 0.72rem;
   }
 
   .events-title {
@@ -442,12 +413,10 @@
     animation: none;
   }
 
-  .events-back-button,
   .events-register-button {
     transition: none;
   }
 
-  .events-back-button:hover,
   .events-register-button:hover {
     transform: none;
   }

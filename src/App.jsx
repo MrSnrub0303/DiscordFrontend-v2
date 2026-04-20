@@ -11,6 +11,8 @@ import { HomeScreen } from "./components/HomeScreen";
 import { SpinnerScreen } from "./components/SpinnerScreen";
 import { EventsScreen } from "./components/EventsScreen";
 import { MonitorScreen } from "./components/MonitorScreen";
+import { VolumeControl } from "./components/VolumeControl";
+import { BackButton } from "./components/BackButton";
 import questions from "./questions.json";
 import { useDiscordActivity } from "./discord/useDiscordActivity";
 import { io } from "socket.io-client";
@@ -19,6 +21,7 @@ import woodPanelBg from "./assets/sendresource_bg.png";
 import btnNormal from "./assets/combobox_button_normal.png";
 import btnHover from "./assets/combobox_button_hover.png";
 import btnDisabled from "./assets/combobox_button_disabled.png";
+import marbleBg from "./assets/marblebg2.png";
 import topBarBg from "./assets/marblebg2.png";
 import btnMainMenuDisabled from "./assets/button_mainmenu_disabled.png";
 import restartButtonBg from "./assets/button.webp";
@@ -40,8 +43,6 @@ import someOfAKindFile from "./assets/SomeOfAKind.mp3";
 import revolootinFile from "./assets/Revolootin.mp3";
 import kothFile from "./assets/KOTH.mp3";
 
-import soundOnIcon from "./assets/notification_sound_on.png";
-import soundOffIcon from "./assets/notification_sound_off.png";
 
 import revealSoundFile from "./assets/chatreceived.wav";
 
@@ -535,6 +536,8 @@ export default function App() {
   }, [displayScores]);
 
   const [musicEnabled, setMusicEnabled] = useState(true);
+  const [musicVolume, setMusicVolume] = useState(1.0);
+  const musicVolumeRef = useRef(1.0);
   const [joinCountdown, setJoinCountdown] = useState(createJoinCountdownState);
   const joinCountdownTimerRef = useRef(null);
   const autoEndGuardRef = useRef(true);
@@ -1460,7 +1463,7 @@ export default function App() {
     const current = tracks[index];
     if (!current) return;
 
-    current.volume = showResult ? FADED_VOLUME : NORMAL_VOLUME;
+    current.volume = showResult ? FADED_VOLUME : NORMAL_VOLUME * musicVolumeRef.current;
 
     const p = current.play();
     if (p && typeof p.catch === "function") {
@@ -1634,7 +1637,7 @@ export default function App() {
         const a = new Audio(f);
         a.preload = "auto";
         a.loop = false;
-        a.volume = NORMAL_VOLUME;
+        a.volume = NORMAL_VOLUME * musicVolumeRef.current;
         a.crossOrigin = "anonymous";
 
         const onEnded = () => {
@@ -1801,7 +1804,7 @@ export default function App() {
         .play()
         .catch(() => { })
         .finally(() => {
-          fadeTo(current, NORMAL_VOLUME, FADE_DURATION);
+          fadeTo(current, NORMAL_VOLUME * musicVolumeRef.current, FADE_DURATION);
         });
     }
   }, [showResult, musicEnabled]);
@@ -1822,6 +1825,17 @@ export default function App() {
         clearInterval(fadeTimerRef.current);
         fadeTimerRef.current = null;
       }
+    }
+  };
+
+  const handleVolumeChange = (newVol) => {
+    musicVolumeRef.current = newVol;
+    setMusicVolume(newVol);
+    const tracks = bg.current?.tracks;
+    if (!tracks) return;
+    const current = tracks[currentIndexRef.current];
+    if (current && !current.paused) {
+      current.volume = Math.max(0, Math.min(1, NORMAL_VOLUME * newVol));
     }
   };
 
@@ -3356,6 +3370,8 @@ export default function App() {
           }}
           musicEnabled={musicEnabled}
           onToggleMusic={toggleMusic}
+          musicVolume={musicVolume}
+          onVolumeChange={handleVolumeChange}
           isLoading={isLoading}
           loadingTarget={loadingTarget}
         />
@@ -3407,6 +3423,8 @@ export default function App() {
           }}
           musicEnabled={musicEnabled}
           onToggleMusic={toggleMusic}
+          musicVolume={musicVolume}
+          onVolumeChange={handleVolumeChange}
           initialPlayers={eventsInitialPlayers}
         />
         {renderScreenTransitionOverlay()}
@@ -3431,6 +3449,8 @@ export default function App() {
           }}
           musicEnabled={musicEnabled}
           onToggleMusic={toggleMusic}
+          musicVolume={musicVolume}
+          onVolumeChange={handleVolumeChange}
           iframeLoaded={spinnerIframeLoaded}
           onIframeLoad={handleSpinnerIframeLoad}
         />
@@ -3728,6 +3748,8 @@ export default function App() {
         style={{
           left: `${leaderboardPosition.x}px`,
           top: `${leaderboardPosition.y}px`,
+          backgroundImage: `linear-gradient(rgba(10,10,10,0.45), rgba(22,22,22,0.45)), url(${marbleBg})`,
+          backgroundSize: 'auto, cover',
         }}
         onMouseDown={handleLeaderboardMouseDown}
       >
@@ -3785,33 +3807,12 @@ export default function App() {
       </aside>
 
       { }
-      <div style={{ position: "fixed", top: 12, right: 12, zIndex: 999 }}>
-        <button
-          onClick={toggleMusic}
-          onMouseEnter={() => { }}
-          style={{
-            width: 44,
-            height: 44,
-            padding: 6,
-            borderRadius: 8,
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-          }}
-          aria-label={musicEnabled ? "Turn music off" : "Turn music on"}
-          title={
-            musicEnabled
-              ? "Music On (click to mute)"
-              : "Music Off (click to enable)"
-          }
-        >
-          <img
-            src={musicEnabled ? soundOnIcon : soundOffIcon}
-            alt={musicEnabled ? "music on" : "music off"}
-            style={{ width: "100%", height: "100%", objectFit: "contain" }}
-          />
-        </button>
-      </div>
+      <VolumeControl
+        musicEnabled={musicEnabled}
+        onToggleMusic={toggleMusic}
+        volume={musicVolume}
+        onVolumeChange={handleVolumeChange}
+      />
 
       <div
         className="spinner-screen-header"
@@ -3826,26 +3827,15 @@ export default function App() {
           boxSizing: "border-box",
         }}
       >
-        <button
-          className="spinner-back-button"
-          aria-label="Back to home"
-          style={{
-            backgroundImage: `url(${btnNormal})`,
-            position: "absolute",
-            left: 20,
-            top: "50%",
-            marginTop: "-1px",
-            "--spinner-back-button-base-transform": "translateY(-50%)",
-          }}
-          onMouseEnter={playHoverSound}
-          onClick={() => {
-            playClickSound();
-            triggerScreenTransition("HOME", async () => { });
-          }}
-        >
-          <span className="back-arrow">←</span>
-          Back
-        </button>
+        <div style={{ position: "absolute", left: 20, top: "50%", transform: "translateY(-50%)" }}>
+          <BackButton
+            onMouseEnter={playHoverSound}
+            onClick={() => {
+              playClickSound();
+              triggerScreenTransition("HOME", async () => { });
+            }}
+          />
+        </div>
         <div
           style={{
             position: "absolute",
@@ -4525,7 +4515,7 @@ export default function App() {
           position: fixed;
           /* right and top will be set via inline styles for dragging */
           width: 280px; /* Reduced from 320px for better size */
-          background: linear-gradient(180deg, rgba(10,10,10,0.7), rgba(22,22,22,0.72));
+          /* background set via inline style using marble image */
           border-radius: 12px;
           padding: 12px;
           box-shadow: 0 10px 30px rgba(0,0,0,0.45);
