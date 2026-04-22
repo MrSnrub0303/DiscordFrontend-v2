@@ -88,19 +88,19 @@
 
 .events-topleft-widgets {
   position: fixed;
-  top: clamp(80px, 9vh, 108px);
+  top: clamp(96px, 11vh, 130px);
   left: clamp(12px, 1.2vw, 20px);
   z-index: 999;
   display: flex;
   flex-direction: column;
-  gap: clamp(5px, 0.5vw, 10px);
+  gap: clamp(6px, 0.6vw, 12px);
   pointer-events: none;
 }
 
 .events-widget-asset {
   position: relative;
   display: inline-block;
-  width: clamp(170px, 16vw, 260px);
+  width: clamp(190px, 19vw, 300px);
 }
 
 .events-widget-img {
@@ -118,7 +118,7 @@
   transform: translateY(-50%);
   text-align: center;
   font-family: "Trajan Pro Bold", serif;
-  font-size: clamp(0.58rem, 0.85vw, 0.9rem);
+  font-size: clamp(0.62rem, 0.95vw, 1rem);
   color: #ffd700;
   text-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
   font-variant-numeric: tabular-nums;
