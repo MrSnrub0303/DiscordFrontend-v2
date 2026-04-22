@@ -5,6 +5,8 @@ import { VolumeControl } from './VolumeControl';
 import topBarBg from '../assets/marblebg2.png';
 import marbleBg from '../assets/marblebg2.png';
 import aoe3Logo from '../assets/aoe3_de_logo.png';
+import eventsDuration from '../assets/EventsDuration.png';
+import eventsPrizepool from '../assets/EventsPrizepool.png';
 import backgroundSpinner from '../assets/background-spinner.png';
 import registerPanel from '../assets/RegisterHerePanel.png';
 import nicknameBg from '../assets/uiskirmishnickname_textentry.png';
@@ -155,31 +157,24 @@ export function EventsScreen({
         <h1 className="events-title">GGplz Challenge – Spring Rabbit Hunt</h1>
       </div>
 
-      {/* Bottom-left: timer centered above AoE3 logo */}
-      <div style={{ position: 'fixed', bottom: 16, left: 16, zIndex: 999, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, pointerEvents: 'none', width: '16vw' }}>
-        {countdown && (
-          <div className="events-countdown-corner">
-            <span className="events-countdown-unit">
-              <span className="events-countdown-value">{String(countdown.days).padStart(2, '0')}</span>
-              <span className="events-countdown-unit-label">d</span>
+      {/* Top-left: EventsDuration + EventsPrizepool widgets */}
+      <div className="events-topleft-widgets">
+        <div className="events-widget-asset">
+          <img src={eventsDuration} alt="" className="events-widget-img" draggable={false} />
+          {countdown && (
+            <span className="events-widget-text">
+              {String(countdown.days).padStart(2, '0')}d : {String(countdown.hours).padStart(2, '0')}h : {String(countdown.minutes).padStart(2, '0')}m : {String(countdown.seconds).padStart(2, '0')}s
             </span>
-            <span className="events-countdown-sep">:</span>
-            <span className="events-countdown-unit">
-              <span className="events-countdown-value">{String(countdown.hours).padStart(2, '0')}</span>
-              <span className="events-countdown-unit-label">h</span>
-            </span>
-            <span className="events-countdown-sep">:</span>
-            <span className="events-countdown-unit">
-              <span className="events-countdown-value">{String(countdown.minutes).padStart(2, '0')}</span>
-              <span className="events-countdown-unit-label">m</span>
-            </span>
-            <span className="events-countdown-sep">:</span>
-            <span className="events-countdown-unit">
-              <span className="events-countdown-value">{String(countdown.seconds).padStart(2, '0')}</span>
-              <span className="events-countdown-unit-label">s</span>
-            </span>
-          </div>
-        )}
+          )}
+        </div>
+        <div className="events-widget-asset">
+          <img src={eventsPrizepool} alt="" className="events-widget-img" draggable={false} />
+          <span className="events-widget-text">$250</span>
+        </div>
+      </div>
+
+      {/* Bottom-left: AoE3 logo */}
+      <div style={{ position: 'fixed', bottom: 16, left: 16, zIndex: 999, pointerEvents: 'none', width: '16vw' }}>
         <img src={aoe3Logo} alt="Age of Empires III DE" style={{ width: '100%', height: 'auto' }} />
       </div>
 
