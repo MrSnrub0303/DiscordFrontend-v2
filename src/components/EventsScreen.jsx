@@ -175,7 +175,7 @@ export function EventsScreen({
 
       {/* Bottom-left: AoE3 logo */}
       <div style={{ position: 'fixed', bottom: 16, left: 16, zIndex: 999, pointerEvents: 'none', width: '16vw' }}>
-        <img src={aoe3Logo} alt="Age of Empires III DE" style={{ width: '100%', height: 'auto' }} />
+        <img src={aoe3Logo} alt="Age of Empires III DE" className="events-aoe3-logo" />
       </div>
 
       {/* Main content */}
