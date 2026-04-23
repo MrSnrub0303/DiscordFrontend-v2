@@ -292,9 +292,8 @@
 
 @media (max-width: 540px) {
   .home-panel {
-    width: 100%;
+    width: calc(100% - 80px);
     min-width: unset;
-    margin-left: 0;
   }
 
   .home-panel-btn {
