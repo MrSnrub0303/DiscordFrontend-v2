@@ -107,7 +107,6 @@
 .home-gold-divider {
   /* Stretch edge-to-edge across the panel including its side padding */
   width: calc(100% + 20px);
-  margin-left: -10px;
   height: auto;
   object-fit: contain;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.55));
