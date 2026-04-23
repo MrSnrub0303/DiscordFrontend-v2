@@ -292,12 +292,24 @@
 
 @media (max-width: 540px) {
   .home-panel {
-    width: calc(100% - 80px);
+    width: calc(100% - 90px);
     min-width: unset;
+  }
+
+  .home-panel-content {
+    gap: 6px;
+    padding: 10px 10px 12px;
+  }
+
+  .home-panel-logo {
+    max-height: 130px;
+    width: auto;
+    max-width: 95%;
   }
 
   .home-panel-btn {
     aspect-ratio: 2 / 1;
+    max-height: 80px;
   }
 
   .home-discord-text-area {
