@@ -144,22 +144,6 @@ export function HomeScreen({
               )}
             </button>
 
-            {/* Co-Op */}
-            <button
-              className={`home-panel-btn${CO_OP_ACTIVE ? (isCoOpLoading ? ' loading' : '') : ' events-btn--locked'}`}
-              onClick={CO_OP_ACTIVE ? (onButtonClick ? () => onButtonClick(onCoOpClick) : onCoOpClick) : undefined}
-              onMouseEnter={CO_OP_ACTIVE ? onButtonHover : undefined}
-              disabled={CO_OP_ACTIVE ? isAnyLoading : true}
-              style={{ backgroundImage: `url(${coOpButton})` }}
-              aria-label={CO_OP_ACTIVE ? 'Co-Op' : 'Co-Op (coming soon)'}
-              title={CO_OP_ACTIVE ? 'Co-Op' : 'Co-Op — Coming Soon'}
-            >
-              {CO_OP_ACTIVE
-                ? (isCoOpLoading && <img src={loadingSpinner} alt="Loading" className="home-btn-spinner" />)
-                : <img src={lockIcon} alt="Locked" className="events-lock-icon" />
-              }
-            </button>
-
             {/* Events */}
             <button
               className={`home-panel-btn${EVENT_ACTIVE ? (isEventsLoading ? ' loading' : '') : ' events-btn--locked'}`}
@@ -174,6 +158,22 @@ export function HomeScreen({
                 ? (isEventsLoading && (
                     <img src={loadingSpinner} alt="Loading" className="home-btn-spinner" />
                   ))
+                : <img src={lockIcon} alt="Locked" className="events-lock-icon" />
+              }
+            </button>
+
+            {/* Co-Op */}
+            <button
+              className={`home-panel-btn${CO_OP_ACTIVE ? (isCoOpLoading ? ' loading' : '') : ' events-btn--locked'}`}
+              onClick={CO_OP_ACTIVE ? (onButtonClick ? () => onButtonClick(onCoOpClick) : onCoOpClick) : undefined}
+              onMouseEnter={CO_OP_ACTIVE ? onButtonHover : undefined}
+              disabled={CO_OP_ACTIVE ? isAnyLoading : true}
+              style={{ backgroundImage: `url(${coOpButton})` }}
+              aria-label={CO_OP_ACTIVE ? 'Co-Op' : 'Co-Op (coming soon)'}
+              title={CO_OP_ACTIVE ? 'Co-Op' : 'Co-Op — Coming Soon'}
+            >
+              {CO_OP_ACTIVE
+                ? (isCoOpLoading && <img src={loadingSpinner} alt="Loading" className="home-btn-spinner" />)
                 : <img src={lockIcon} alt="Locked" className="events-lock-icon" />
               }
             </button>
