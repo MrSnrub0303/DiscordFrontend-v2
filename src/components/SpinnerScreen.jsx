@@ -34,7 +34,7 @@ export function SpinnerScreen({
         <BackButton
           onClick={onBackPress ? () => onBackPress(onBackClick) : onBackClick}
           onMouseEnter={onBackHover}
-          style={isMobile ? { position: 'fixed', top: 52, left: 12, zIndex: 1001 } : {}}
+          style={isMobile ? { position: 'fixed', top: 62, left: 12, zIndex: 1001 } : {}}
         />
         {!isMobile && <h1 className="spinner-title">Civilization Spinner</h1>}
       </div>

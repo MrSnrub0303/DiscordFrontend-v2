@@ -155,7 +155,7 @@ export function EventsScreen({
         <BackButton
           onClick={onBackPress ? () => onBackPress(onBackClick) : onBackClick}
           onMouseEnter={onBackHover}
-          style={isMobile ? { position: 'fixed', top: 52, left: 12, zIndex: 1001 } : {}}
+          style={isMobile ? { position: 'fixed', top: 62, left: 12, zIndex: 1001 } : {}}
         />
         {!isMobile && <h1 className="events-title">GGplz Challenge – Spring Rabbit Hunt</h1>}
       </div>
