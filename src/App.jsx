@@ -297,6 +297,7 @@ export default function App() {
     isHost,
     isInVoiceChannel,
     ready,
+    isMobile,
   } = useDiscordActivity();
 
   // Authorized Discord usernames for the Monitor screen (checked client-side via SDK user data)
@@ -3374,6 +3375,7 @@ export default function App() {
           onVolumeChange={handleVolumeChange}
           isLoading={isLoading}
           loadingTarget={loadingTarget}
+          isMobile={isMobile}
         />
         {/* Pre-render SpinnerScreen hidden so its iframe loads while user waits on HOME */}
         {loadingTarget === "SPINNER" && (
@@ -3385,6 +3387,7 @@ export default function App() {
               onToggleMusic={() => {}}
               iframeLoaded={spinnerIframeLoaded}
               onIframeLoad={handleSpinnerIframeLoad}
+              isMobile={isMobile}
             />
           </div>
         )}
@@ -3427,6 +3430,7 @@ export default function App() {
           musicVolume={musicVolume}
           onVolumeChange={handleVolumeChange}
           initialPlayers={eventsInitialPlayers}
+          isMobile={isMobile}
         />
         {renderScreenTransitionOverlay()}
       </>
@@ -3454,6 +3458,7 @@ export default function App() {
           onVolumeChange={handleVolumeChange}
           iframeLoaded={spinnerIframeLoaded}
           onIframeLoad={handleSpinnerIframeLoad}
+          isMobile={isMobile}
         />
         {renderScreenTransitionOverlay()}
       </>

@@ -117,6 +117,13 @@
   }
 }
 
+/* ── Mobile header (Discord activity tab bar overlay) ── */
+
+.spinner-screen-header--mobile {
+  padding-top: 52px;
+  min-height: 80px;
+}
+
 /* ── Responsive Design ── */
 
 @media (max-width: 640px) {

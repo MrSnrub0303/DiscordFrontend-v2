@@ -4,7 +4,7 @@ import soundOffIcon from '../assets/notification_sound_off.png';
 import volumeSliderImg from '../assets/VolumeSlider.png';
 import volumeNobImg from '../assets/VolumeNob.png';
 
-export function VolumeControl({ musicEnabled, onToggleMusic, volume = 1.0, onVolumeChange }) {
+export function VolumeControl({ musicEnabled, onToggleMusic, volume = 1.0, onVolumeChange, isMobile }) {
   const [hovered, setHovered] = useState(false);
   const sliderRef = useRef(null);
   const draggingRef = useRef(false);
@@ -67,7 +67,7 @@ export function VolumeControl({ musicEnabled, onToggleMusic, volume = 1.0, onVol
     <div
       style={{
         position: 'fixed',
-        top: 12,
+        top: isMobile ? 52 : 12,
         right: 12,
         zIndex: 999,
         display: 'flex',

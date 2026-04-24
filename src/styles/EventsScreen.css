@@ -378,6 +378,13 @@
   text-shadow: 0 0 8px rgba(255, 80, 80, 0.4);
 }
 
+/* ── Mobile header (Discord activity tab bar overlay) ── */
+
+.events-screen-header--mobile {
+  padding-top: 52px;
+  min-height: 80px;
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 640px) {

@@ -15,6 +15,7 @@ export function SpinnerScreen({
   onVolumeChange,
   iframeLoaded,
   onIframeLoad,
+  isMobile,
 }) {
   return (
     <div className="spinner-screen-container">
@@ -23,17 +24,18 @@ export function SpinnerScreen({
         onToggleMusic={onToggleMusic}
         volume={musicVolume}
         onVolumeChange={onVolumeChange}
+        isMobile={isMobile}
       />
 
       <div
-        className="spinner-screen-header"
+        className={`spinner-screen-header${isMobile ? ' spinner-screen-header--mobile' : ''}`}
         style={{ backgroundImage: `url(${topBarBg})` }}
       >
         <BackButton
           onClick={onBackPress ? () => onBackPress(onBackClick) : onBackClick}
           onMouseEnter={onBackHover}
         />
-        <h1 className="spinner-title">Civilization Spinner</h1>
+        {!isMobile && <h1 className="spinner-title">Civilization Spinner</h1>}
       </div>
 
       <img

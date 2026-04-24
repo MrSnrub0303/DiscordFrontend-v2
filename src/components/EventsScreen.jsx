@@ -51,6 +51,7 @@ export function EventsScreen({
   musicVolume,
   onVolumeChange,
   initialPlayers = [],
+  isMobile,
 }) {
   const [players, setPlayers] = useState(initialPlayers);
   const [username, setUsername] = useState('');
@@ -143,35 +144,38 @@ export function EventsScreen({
         onToggleMusic={onToggleMusic}
         volume={musicVolume}
         onVolumeChange={onVolumeChange}
+        isMobile={isMobile}
       />
 
       {/* Marble top bar */}
       <div
-        className="events-screen-header"
+        className={`events-screen-header${isMobile ? ' events-screen-header--mobile' : ''}`}
         style={{ backgroundImage: `url(${topBarBg})` }}
       >
         <BackButton
           onClick={onBackPress ? () => onBackPress(onBackClick) : onBackClick}
           onMouseEnter={onBackHover}
         />
-        <h1 className="events-title">GGplz Challenge – Spring Rabbit Hunt</h1>
+        {!isMobile && <h1 className="events-title">GGplz Challenge – Spring Rabbit Hunt</h1>}
       </div>
 
-      {/* Top-left: EventsDuration + EventsPrizepool widgets */}
-      <div className="events-topleft-widgets">
-        <div className="events-widget-asset">
-          <img src={eventsDuration} alt="" className="events-widget-img" draggable={false} />
-          {countdown && (
-            <span className="events-widget-text">
-              {String(countdown.days).padStart(2, '0')}d : {String(countdown.hours).padStart(2, '0')}h : {String(countdown.minutes).padStart(2, '0')}m : {String(countdown.seconds).padStart(2, '0')}s
-            </span>
-          )}
+      {/* Top-left: EventsDuration + EventsPrizepool widgets — hidden on mobile */}
+      {!isMobile && (
+        <div className="events-topleft-widgets">
+          <div className="events-widget-asset">
+            <img src={eventsDuration} alt="" className="events-widget-img" draggable={false} />
+            {countdown && (
+              <span className="events-widget-text">
+                {String(countdown.days).padStart(2, '0')}d : {String(countdown.hours).padStart(2, '0')}h : {String(countdown.minutes).padStart(2, '0')}m : {String(countdown.seconds).padStart(2, '0')}s
+              </span>
+            )}
+          </div>
+          <div className="events-widget-asset">
+            <img src={eventsPrizepool} alt="" className="events-widget-img" draggable={false} />
+            <span className="events-widget-text">$250</span>
+          </div>
         </div>
-        <div className="events-widget-asset">
-          <img src={eventsPrizepool} alt="" className="events-widget-img" draggable={false} />
-          <span className="events-widget-text">$250</span>
-        </div>
-      </div>
+      )}
 
       {/* Bottom-left: AoE3 logo */}
       <div style={{ position: 'fixed', bottom: 16, left: 16, zIndex: 999, pointerEvents: 'none', width: '16vw' }}>

@@ -187,9 +187,8 @@ export function useDiscordActivity() {
     currentUser: effectiveCurrentUser,
     instanceId,
     channelId: context?.sdk?.channelId,
-    isHost: true, 
-    
-    
+    isHost: true,
+    isMobile: context?.isMobile || false,
     isInVoiceChannel: !!(effectiveCurrentUser && context?.sdk?.channelId)
   };
 }

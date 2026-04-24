@@ -31,6 +31,7 @@ export function HomeScreen({
   onVolumeChange,
   isLoading,
   loadingTarget,
+  isMobile,
 }) {
   const [monitorPressed, setMonitorPressed] = useState(false);
 
@@ -55,6 +56,7 @@ export function HomeScreen({
         onToggleMusic={onToggleMusic}
         volume={musicVolume}
         onVolumeChange={onVolumeChange}
+        isMobile={isMobile}
       />
 
       {/* Left sidebar panel */}
@@ -84,17 +86,18 @@ export function HomeScreen({
           {/* Game buttons */}
           <div className="home-panel-buttons">
             <button
-              className={`home-panel-btn${isLoading ? ' loading' : ''}`}
-              onClick={onButtonClick ? () => onButtonClick(onGameClick) : onGameClick}
-              onMouseEnter={onButtonHover}
-              disabled={isAnyLoading}
+              className={`home-panel-btn${!isMobile && isLoading ? ' loading' : ''}${isMobile ? ' events-btn--locked' : ''}`}
+              onClick={isMobile ? undefined : (onButtonClick ? () => onButtonClick(onGameClick) : onGameClick)}
+              onMouseEnter={isMobile ? undefined : onButtonHover}
+              disabled={isMobile ? true : isAnyLoading}
               style={{ backgroundImage: `url(${playGameButton})` }}
-              aria-label="Play game"
-              title="Play Game"
+              aria-label={isMobile ? 'Play game (desktop only)' : 'Play game'}
+              title={isMobile ? 'Play Game — Desktop Only' : 'Play Game'}
             >
-              {isLoading && (
-                <img src={loadingSpinner} alt="Loading" className="home-btn-spinner" />
-              )}
+              {isMobile
+                ? <img src={lockIcon} alt="Locked" className="events-lock-icon" />
+                : (isLoading && <img src={loadingSpinner} alt="Loading" className="home-btn-spinner" />)
+              }
             </button>
 
             <button

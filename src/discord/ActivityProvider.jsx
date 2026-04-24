@@ -22,6 +22,7 @@ export function ActivityProvider({ children }) {
   const initializationRef = useRef(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(!globalAuthResult);
   const [loadingFadingOut, setLoadingFadingOut] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   
   const addDebugLog = (message) => {
@@ -61,6 +62,7 @@ export function ActivityProvider({ children }) {
         setInitializationStep('sdk_instance');
         const discordSdk = new DiscordSDK(DISCORD_CLIENT_ID);
         addDebugLog('SDK instance created');
+        setIsMobile(discordSdk.platform === 'mobile');
         
         
         setSdk(discordSdk);
@@ -343,7 +345,7 @@ export function ActivityProvider({ children }) {
   const { message } = getLoadingInfo();
 
   return (
-    <ActivityContext.Provider value={{ sdk, token, ready }}>
+    <ActivityContext.Provider value={{ sdk, token, ready, isMobile }}>
       {ready && children}
       {showLoadingOverlay && (
         <div style={{
@@ -379,7 +381,7 @@ export function ActivityProvider({ children }) {
             justifyContent: 'center',
             height: '100%',
             width: '100%',
-            padding: '40px',
+            padding: typeof window !== 'undefined' && window.innerWidth < 600 ? '88px 40px 40px' : '40px',
             textAlign: 'center',
           }}>
             <img
