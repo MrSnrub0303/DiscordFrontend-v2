@@ -85,7 +85,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 6px 10px 16px;
+  padding: 8px 10px 16px;
   height: 100%;
   gap: 8px;
   box-sizing: border-box;
@@ -96,9 +96,9 @@
 .home-panel-logo {
   width: 95%;
   height: auto;
-  max-height: 88px;
+  max-height: 114px;
   object-fit: contain;
-  margin-top: 2px;
+  margin-top: 8px;
   filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.6));
   user-select: none;
 }
