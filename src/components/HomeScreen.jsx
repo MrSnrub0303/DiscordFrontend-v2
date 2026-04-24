@@ -18,6 +18,9 @@ import buttonRedClicked from '../assets/ButtonRedClicked.png';
 // Set to true when an event is running, false to lock the button between events
 const EVENT_ACTIVE = true;
 
+// Set to true when Co-Op mode is available
+const CO_OP_ACTIVE = false;
+
 const BTN_ASPECT = 467 / 820; // height / width ratio of button images
 const BTN_GAP    = 8;         // matches CSS gap inside .home-panel-buttons
 
@@ -143,17 +146,18 @@ export function HomeScreen({
 
             {/* Co-Op */}
             <button
-              className={`home-panel-btn${isCoOpLoading ? ' loading' : ''}`}
-              onClick={onButtonClick ? () => onButtonClick(onCoOpClick) : onCoOpClick}
-              onMouseEnter={onButtonHover}
-              disabled={isAnyLoading || !onCoOpClick}
+              className={`home-panel-btn${CO_OP_ACTIVE ? (isCoOpLoading ? ' loading' : '') : ' events-btn--locked'}`}
+              onClick={CO_OP_ACTIVE ? (onButtonClick ? () => onButtonClick(onCoOpClick) : onCoOpClick) : undefined}
+              onMouseEnter={CO_OP_ACTIVE ? onButtonHover : undefined}
+              disabled={CO_OP_ACTIVE ? isAnyLoading : true}
               style={{ backgroundImage: `url(${coOpButton})` }}
-              aria-label="Co-Op"
-              title="Co-Op"
+              aria-label={CO_OP_ACTIVE ? 'Co-Op' : 'Co-Op (coming soon)'}
+              title={CO_OP_ACTIVE ? 'Co-Op' : 'Co-Op — Coming Soon'}
             >
-              {isCoOpLoading && (
-                <img src={loadingSpinner} alt="Loading" className="home-btn-spinner" />
-              )}
+              {CO_OP_ACTIVE
+                ? (isCoOpLoading && <img src={loadingSpinner} alt="Loading" className="home-btn-spinner" />)
+                : <img src={lockIcon} alt="Locked" className="events-lock-icon" />
+              }
             </button>
 
             {/* Events */}
