@@ -199,6 +199,18 @@
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
 }
 
+/* ── Bottom buttons container (Ranked + Monitor) ── */
+
+.home-bottom-buttons {
+  margin-top: auto;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
 /* ── Monitor Button ── */
 
 .home-monitor-btn {
@@ -222,8 +234,6 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: auto;
-  margin-bottom: 12px;
   outline: none;
   user-select: none;
   line-height: 1;

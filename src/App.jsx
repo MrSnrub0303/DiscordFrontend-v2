@@ -11,6 +11,7 @@ import { HomeScreen } from "./components/HomeScreen";
 import { SpinnerScreen } from "./components/SpinnerScreen";
 import { EventsScreen } from "./components/EventsScreen";
 import { MonitorScreen } from "./components/MonitorScreen";
+import { RankedScreen } from "./components/RankedScreen";
 import { VolumeControl } from "./components/VolumeControl";
 import { BackButton } from "./components/BackButton";
 import questions from "./questions.json";
@@ -3387,6 +3388,7 @@ export default function App() {
             });
           }}
           onCoOpClick={() => { /* Co-Op screen — to be implemented */ }}
+          onRankedClick={() => { playClickSound(); setAppMode("RANKED"); }}
           onMonitorClick={() => setAppMode("MONITOR")}
           isMonitorAuthorized={isMonitorAuthorized}
           onButtonHover={playHoverSound}
@@ -3431,6 +3433,16 @@ export default function App() {
         onBackHover={playHoverSound}
         discordAccessToken={currentUser?.accessToken}
         discordUsername={currentUser?.username}
+        isMobile={isMobile}
+      />
+    );
+  }
+
+  if (appMode === "RANKED") {
+    return (
+      <RankedScreen
+        onBack={() => { playClickSound(); setAppMode("HOME"); }}
+        onBackHover={playHoverSound}
         isMobile={isMobile}
       />
     );

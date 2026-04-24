@@ -29,6 +29,7 @@ export function HomeScreen({
   onSpinnerClick,
   onCoOpClick,
   onEventsClick,
+  onRankedClick,
   onMonitorClick,
   isMonitorAuthorized,
   onButtonHover,
@@ -183,26 +184,41 @@ export function HomeScreen({
           {/* Bottom gold divider */}
           <img src={goldDivider} alt="" className="home-gold-divider" />
 
-          {/* Monitor button */}
-          <button
-            className={`home-monitor-btn${!isMonitorAuthorized ? ' home-monitor-btn--locked' : ''}`}
-            onClick={isMonitorAuthorized ? (onButtonClick ? () => onButtonClick(onMonitorClick) : onMonitorClick) : undefined}
-            onMouseEnter={isMonitorAuthorized ? onButtonHover : undefined}
-            onMouseDown={() => isMonitorAuthorized && setMonitorPressed(true)}
-            onMouseUp={() => setMonitorPressed(false)}
-            onMouseLeave={() => setMonitorPressed(false)}
-            disabled={!isMonitorAuthorized}
-            style={{
-              backgroundImage: `url(${monitorPressed ? buttonRedClicked : buttonRedAvailable})`,
-            }}
-            aria-label={isMonitorAuthorized ? 'Open Monitor' : 'Monitor (locked)'}
-            title={isMonitorAuthorized ? 'ESOC Monitor' : 'Monitor — not authorized'}
-          >
-            {!isMonitorAuthorized && (
-              <img src={lockIcon} alt="" className="monitor-lock-icon" />
-            )}
-            Monitor
-          </button>
+          {/* Bottom buttons: Ranked + Monitor */}
+          <div className="home-bottom-buttons">
+            {/* Ranked button */}
+            <button
+              className="home-monitor-btn"
+              onClick={onButtonClick ? () => onButtonClick(onRankedClick) : onRankedClick}
+              onMouseEnter={onButtonHover}
+              style={{ backgroundImage: `url(${buttonRedAvailable})` }}
+              aria-label="Ranked"
+              title="Ranked"
+            >
+              Ranked
+            </button>
+
+            {/* Monitor button */}
+            <button
+              className={`home-monitor-btn${!isMonitorAuthorized ? ' home-monitor-btn--locked' : ''}`}
+              onClick={isMonitorAuthorized ? (onButtonClick ? () => onButtonClick(onMonitorClick) : onMonitorClick) : undefined}
+              onMouseEnter={isMonitorAuthorized ? onButtonHover : undefined}
+              onMouseDown={() => isMonitorAuthorized && setMonitorPressed(true)}
+              onMouseUp={() => setMonitorPressed(false)}
+              onMouseLeave={() => setMonitorPressed(false)}
+              disabled={!isMonitorAuthorized}
+              style={{
+                backgroundImage: `url(${monitorPressed ? buttonRedClicked : buttonRedAvailable})`,
+              }}
+              aria-label={isMonitorAuthorized ? 'Open Monitor' : 'Monitor (locked)'}
+              title={isMonitorAuthorized ? 'ESOC Monitor' : 'Monitor — not authorized'}
+            >
+              {!isMonitorAuthorized && (
+                <img src={lockIcon} alt="" className="monitor-lock-icon" />
+              )}
+              Monitor
+            </button>
+          </div>
         </div>
       </div>
 
