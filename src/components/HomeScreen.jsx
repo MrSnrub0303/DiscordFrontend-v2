@@ -21,6 +21,9 @@ const EVENT_ACTIVE = true;
 // Set to true when Co-Op mode is available
 const CO_OP_ACTIVE = false;
 
+// Set to true when Ranked mode is available
+const RANKED_ACTIVE = false;
+
 const BTN_ASPECT = 467 / 820; // height / width ratio of button images
 const BTN_GAP    = 8;         // matches CSS gap inside .home-panel-buttons
 
@@ -43,6 +46,7 @@ export function HomeScreen({
   isMobile,
 }) {
   const [monitorPressed, setMonitorPressed] = useState(false);
+  const [rankedPressed,  setRankedPressed]  = useState(false);
   const scrollRef = useRef(null);
 
   const isEventsLoading  = EVENT_ACTIVE && loadingTarget === 'EVENTS';
@@ -188,13 +192,20 @@ export function HomeScreen({
           <div className="home-bottom-buttons">
             {/* Ranked button */}
             <button
-              className="home-monitor-btn"
-              onClick={onButtonClick ? () => onButtonClick(onRankedClick) : onRankedClick}
-              onMouseEnter={onButtonHover}
-              style={{ backgroundImage: `url(${buttonRedAvailable})` }}
-              aria-label="Ranked"
-              title="Ranked"
+              className={`home-monitor-btn${!RANKED_ACTIVE ? ' home-monitor-btn--locked' : ''}`}
+              onClick={RANKED_ACTIVE ? (onButtonClick ? () => onButtonClick(onRankedClick) : onRankedClick) : undefined}
+              onMouseEnter={RANKED_ACTIVE ? onButtonHover : undefined}
+              onMouseDown={() => RANKED_ACTIVE && setRankedPressed(true)}
+              onMouseUp={() => setRankedPressed(false)}
+              onMouseLeave={() => setRankedPressed(false)}
+              disabled={!RANKED_ACTIVE}
+              style={{
+                backgroundImage: `url(${rankedPressed ? buttonRedClicked : buttonRedAvailable})`,
+              }}
+              aria-label={RANKED_ACTIVE ? 'Ranked' : 'Ranked (coming soon)'}
+              title={RANKED_ACTIVE ? 'Ranked' : 'Ranked — Coming Soon'}
             >
+              {!RANKED_ACTIVE && <img src={lockIcon} alt="" className="monitor-lock-icon" />}
               Ranked
             </button>
 
