@@ -381,8 +381,8 @@
 /* ── Mobile header (Discord activity tab bar overlay) ── */
 
 .events-screen-header--mobile {
-  padding-top: 68px;
-  min-height: 104px;
+  padding-top: 52px;
+  min-height: 112px; /* 52 (top pad) + 44 (button) + 16 (bottom pad) = button top lands at 52px */
 }
 
 /* ── Responsive ── */
