@@ -4,6 +4,7 @@ import { DISCORD_CLIENT_ID } from './config';
 import { ActivityContext } from './ActivityContext';
 import loadingSpinner from '../assets/loadingspinner.png';
 import ServerLoadingBackground from '../assets/LoadingScreenNew.png';
+import { preloadImages } from '../utils/preloadImages';
 
 export { ActivityContext };
 
@@ -11,17 +12,6 @@ export { ActivityContext };
 let globalInitializationStarted = false;
 let globalSdkInstance = null;
 let globalAuthResult = null;
-
-const preloadImages = (urls) =>
-  Promise.all(
-    urls.map(url => new Promise(resolve => {
-      if (!url) { resolve(); return; }
-      const img = new Image();
-      img.onload = resolve;
-      img.onerror = resolve;
-      img.src = url;
-    }))
-  );
 
 export function ActivityProvider({ children, assetsToPreload = [] }) {
   const [sdk, setSdk] = useState(globalSdkInstance);

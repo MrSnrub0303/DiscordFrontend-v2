@@ -47,6 +47,23 @@ import kothFile from "./assets/KOTH.mp3";
 import revealSoundFile from "./assets/chatreceived.wav";
 
 import { getCardImageUrl } from "./utils/cardImages";
+import { preloadImages } from "./utils/preloadImages";
+
+import eventsDuration  from "./assets/EventsDuration.png";
+import eventsPrizepool from "./assets/EventsPrizepool.png";
+import registerPanel   from "./assets/RegisterHerePanel.png";
+
+const gameScreenAssets = [
+  woodPanelBg, btnNormal, btnHover, btnDisabled, btnMainMenuDisabled,
+  restartButtonBg, restartScreenBg, quizScreenBg,
+  nicknameBg, nicknameBgOver, dividingLine,
+  medalFirst, medalSecond, medalThird,
+];
+
+const eventsScreenAssets = [
+  eventsDuration, eventsPrizepool, registerPanel,
+  nicknameBg, btnNormal,
+];
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 const SOCKET_URL =
@@ -3341,7 +3358,10 @@ export default function App() {
             setLoadingTarget("GAME");
             triggerScreenTransition("GAME", async () => {
               try {
-                await startQuizFromHome();
+                await Promise.all([
+                  startQuizFromHome(),
+                  preloadImages(gameScreenAssets),
+                ]);
               } finally {
                 setLoadingTarget(null);
               }
@@ -3351,12 +3371,16 @@ export default function App() {
             setLoadingTarget("SPINNER");
             setSpinnerIframeLoaded(false);
             // Transition is deferred — triggered by useEffect once iframe loads
+            // Spinner screen assets are all covered by the initial preload
           }}
           onEventsClick={() => {
             setLoadingTarget("EVENTS");
             triggerScreenTransition("EVENTS", async () => {
               try {
-                await preloadEventsLeaderboard();
+                await Promise.all([
+                  preloadEventsLeaderboard(),
+                  preloadImages(eventsScreenAssets),
+                ]);
               } finally {
                 setLoadingTarget(null);
               }
