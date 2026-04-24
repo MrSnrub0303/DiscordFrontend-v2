@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import '../styles/HomeScreen.css';
 import { VolumeControl } from './VolumeControl';
 import backgroundImg from '../assets/background-spinner.png';
 import marbleBg from '../assets/marblebg2.png';
 import playGameButton from '../assets/PlayGameHomeButtonNew.png';
 import civAndMapButton from '../assets/CivAndMapHomeButtonNew.png';
+import coOpButton from '../assets/CoOpButtonNew.png';
 import eventsButton from '../assets/EventsHomeButtonNew.png';
 import lockIcon from '../assets/lock_icon.png';
 import aoe3Logo from '../assets/aoe3_de_logo.png';
@@ -17,9 +18,13 @@ import buttonRedClicked from '../assets/ButtonRedClicked.png';
 // Set to true when an event is running, false to lock the button between events
 const EVENT_ACTIVE = true;
 
+const BTN_ASPECT = 467 / 820; // height / width ratio of button images
+const BTN_GAP    = 8;         // matches CSS gap inside .home-panel-buttons
+
 export function HomeScreen({
   onGameClick,
   onSpinnerClick,
+  onCoOpClick,
   onEventsClick,
   onMonitorClick,
   isMonitorAuthorized,
@@ -34,10 +39,37 @@ export function HomeScreen({
   isMobile,
 }) {
   const [monitorPressed, setMonitorPressed] = useState(false);
+  const scrollRef = useRef(null);
 
-  const isEventsLoading = EVENT_ACTIVE && loadingTarget === 'EVENTS';
+  const isEventsLoading  = EVENT_ACTIVE && loadingTarget === 'EVENTS';
   const isSpinnerLoading = loadingTarget === 'SPINNER';
-  const isAnyLoading = isLoading || !!loadingTarget;
+  const isCoOpLoading    = loadingTarget === 'COOP';
+  const isAnyLoading     = isLoading || !!loadingTarget;
+
+  // On desktop: constrain the scrollable area to exactly 3 buttons tall.
+  // Derived from the container's actual rendered width + the button aspect ratio
+  // so it stays correct at any panel size without hard-coded pixel values.
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    if (isMobile) {
+      container.style.maxHeight = '';
+      return;
+    }
+
+    const update = () => {
+      const w = container.getBoundingClientRect().width;
+      if (!w) return;
+      const btnH = w * BTN_ASPECT;
+      container.style.maxHeight = `${3 * btnH + 2 * BTN_GAP}px`;
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [isMobile]);
 
   return (
     <div className="home-screen-container">
@@ -47,7 +79,7 @@ export function HomeScreen({
         style={{ backgroundImage: `url(${backgroundImg})` }}
       />
 
-      {/* Smoke layer - pure CSS background-image scroll, seamless repeat-x */}
+      {/* Smoke layer */}
       <div className="home-smoke-layer" />
 
       {/* Volume control - top right */}
@@ -61,30 +93,24 @@ export function HomeScreen({
 
       {/* Left sidebar panel */}
       <div className="home-panel">
-        {/* Marble bg at 50% opacity */}
         <div
           className="home-panel-marble"
           style={{ backgroundImage: `url(${marbleBg})` }}
         />
-
-        {/* Gold border lines */}
         <div className="home-panel-border-left" />
         <div className="home-panel-border-right" />
 
-        {/* Panel content */}
         <div className="home-panel-content">
           {/* AoE3 Logo */}
-          <img
-            src={aoe3Logo}
-            alt="Age of Empires III DE"
-            className="home-panel-logo"
-          />
+          <img src={aoe3Logo} alt="Age of Empires III DE" className="home-panel-logo" />
 
-          {/* Gold divider */}
+          {/* Top gold divider */}
           <img src={goldDivider} alt="" className="home-gold-divider" />
 
-          {/* Game buttons */}
-          <div className="home-panel-buttons">
+          {/* Scrollable button area — shows 3 on desktop, all 4 on mobile */}
+          <div className="home-panel-buttons" ref={scrollRef}>
+
+            {/* Play Game */}
             <button
               className={`home-panel-btn${!isMobile && isLoading ? ' loading' : ''}${isMobile ? ' events-btn--locked' : ''}`}
               onClick={isMobile ? undefined : (onButtonClick ? () => onButtonClick(onGameClick) : onGameClick)}
@@ -100,6 +126,7 @@ export function HomeScreen({
               }
             </button>
 
+            {/* Civ & Map */}
             <button
               className={`home-panel-btn${isSpinnerLoading ? ' loading' : ''}`}
               onClick={onButtonClick ? () => onButtonClick(onSpinnerClick) : onSpinnerClick}
@@ -114,6 +141,22 @@ export function HomeScreen({
               )}
             </button>
 
+            {/* Co-Op */}
+            <button
+              className={`home-panel-btn${isCoOpLoading ? ' loading' : ''}`}
+              onClick={onButtonClick ? () => onButtonClick(onCoOpClick) : onCoOpClick}
+              onMouseEnter={onButtonHover}
+              disabled={isAnyLoading || !onCoOpClick}
+              style={{ backgroundImage: `url(${coOpButton})` }}
+              aria-label="Co-Op"
+              title="Co-Op"
+            >
+              {isCoOpLoading && (
+                <img src={loadingSpinner} alt="Loading" className="home-btn-spinner" />
+              )}
+            </button>
+
+            {/* Events */}
             <button
               className={`home-panel-btn${EVENT_ACTIVE ? (isEventsLoading ? ' loading' : '') : ' events-btn--locked'}`}
               onClick={EVENT_ACTIVE ? (onButtonClick ? () => onButtonClick(onEventsClick) : onEventsClick) : undefined}
@@ -130,9 +173,10 @@ export function HomeScreen({
                 : <img src={lockIcon} alt="Locked" className="events-lock-icon" />
               }
             </button>
+
           </div>
 
-          {/* Gold divider */}
+          {/* Bottom gold divider */}
           <img src={goldDivider} alt="" className="home-gold-divider" />
 
           {/* Monitor button */}

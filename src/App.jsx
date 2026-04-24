@@ -3386,6 +3386,7 @@ export default function App() {
               }
             });
           }}
+          onCoOpClick={() => { /* Co-Op screen — to be implemented */ }}
           onMonitorClick={() => setAppMode("MONITOR")}
           isMonitorAuthorized={isMonitorAuthorized}
           onButtonHover={playHoverSound}

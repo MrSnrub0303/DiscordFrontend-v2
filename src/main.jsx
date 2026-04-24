@@ -25,10 +25,11 @@ import volumeSlider     from './assets/VolumeSlider.png'
 import volumeNob        from './assets/VolumeNob.png'
 import backNormal       from './assets/button_back_normal.png'
 import backHover        from './assets/button_back_hover.png'
+import coOpBtn          from './assets/CoOpButtonNew.png'
 
 const homeScreenAssets = [
   backgroundImg, marbleBg,
-  playGameBtn, civAndMapBtn, eventsBtn,
+  playGameBtn, civAndMapBtn, coOpBtn, eventsBtn,
   lockIcon, aoe3Logo, discordAppText, goldDivider,
   btnRedAvailable, btnRedClicked,
   smokeLayer,

@@ -122,12 +122,27 @@
   gap: 8px;
   width: 100%;
   align-items: center;
+
+  /* Scrollable area — maxHeight set in JS to exactly 3 buttons on desktop */
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scroll-snap-type: y mandatory;
+
+  /* Hide scrollbar on all browsers */
+  scrollbar-width: none;
+}
+
+.home-panel-buttons::-webkit-scrollbar {
+  display: none;
 }
 
 .home-panel-btn {
   width: 100%;
   /* Exact image dimensions: 820×467px */
   aspect-ratio: 820 / 467;
+  flex-shrink: 0;          /* never compress — ensures clean snap boundaries */
+  scroll-snap-align: start;
   border: none;
   background-color: transparent;
   background-size: contain;
