@@ -381,7 +381,7 @@ export function ActivityProvider({ children }) {
             justifyContent: 'center',
             height: '100%',
             width: '100%',
-            padding: typeof window !== 'undefined' && window.innerWidth < 600 ? '88px 40px 40px' : '40px',
+            padding: typeof window !== 'undefined' && window.innerWidth < 600 ? '120px 40px 40px' : '40px',
             textAlign: 'center',
           }}>
             <img

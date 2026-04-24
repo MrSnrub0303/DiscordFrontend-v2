@@ -3406,6 +3406,7 @@ export default function App() {
         onBackHover={playHoverSound}
         discordAccessToken={currentUser?.accessToken}
         discordUsername={currentUser?.username}
+        isMobile={isMobile}
       />
     );
   }

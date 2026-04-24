@@ -37,7 +37,7 @@ function ServiceCard({ name, connected }) {
   );
 }
 
-export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discordUsername }) {
+export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discordUsername, isMobile }) {
   const [logs, setLogs]         = useState([]);
   const [status, setStatus]     = useState(null);
   const [thumb, setThumb]       = useState(null);
@@ -154,11 +154,11 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
       />
 
       {/* Back button */}
-      <div style={{ position: 'fixed', top: 12, left: 12, zIndex: 1100 }}>
+      <div style={{ position: 'fixed', top: isMobile ? 52 : 12, left: 12, zIndex: 1100 }}>
         <BackButton onClick={onBack} onMouseEnter={onBackHover} />
       </div>
 
-      <div className="monitor-content">
+      <div className="monitor-content" style={isMobile ? { marginTop: 108 } : {}}>
         <h1 className="monitor-title">ESOC Monitor</h1>
 
         {fetchError && (
