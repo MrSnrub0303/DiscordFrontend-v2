@@ -373,16 +373,15 @@ export function ActivityProvider({ children }) {
             }}
           />
           <div style={{
-            position: 'relative',
+            position: 'absolute',
+            inset: 0,
             zIndex: 1,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            height: '100%',
-            width: '100%',
-            padding: typeof window !== 'undefined' && window.innerWidth < 600 ? '120px 40px 40px' : '40px',
             textAlign: 'center',
+            paddingTop: typeof window !== 'undefined' && window.innerWidth < 600 ? '52px' : '0px',
           }}>
             <img
               src={loadingSpinner}
