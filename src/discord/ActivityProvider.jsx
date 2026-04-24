@@ -12,7 +12,18 @@ let globalInitializationStarted = false;
 let globalSdkInstance = null;
 let globalAuthResult = null;
 
-export function ActivityProvider({ children }) {
+const preloadImages = (urls) =>
+  Promise.all(
+    urls.map(url => new Promise(resolve => {
+      if (!url) { resolve(); return; }
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = resolve;
+      img.src = url;
+    }))
+  );
+
+export function ActivityProvider({ children, assetsToPreload = [] }) {
   const [sdk, setSdk] = useState(globalSdkInstance);
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(!!globalAuthResult);
@@ -144,15 +155,24 @@ export function ActivityProvider({ children }) {
         });
         
         addDebugLog(`Authentication successful: ${authResponse ? 'YES' : 'NO'}`);
-        
-        
+
+
         discordSdk.authenticated = authResponse;
-        
+
         // Store in global variables for reuse on remount
         globalSdkInstance = discordSdk;
         globalAuthResult = { access_token: tokenData.access_token, authResponse };
-        
+
         setToken(tokenData.access_token);
+
+        // Preload home screen assets before revealing the app
+        if (assetsToPreload.length > 0) {
+          setInitializationStep('preloading');
+          addDebugLog(`Preloading ${assetsToPreload.length} assets...`);
+          await preloadImages(assetsToPreload);
+          addDebugLog('Assets preloaded.');
+        }
+
         setInitializationStep('complete');
         setReady(true);
         
@@ -296,7 +316,8 @@ export function ActivityProvider({ children }) {
       'authorizing': { message: 'Authorizing...', progress: 50 },
       'exchanging_token': { message: 'Connecting to server...', progress: 70 },
       'authenticating': { message: 'Almost there...', progress: 90 },
-      'complete': { message: 'Ready!', progress: 100 },
+      'preloading':     { message: 'Loading assets...', progress: 96 },
+      'complete':       { message: 'Ready!', progress: 100 },
     };
     return steps[initializationStep] || { message: 'Loading...', progress: 0 };
   };
