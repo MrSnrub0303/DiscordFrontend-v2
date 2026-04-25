@@ -65,14 +65,75 @@ function OngoingPanel({ matches, loading }) {
 
 // ─── In-queue panel ───────────────────────────────────────────────────────────
 
-function InQueuePanel({ parties, loading, status }) {
+function InQueuePanel({ parties, loading, status, onSubmitGuard }) {
+  const [guardCode,    setGuardCode]    = React.useState('');
+  const [guardBusy,    setGuardBusy]    = React.useState(false);
+  const [guardMsg,     setGuardMsg]     = React.useState('');
   const totalPlayers = parties.reduce((s, p) => s + p.partySize, 0);
+
+  const submitGuard = async () => {
+    if (!guardCode.trim()) return;
+    setGuardBusy(true);
+    setGuardMsg('');
+    try {
+      const r = await fetch('/api/ranked/steam-guard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: guardCode.trim() }),
+      });
+      const data = await r.json();
+      if (data.success) {
+        setGuardMsg('✓ Code accepted — queue starting…');
+        setGuardCode('');
+        if (onSubmitGuard) onSubmitGuard();
+      } else {
+        setGuardMsg(data.error || 'Failed — try again');
+      }
+    } catch {
+      setGuardMsg('Request failed');
+    }
+    setGuardBusy(false);
+  };
+
+  // Show Guard input if server is waiting for code OR if we've been initializing for a while
+  const showGuard = status === 'needs_guard_code';
+
   return (
     <div className="ranked-panel">
       <div className="ranked-panel-marble" style={{ backgroundImage: `url(${marbleBg})` }} />
       <img src={inQueueTitle} alt="In-Queue" className="ranked-panel-title" />
-      {status === 'initializing' && <p className="ranked-empty">Starting up…</p>}
-      {status === 'ok' && !parties.length && <p className="ranked-empty">No parties in queue</p>}
+
+      {/* Steam Guard input — shown inline when server needs the code */}
+      {showGuard && (
+        <div style={{ padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, position: 'relative', zIndex: 1 }}>
+          <p style={{ color: '#ffd700', fontFamily: '"Trajan Pro Bold", serif', fontSize: '0.82rem', margin: 0 }}>Steam Guard Required</p>
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontFamily: '"Trajan Pro", serif', fontSize: '0.72rem', margin: 0 }}>
+            Enter the code from your Steam mobile app:
+          </p>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              style={{ flex: 1, padding: '7px 10px', fontSize: '1rem', letterSpacing: 4, textAlign: 'center', fontFamily: 'monospace', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(200,164,32,0.4)', borderRadius: 5, color: '#fff', outline: 'none' }}
+              placeholder="XXXXX"
+              maxLength={8}
+              value={guardCode}
+              onChange={e => setGuardCode(e.target.value.toUpperCase())}
+              onKeyDown={e => e.key === 'Enter' && submitGuard()}
+            />
+            <button
+              onClick={submitGuard}
+              disabled={guardBusy || !guardCode.trim()}
+              style={{ padding: '7px 14px', background: 'rgba(200,164,32,0.2)', border: '1px solid rgba(200,164,32,0.5)', borderRadius: 5, color: '#ffd700', fontFamily: '"Trajan Pro Bold", serif', fontSize: '0.82rem', cursor: 'pointer', opacity: guardBusy ? 0.6 : 1, whiteSpace: 'nowrap' }}
+            >
+              {guardBusy ? '…' : 'Submit'}
+            </button>
+          </div>
+          {guardMsg && <p style={{ color: guardMsg.startsWith('✓') ? '#a8f0a8' : '#ffb3b3', fontSize: '0.75rem', fontFamily: '"Trajan Pro", serif', margin: 0 }}>{guardMsg}</p>}
+        </div>
+      )}
+
+      {!showGuard && status === 'initializing' && <p className="ranked-empty">Starting up…</p>}
+      {!showGuard && status === 'ok' && !parties.length && <p className="ranked-empty">No parties in queue</p>}
+
       <div className="ranked-panel-body">
         {parties.map(p => (
           <div key={p.lobbyId} className="ranked-queue-row">

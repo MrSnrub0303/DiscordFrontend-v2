@@ -22,7 +22,7 @@ const EVENT_ACTIVE = true;
 const CO_OP_ACTIVE = false;
 
 // Set to true when Ranked mode is available
-const RANKED_ACTIVE = true;
+const RANKED_ACTIVE = false;
 
 const BTN_ASPECT = 467 / 820; // height / width ratio of button images
 const BTN_GAP    = 8;         // matches CSS gap inside .home-panel-buttons
