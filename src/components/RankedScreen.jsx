@@ -15,7 +15,6 @@ import flagSpanish       from '../assets/flag_hc_spanish.png';
 
 const BUNDLED_FLAGS = { russian: flagRussian, sioux: flagSioux, spanish: flagSpanish };
 import btnNormal         from '../assets/ButtonRedAvailable.png';
-import btnHover          from '../assets/combobox_button_hover.png';
 
 const POLL_MS        = 30_000;
 const POLL_MS_FAST   =  3_000;
@@ -156,7 +155,7 @@ function OngoingPanel({ matches, loading }) {
 
 // ─── In-queue panel ───────────────────────────────────────────────────────────
 
-function InQueuePanel({ parties, loading, status, onSubmitGuard }) {
+function InQueuePanel({ parties, loading, status, onSubmitGuard, registeredUser, eloGain }) {
   const [guardCode,    setGuardCode]    = React.useState('');
   const [guardBusy,    setGuardBusy]    = React.useState(false);
   const [guardMsg,     setGuardMsg]     = React.useState('');
@@ -238,11 +237,20 @@ function InQueuePanel({ parties, loading, status, onSubmitGuard }) {
       {!showGuard && status === 'ok' && !parties.length && <p className="ranked-empty">No parties in queue</p>}
 
       <div className="ranked-panel-body">
-        {parties.map(p => (
+        {parties.map(p => {
+          const myElo   = p.partySize === 1 ? registeredUser?.soloElo : registeredUser?.teamElo;
+          const oppElo  = p.partySize === 1 ? p.players[0]?.elo : p.teamElo;
+          const gain    = registeredUser ? eloGain(myElo, oppElo) : null;
+          return (
           <div key={p.lobbyId} className="ranked-queue-row">
             <div className="ranked-queue-meta">
               <span className="ranked-queue-type">{queueLabel(p.partySize)}</span>
               <span>{regionLabel(p.region)}</span>
+              {gain !== null && (
+                <span style={{ marginLeft: 'auto', fontFamily: '"Trajan Pro Bold", serif', fontSize: '0.68rem', color: gain > 16 ? '#f0a8a8' : gain < 16 ? '#a8d8f0' : '#ffd700', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 3, padding: '1px 5px' }}>
+                  +{gain} ELO
+                </span>
+              )}
             </div>
             <div className="ranked-queue-players">
               {p.players.map((pl, i) => (
@@ -263,7 +271,8 @@ function InQueuePanel({ parties, loading, status, onSubmitGuard }) {
               <div className="ranked-team-elo-badge">Team ELO: {p.teamElo}</div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
       <div className="ranked-status-tag">
         {loading
@@ -294,7 +303,36 @@ export function RankedScreen({
   const [queueStatus,  setQueueStatus]  = useState('initializing');
   const [loadingMatch, setLoadingMatch] = useState(true);
   const [loadingQueue, setLoadingQueue] = useState(true);
-  const [registerName, setRegisterName] = useState('');
+  const [registerName,   setRegisterName]   = useState('');
+  const [registeredUser, setRegisteredUser] = useState(null);
+  const [registerStatus, setRegisterStatus] = useState('');
+  const [registerBusy,   setRegisterBusy]   = useState(false);
+
+  const handleRegister = async () => {
+    if (!registerName.trim() || registerBusy) return;
+    if (playClickSound) playClickSound();
+    setRegisterBusy(true);
+    setRegisterStatus('Looking up…');
+    try {
+      const r = await fetch(`/api/ranked/find-player?alias=${encodeURIComponent(registerName.trim())}`);
+      const data = await r.json();
+      if (data.found) {
+        setRegisteredUser(data);
+        setRegisterStatus(`✓ ${data.alias} — Solo: ${data.soloElo ?? 'N/A'}  Team: ${data.teamElo ?? 'N/A'}`);
+      } else {
+        setRegisterStatus('Player not found — check spelling');
+      }
+    } catch {
+      setRegisterStatus('Lookup failed');
+    }
+    setRegisterBusy(false);
+  };
+
+  // ELO gain formula: max(0, (winnerElo - loserElo) / 25 + 16)
+  const eloGain = (myElo, oppElo) => {
+    if (!myElo || !oppElo) return null;
+    return Math.max(0, Math.round((myElo - oppElo) / 25 + 16));
+  };
 
   const pollRef = useRef(null);
 
@@ -304,7 +342,7 @@ export function RankedScreen({
       if (!r.ok) return;
       const data = await r.json();
       if (data.success) setMatches(data.matches ?? []);
-    } catch {}
+    } catch (e) { console.warn('[RankedScreen] fetchOngoing:', e.message); }
     setLoadingMatch(false);
   }, []);
 
@@ -366,10 +404,12 @@ export function RankedScreen({
             loading={loadingQueue}
             status={queueStatus}
             onSubmitGuard={() => { setQueueStatus('initializing'); setTimeout(fetchQueue, 2000); }}
+            registeredUser={registeredUser}
+            eloGain={eloGain}
           />
         </div>
 
-        {/* Register Here — marble panel matching Events screen style */}
+        {/* Register Here */}
         <div className="ranked-register-panel">
           <div className="ranked-panel-marble" style={{ backgroundImage: `url(${marbleBg})` }} />
           <img src={registerHereImg} alt="Register Here" className="ranked-register-title" />
@@ -378,19 +418,26 @@ export function RankedScreen({
               className="events-register-input"
               placeholder="Enter your in-game name…"
               value={registerName}
-              onChange={e => setRegisterName(e.target.value)}
+              onChange={e => { setRegisterName(e.target.value); setRegisterStatus(''); }}
+              onKeyDown={e => e.key === 'Enter' && handleRegister()}
               style={{ backgroundImage: `url(${nicknameBg})` }}
+              disabled={registerBusy}
             />
             <button
               className="events-register-button"
-              onClick={() => { if (playClickSound) playClickSound(); }}
+              onClick={handleRegister}
               onMouseEnter={() => { if (playHoverSound) playHoverSound(); }}
               style={{ backgroundImage: `url(${btnNormal})` }}
-              onMouseDown={e => (e.currentTarget.style.backgroundImage = `url(${btnNormal})`)}
+              disabled={registerBusy}
             >
-              Register
+              {registerBusy ? '…' : 'Register'}
             </button>
           </div>
+          {registerStatus && (
+            <p style={{ position: 'relative', zIndex: 1, margin: '4px 0 0', fontFamily: '"Trajan Pro", serif', fontSize: '0.75rem', color: registeredUser ? '#a8f0a8' : '#ffb3b3', textAlign: 'center' }}>
+              {registerStatus}
+            </p>
+          )}
         </div>
       </div>
     </div>
