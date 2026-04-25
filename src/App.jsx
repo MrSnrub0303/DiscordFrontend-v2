@@ -3444,9 +3444,9 @@ export default function App() {
         onBack={() => { playClickSound(); setAppMode("HOME"); }}
         onBackHover={playHoverSound}
         musicEnabled={musicEnabled}
-        onToggleMusic={() => setMusicEnabled(e => !e)}
+        onToggleMusic={toggleMusic}
         musicVolume={musicVolume}
-        onVolumeChange={v => setMusicVolume(v)}
+        onVolumeChange={handleVolumeChange}
         playClickSound={playClickSound}
         playHoverSound={playHoverSound}
         isMobile={isMobile}

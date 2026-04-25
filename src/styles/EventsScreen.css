@@ -296,14 +296,14 @@
   max-width: 360px;
   height: 44px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   border: none;
   outline: none;
   font-size: 1rem;
   font-family: "Trajan Pro White", "Trajan Pro", serif;
   color: #ffffff;
   background-color: transparent;
-  background-size: contain;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center;
   caret-color: #ffffff;
@@ -325,15 +325,15 @@
   pointer-events: none;
 }
 
-/* Register button — matches quiz submit button style */
+/* Register button */
 .events-register-button {
   height: 44px;
-  min-width: 130px;
-  padding: 0 16px;
+  min-width: 140px;
+  padding: 0 20px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background-color: transparent;
-  background-size: contain;
+  background-size: 100% 100%;  /* stretch to fill button exactly */
   background-repeat: no-repeat;
   background-position: center;
   color: #ffffff;
