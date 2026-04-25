@@ -67,13 +67,15 @@ function civInfo(id) {
 
 function CivFlag({ civId }) {
   const { name, flag } = civInfo(civId);
-  if (!flag) return <span className="ranked-civ-name">{name}</span>;
+  const [broken, setBroken] = React.useState(false);
+  if (!flag || broken) return <span className="ranked-civ-name">{name}</span>;
   return (
     <img
       src={`/civ-spinner/flag_hc_${flag}.png`}
       alt={name}
       title={name}
       className="ranked-civ-flag"
+      onError={() => setBroken(true)}
     />
   );
 }
