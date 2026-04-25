@@ -9,7 +9,7 @@ import onGoingTitle      from '../assets/On-GoingTitle.png';
 import inQueueTitle      from '../assets/In-QueueTitle.png';
 import registerHereImg   from '../assets/RegisterHereRanked.png';
 import nicknameBg        from '../assets/uiskirmishnickname_textentry.png';
-import btnNormal         from '../assets/combobox_button_normal.png';
+import btnNormal         from '../assets/ButtonRedAvailable.png';
 import btnHover          from '../assets/combobox_button_hover.png';
 
 const POLL_MS        = 30_000;
