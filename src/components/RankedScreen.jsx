@@ -33,15 +33,15 @@ const queueLabel  = size => size === 1 ? '1v1' : `${size}v${size}`;
 // Relic civ ID → { name, flagFile }
 const CIV_MAP = {
   0:  { name: 'Random',        flag: 'random' },
-  1:  { name: 'Spanish',       flag: null },
+  1:  { name: 'Spanish',       flag: 'spanish' },
   2:  { name: 'British',       flag: 'british' },
   3:  { name: 'French',        flag: 'french' },
   4:  { name: 'Portuguese',    flag: 'portuguese' },
   5:  { name: 'Dutch',         flag: 'dutch' },
-  6:  { name: 'Russian',       flag: null },
+  6:  { name: 'Russian',       flag: 'russian' },
   7:  { name: 'German',        flag: 'german' },
   8:  { name: 'Ottoman',       flag: 'ottoman' },
-  9:  { name: 'Lakota',        flag: null },
+  9:  { name: 'Lakota',        flag: 'sioux' },
   10: { name: 'Haudenosaunee', flag: 'iroquois' },
   11: { name: 'Aztec',         flag: 'aztec' },
   12: { name: 'Japanese',      flag: 'japanese' },
