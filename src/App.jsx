@@ -3443,6 +3443,12 @@ export default function App() {
       <RankedScreen
         onBack={() => { playClickSound(); setAppMode("HOME"); }}
         onBackHover={playHoverSound}
+        musicEnabled={musicEnabled}
+        onToggleMusic={() => setMusicEnabled(e => !e)}
+        musicVolume={musicVolume}
+        onVolumeChange={v => setMusicVolume(v)}
+        playClickSound={playClickSound}
+        playHoverSound={playHoverSound}
         isMobile={isMobile}
       />
     );
