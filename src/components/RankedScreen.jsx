@@ -8,6 +8,9 @@ import marbleBg          from '../assets/marblebg2.png';
 import onGoingTitle      from '../assets/On-GoingTitle.png';
 import inQueueTitle      from '../assets/In-QueueTitle.png';
 import registerHereImg   from '../assets/RegisterHereRanked.png';
+import nicknameBg        from '../assets/uiskirmishnickname_textentry.png';
+import btnNormal         from '../assets/combobox_button_normal.png';
+import btnHover          from '../assets/combobox_button_hover.png';
 
 const POLL_MS        = 30_000;
 const POLL_MS_FAST   =  3_000;
@@ -358,20 +361,24 @@ export function RankedScreen({
           />
         </div>
 
-        {/* Register Here */}
+        {/* Register Here — marble panel matching Events screen style */}
         <div className="ranked-register-panel">
-          <img src={registerHereImg} alt="Register Here" className="ranked-register-img" />
-          <div className="ranked-register-input-area">
+          <div className="ranked-panel-marble" style={{ backgroundImage: `url(${marbleBg})` }} />
+          <img src={registerHereImg} alt="Register Here" className="ranked-register-title" />
+          <div className="ranked-register-row">
             <input
-              className="ranked-register-input"
+              className="events-register-input"
               placeholder="Enter your in-game name…"
               value={registerName}
               onChange={e => setRegisterName(e.target.value)}
+              style={{ backgroundImage: `url(${nicknameBg})` }}
             />
             <button
-              className="ranked-register-btn"
+              className="events-register-button"
               onClick={() => { if (playClickSound) playClickSound(); }}
               onMouseEnter={() => { if (playHoverSound) playHoverSound(); }}
+              style={{ backgroundImage: `url(${btnNormal})` }}
+              onMouseDown={e => (e.currentTarget.style.backgroundImage = `url(${btnNormal})`)}
             >
               Register
             </button>

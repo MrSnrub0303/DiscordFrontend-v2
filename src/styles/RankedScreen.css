@@ -323,76 +323,42 @@
   font-style: italic;
 }
 
-/* ── Register panel ── */
+/* ── Register panel — marble panel matching Events screen ── */
 
 .ranked-register-panel {
   flex-shrink: 0;
   position: relative;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px 16px;
+  border: 1px solid rgba(200, 164, 32, 0.6);
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 215, 0, 0.08);
+  overflow: hidden;
 }
 
-.ranked-register-img {
-  width: 100%;
+.ranked-register-title {
+  width: 40%;
+  max-width: 320px;
   height: auto;
   display: block;
   pointer-events: none;
   user-select: none;
-  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.85));
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.7));
+  position: relative;
+  z-index: 1;
 }
 
-.ranked-register-input-area {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60%;
+.ranked-register-row {
+  position: relative;
+  z-index: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 8px;
-  padding: 0 8% 8%;
-}
-
-.ranked-register-input {
-  flex: 1;
-  max-width: 380px;
-  height: 38px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(200, 164, 32, 0.4);
-  outline: none;
-  font-size: 0.9rem;
-  font-family: "Trajan Pro White", "Trajan Pro", serif;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.55);
-  caret-color: #ffd700;
-}
-
-.ranked-register-input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.ranked-register-btn {
-  height: 38px;
-  padding: 0 18px;
-  border: 1px solid rgba(200, 164, 32, 0.5);
-  border-radius: 6px;
-  background: rgba(200, 164, 32, 0.15);
-  color: #ffd700;
-  font-family: "Trajan Pro Bold", serif;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
-}
-
-.ranked-register-btn:hover {
-  background: rgba(200, 164, 32, 0.3);
-  transform: translateY(-1px);
-}
-
-.ranked-register-btn:active {
-  transform: scale(0.97);
+  align-items: center;
+  width: 100%;
+  justify-content: center;
 }
 
 /* ── Loading / error ── */
