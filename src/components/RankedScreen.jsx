@@ -9,7 +9,8 @@ import onGoingTitle      from '../assets/On-GoingTitle.png';
 import inQueueTitle      from '../assets/In-QueueTitle.png';
 import registerHereImg   from '../assets/RegisterHereRanked.png';
 
-const POLL_MS = 30_000;
+const POLL_MS        = 30_000;
+const POLL_MS_FAST   =  3_000; // poll fast during startup / guard prompt
 
 const REGION_SHORT = {
   ukwest:             'UK West',
@@ -157,14 +158,21 @@ export function RankedScreen({
     setLoadingQueue(false);
   }, []);
 
+  // Fast-poll during initializing / guard prompt, normal poll once running
+  useEffect(() => {
+    const needsFast = queueStatus === 'initializing' || queueStatus === 'needs_guard_code';
+    clearInterval(pollRef.current);
+    pollRef.current = setInterval(fetchQueue, needsFast ? POLL_MS_FAST : POLL_MS);
+  }, [queueStatus, fetchQueue]);
+
   useEffect(() => {
     fetchOngoing();
     fetchQueue();
-    pollRef.current = setInterval(() => {
-      fetchOngoing();
-      fetchQueue();
-    }, POLL_MS);
-    return () => clearInterval(pollRef.current);
+    const ongoingInterval = setInterval(fetchOngoing, POLL_MS);
+    return () => {
+      clearInterval(pollRef.current);
+      clearInterval(ongoingInterval);
+    };
   }, [fetchOngoing, fetchQueue]);
 
   const submitGuardCode = async () => {
