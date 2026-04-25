@@ -130,6 +130,9 @@ export function RankedScreen({
   const [loadingMatch, setLoadingMatch] = useState(true);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [registerName, setRegisterName] = useState('');
+  const [guardCode,    setGuardCode]    = useState('');
+  const [guardSubmitting, setGuardSubmitting] = useState(false);
+  const [guardError,   setGuardError]   = useState('');
 
   const pollRef = useRef(null);
 
@@ -164,9 +167,62 @@ export function RankedScreen({
     return () => clearInterval(pollRef.current);
   }, [fetchOngoing, fetchQueue]);
 
+  const submitGuardCode = async () => {
+    if (!guardCode.trim()) return;
+    setGuardSubmitting(true);
+    setGuardError('');
+    try {
+      const r = await fetch('/api/ranked/steam-guard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: guardCode.trim() }),
+      });
+      const data = await r.json();
+      if (data.success) {
+        setGuardCode('');
+        setQueueStatus('initializing');
+        setTimeout(fetchQueue, 3000); // re-poll after auth completes
+      } else {
+        setGuardError(data.error || 'Failed — check code and try again');
+      }
+    } catch {
+      setGuardError('Request failed');
+    }
+    setGuardSubmitting(false);
+  };
+
   return (
     <div className="ranked-screen">
       <div className="ranked-bg" style={{ backgroundImage: `url(${backgroundSpinner})` }} />
+
+      {/* Steam Guard overlay */}
+      {queueStatus === 'needs_guard_code' && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'rgba(20,15,5,0.97)', border: '1px solid rgba(200,164,32,0.6)', borderRadius: 10, padding: '32px 40px', maxWidth: 380, width: '90%', textAlign: 'center', fontFamily: '"Trajan Pro Bold", serif' }}>
+            <p style={{ color: '#ffd700', fontSize: '1.1rem', marginBottom: 8 }}>Steam Guard Required</p>
+            <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.82rem', marginBottom: 20 }}>
+              Check your Steam mobile app for a 5-digit code and enter it below.
+            </p>
+            <input
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', fontSize: '1.1rem', letterSpacing: 6, textAlign: 'center', fontFamily: '"Trajan Pro Bold", serif', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(200,164,32,0.4)', borderRadius: 6, color: '#fff', outline: 'none', marginBottom: 12 }}
+              placeholder="XXXXX"
+              maxLength={8}
+              value={guardCode}
+              onChange={e => setGuardCode(e.target.value.toUpperCase())}
+              onKeyDown={e => e.key === 'Enter' && submitGuardCode()}
+              autoFocus
+            />
+            {guardError && <p style={{ color: '#ffb3b3', fontSize: '0.8rem', marginBottom: 10 }}>{guardError}</p>}
+            <button
+              onClick={submitGuardCode}
+              disabled={guardSubmitting || !guardCode.trim()}
+              style={{ padding: '10px 28px', background: 'rgba(200,164,32,0.2)', border: '1px solid rgba(200,164,32,0.5)', borderRadius: 6, color: '#ffd700', fontFamily: '"Trajan Pro Bold", serif', fontSize: '0.95rem', cursor: 'pointer', opacity: guardSubmitting ? 0.6 : 1 }}
+            >
+              {guardSubmitting ? 'Submitting…' : 'Submit'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Header row */}
       <div className="ranked-header" style={isMobile ? { paddingTop: 52 } : {}}>
