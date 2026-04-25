@@ -10,7 +10,7 @@ import inQueueTitle      from '../assets/In-QueueTitle.png';
 import registerHereImg   from '../assets/RegisterHereRanked.png';
 
 const POLL_MS        = 30_000;
-const POLL_MS_FAST   =  3_000; // poll fast during startup / guard prompt
+const POLL_MS_FAST   =  3_000;
 
 const REGION_SHORT = {
   ukwest:             'UK West',
@@ -30,34 +30,114 @@ const REGION_SHORT = {
 const regionLabel = r => REGION_SHORT[r] ?? r ?? '—';
 const queueLabel  = size => size === 1 ? '1v1' : `${size}v${size}`;
 
+// Relic civ ID → { name, flagFile }
+const CIV_MAP = {
+  0:  { name: 'Random',        flag: 'random' },
+  1:  { name: 'Spanish',       flag: null },
+  2:  { name: 'British',       flag: 'british' },
+  3:  { name: 'French',        flag: 'french' },
+  4:  { name: 'Portuguese',    flag: 'portuguese' },
+  5:  { name: 'Dutch',         flag: 'dutch' },
+  6:  { name: 'Russian',       flag: null },
+  7:  { name: 'German',        flag: 'german' },
+  8:  { name: 'Ottoman',       flag: 'ottoman' },
+  9:  { name: 'Lakota',        flag: null },
+  10: { name: 'Haudenosaunee', flag: 'iroquois' },
+  11: { name: 'Aztec',         flag: 'aztec' },
+  12: { name: 'Japanese',      flag: 'japanese' },
+  13: { name: 'Chinese',       flag: 'chinese' },
+  14: { name: 'Indian',        flag: 'indian' },
+  15: { name: 'Inca',          flag: 'inca' },
+  16: { name: 'American',      flag: 'american' },
+  17: { name: 'Mexican',       flag: 'mexican' },
+  18: { name: 'Ethiopian',     flag: 'ethiopian' },
+  19: { name: 'Hausa',         flag: 'hausa' },
+  20: { name: 'Italian',       flag: 'italian' },
+  21: { name: 'Maltese',       flag: 'maltese' },
+  22: { name: 'Danish',        flag: 'danish' },
+  23: { name: 'Polish',        flag: 'polish' },
+};
+
+function civInfo(id) {
+  return CIV_MAP[id] ?? { name: `Civ ${id}`, flag: null };
+}
+
+function CivFlag({ civId }) {
+  const { name, flag } = civInfo(civId);
+  if (!flag) return <span className="ranked-civ-name">{name}</span>;
+  return (
+    <img
+      src={`/civ-spinner/flag_hc_${flag}.png`}
+      alt={name}
+      title={name}
+      className="ranked-civ-flag"
+    />
+  );
+}
+
+function elapsed(startDate) {
+  if (!startDate) return '—';
+  const secs = Math.floor((Date.now() - new Date(startDate).getTime()) / 1000);
+  if (secs < 0) return '—';
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 // ─── Ongoing matches panel ────────────────────────────────────────────────────
 
 function OngoingPanel({ matches, loading }) {
+  // Tick every second so elapsed times update live
+  const [, setTick] = React.useState(0);
+  React.useEffect(() => {
+    const t = setInterval(() => setTick(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   return (
     <div className="ranked-panel">
       <div className="ranked-panel-marble" style={{ backgroundImage: `url(${marbleBg})` }} />
-      <img src={onGoingTitle} alt="On-Going" className="ranked-panel-title" />
+      <img src={onGoingTitle} alt="On-Going" className="ranked-panel-title ranked-panel-title--sm" />
       {loading && !matches.length && <p className="ranked-empty">Loading…</p>}
       {!loading && !matches.length && <p className="ranked-empty">No ongoing ranked matches</p>}
       <div className="ranked-panel-body">
-        {matches.map(m => (
-          <div key={m.matchId} className="ranked-match-row">
-            <div className="ranked-match-meta">
-              <span>{regionLabel(m.region)}</span>
-              <span>·</span>
-              <span>avg {m.avgElo || '—'}</span>
-              {m.spectators > 0 && <><span>·</span><span>👁 {m.spectators}</span></>}
+        {matches.map(m => {
+          const teamA = m.players.filter(p => p.team === 0);
+          const teamB = m.players.filter(p => p.team === 1);
+          return (
+            <div key={m.matchId} className="ranked-match-row">
+              <div className="ranked-match-meta">
+                <span>{regionLabel(m.region)}</span>
+                <span>·</span>
+                <span>{elapsed(m.startDate)}</span>
+                {m.spectators > 0 && <><span>·</span><span>👁 {m.spectators}</span></>}
+              </div>
+              <div className="ranked-match-teams">
+                {/* Team A — left */}
+                <div className="ranked-match-team">
+                  {teamA.map((p, i) => (
+                    <div key={i} className="ranked-match-player team-0">
+                      <CivFlag civId={p.civ} />
+                      <span className="ranked-match-player-name">{p.name || `#${p.profileId}`}</span>
+                      {p.elo != null && <span className="ranked-player-elo">{p.elo}</span>}
+                    </div>
+                  ))}
+                </div>
+                <div className="ranked-match-vs">vs</div>
+                {/* Team B — right */}
+                <div className="ranked-match-team ranked-match-team--right">
+                  {teamB.map((p, i) => (
+                    <div key={i} className="ranked-match-player team-1">
+                      {p.elo != null && <span className="ranked-player-elo">{p.elo}</span>}
+                      <span className="ranked-match-player-name">{p.name || `#${p.profileId}`}</span>
+                      <CivFlag civId={p.civ} />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="ranked-match-players">
-              {m.players.map((p, i) => (
-                <span key={i} className={`ranked-player-chip team-${p.team}`}>
-                  {p.name || `#${p.profileId}`}
-                  {p.elo ? <span className="ranked-player-elo"> {p.elo}</span> : null}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -113,7 +193,7 @@ function InQueuePanel({ parties, loading, status, onSubmitGuard }) {
   return (
     <div className="ranked-panel">
       <div className="ranked-panel-marble" style={{ backgroundImage: `url(${marbleBg})` }} />
-      <img src={inQueueTitle} alt="In-Queue" className="ranked-panel-title" />
+      <img src={inQueueTitle} alt="In-Queue" className="ranked-panel-title ranked-panel-title--sm" />
 
       {/* Steam Guard input — shown inline when server needs the code */}
       {showGuard && (
