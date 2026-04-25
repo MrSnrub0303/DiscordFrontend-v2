@@ -9,6 +9,11 @@ import onGoingTitle      from '../assets/On-GoingTitle.png';
 import inQueueTitle      from '../assets/In-QueueTitle.png';
 import registerHereImg   from '../assets/RegisterHereRanked.png';
 import nicknameBg        from '../assets/uiskirmishnickname_textentry.png';
+import flagRussian       from '../assets/flag_hc_russian.png';
+import flagSioux         from '../assets/flag_hc_sioux.png';
+import flagSpanish       from '../assets/flag_hc_spanish.png';
+
+const BUNDLED_FLAGS = { russian: flagRussian, sioux: flagSioux, spanish: flagSpanish };
 import btnNormal         from '../assets/ButtonRedAvailable.png';
 import btnHover          from '../assets/combobox_button_hover.png';
 
@@ -69,9 +74,10 @@ function CivFlag({ civId }) {
   const { name, flag } = civInfo(civId);
   const [broken, setBroken] = React.useState(false);
   if (!flag || broken) return <span className="ranked-civ-name">{name}</span>;
+  const src = BUNDLED_FLAGS[flag] ?? `/civ-spinner/flag_hc_${flag}.png`;
   return (
     <img
-      src={`/civ-spinner/flag_hc_${flag}.png`}
+      src={src}
       alt={name}
       title={name}
       className="ranked-civ-flag"
