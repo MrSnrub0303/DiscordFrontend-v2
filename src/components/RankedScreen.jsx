@@ -81,16 +81,22 @@ function InQueuePanel({ parties, loading, status, onSubmitGuard }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: guardCode.trim() }),
       });
-      const data = await r.json();
-      if (data.success) {
+      // Read raw text first so a non-JSON error page doesn't throw
+      const text = await r.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = null; }
+      if (!r.ok) {
+        setGuardMsg(`Server error ${r.status}${data?.error ? ': ' + data.error : ''}`);
+      } else if (data?.success) {
         setGuardMsg('✓ Code accepted — queue starting…');
         setGuardCode('');
         if (onSubmitGuard) onSubmitGuard();
       } else {
-        setGuardMsg(data.error || 'Failed — try again');
+        setGuardMsg(data?.error || 'Failed — try again');
       }
-    } catch {
-      setGuardMsg('Request failed');
+    } catch (e) {
+      setGuardMsg('Network error — check console');
+      console.error('[RankedScreen] steam-guard POST failed:', e);
     }
     setGuardBusy(false);
   };
@@ -214,11 +220,17 @@ export function RankedScreen({
   const fetchQueue = useCallback(async () => {
     try {
       const r = await fetch('/api/ranked/queue', { cache: 'no-store' });
-      if (!r.ok) return;
-      const data = await r.json();
+      const text = await r.text();
+      if (!r.ok) {
+        console.warn('[RankedScreen] /api/ranked/queue returned', r.status, text.slice(0, 200));
+        return;
+      }
+      const data = JSON.parse(text);
       setParties(data.parties ?? []);
       setQueueStatus(data.status ?? 'ok');
-    } catch {}
+    } catch (e) {
+      console.warn('[RankedScreen] fetchQueue error:', e.message);
+    }
     setLoadingQueue(false);
   }, []);
 
