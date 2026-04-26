@@ -155,7 +155,7 @@ function OngoingPanel({ matches, loading }) {
 
 // ─── In-queue panel ───────────────────────────────────────────────────────────
 
-function InQueuePanel({ parties, loading, status, onSubmitGuard, registeredUser, eloGain }) {
+function InQueuePanel({ parties, loading, status, onSubmitGuard, registeredUser, eloGain, userTeamTotal }) {
   const [guardCode,    setGuardCode]    = React.useState('');
   const [guardBusy,    setGuardBusy]    = React.useState(false);
   const [guardMsg,     setGuardMsg]     = React.useState('');
@@ -238,7 +238,7 @@ function InQueuePanel({ parties, loading, status, onSubmitGuard, registeredUser,
 
       <div className="ranked-panel-body">
         {parties.map(p => {
-          const myElo   = p.partySize === 1 ? registeredUser?.soloElo : registeredUser?.teamElo;
+          const myElo   = p.partySize === 1 ? registeredUser?.soloElo : userTeamTotal;
           const oppElo  = p.partySize === 1 ? p.players[0]?.elo : p.teamElo;
           const gain    = registeredUser ? eloGain(myElo, oppElo) : null;
           return (
@@ -328,11 +328,27 @@ export function RankedScreen({
     setRegisterBusy(false);
   };
 
-  // ELO gain formula: max(0, (winnerElo - loserElo) / 25 + 16)
+  // ELO gain formula: (L_elo − W_elo) / 25 + 16, clamped ≥ 0
+  // L = loser (opponent), W = winner (us)
   const eloGain = (myElo, oppElo) => {
     if (!myElo || !oppElo) return null;
-    return Math.max(0, Math.round((myElo - oppElo) / 25 + 16));
+    return Math.max(0, Math.round((oppElo - myElo) / 25 + 16));
   };
+
+  // For team games: find the registered player's party in queue and sum all teammates' team ELOs
+  const userTeamTotal = React.useMemo(() => {
+    if (!registeredUser?.teamElo) return null;
+    const myParty = parties.find(p =>
+      p.partySize > 1 && p.players.some(pl => pl.profileId === registeredUser.profileId)
+    );
+    if (!myParty) return registeredUser.teamElo;
+    // Sum team ELO of all party members (fall back to registeredUser.teamElo for themselves)
+    const total = myParty.players.reduce((sum, pl) => {
+      const elo = pl.profileId === registeredUser.profileId ? registeredUser.teamElo : (pl.elo ?? 0);
+      return sum + (elo || 0);
+    }, 0);
+    return total || registeredUser.teamElo;
+  }, [registeredUser, parties]);
 
   const pollRef = useRef(null);
 
@@ -406,6 +422,7 @@ export function RankedScreen({
             onSubmitGuard={() => { setQueueStatus('initializing'); setTimeout(fetchQueue, 2000); }}
             registeredUser={registeredUser}
             eloGain={eloGain}
+            userTeamTotal={userTeamTotal}
           />
         </div>
 
