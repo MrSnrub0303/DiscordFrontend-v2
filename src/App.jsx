@@ -324,6 +324,12 @@ export default function App() {
     (currentUser?.username || "").toLowerCase()
   );
 
+  // Authorized Discord usernames for the Ranked screen
+  const RANKED_AUTHORIZED_USERNAMES = ["joshua667746", "doppelsolna", "jaeger_007.", "andreaslubitz.", "grimescene"];
+  const isRankedAuthorized = RANKED_AUTHORIZED_USERNAMES.includes(
+    (currentUser?.username || "").toLowerCase()
+  );
+
   const currentPlayerId = currentUser?.id ?? null;
 
   const initialRoomId = useMemo(() => {
@@ -3391,6 +3397,7 @@ export default function App() {
           onRankedClick={() => { playClickSound(); setAppMode("RANKED"); }}
           onMonitorClick={() => setAppMode("MONITOR")}
           isMonitorAuthorized={isMonitorAuthorized}
+          isRankedAuthorized={isRankedAuthorized}
           onButtonHover={playHoverSound}
           onButtonClick={(handler) => {
             playClickSound();

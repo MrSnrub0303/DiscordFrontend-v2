@@ -21,7 +21,7 @@ const EVENT_ACTIVE = true;
 // Set to true when Co-Op mode is available
 const CO_OP_ACTIVE = false;
 
-// Set to true when Ranked mode is available
+// RANKED_ACTIVE controls whether the button exists — access is controlled per-user via isRankedAuthorized prop
 const RANKED_ACTIVE = true;
 
 const BTN_ASPECT = 467 / 820; // height / width ratio of button images
@@ -35,6 +35,7 @@ export function HomeScreen({
   onRankedClick,
   onMonitorClick,
   isMonitorAuthorized,
+  isRankedAuthorized,
   onButtonHover,
   onButtonClick,
   musicEnabled,
@@ -192,20 +193,20 @@ export function HomeScreen({
           <div className="home-bottom-buttons">
             {/* Ranked button */}
             <button
-              className={`home-monitor-btn${!RANKED_ACTIVE ? ' home-monitor-btn--locked' : ''}`}
-              onClick={RANKED_ACTIVE ? (onButtonClick ? () => onButtonClick(onRankedClick) : onRankedClick) : undefined}
-              onMouseEnter={RANKED_ACTIVE ? onButtonHover : undefined}
-              onMouseDown={() => RANKED_ACTIVE && setRankedPressed(true)}
+              className={`home-monitor-btn${!isRankedAuthorized ? ' home-monitor-btn--locked' : ''}`}
+              onClick={isRankedAuthorized ? (onButtonClick ? () => onButtonClick(onRankedClick) : onRankedClick) : undefined}
+              onMouseEnter={isRankedAuthorized ? onButtonHover : undefined}
+              onMouseDown={() => isRankedAuthorized && setRankedPressed(true)}
               onMouseUp={() => setRankedPressed(false)}
               onMouseLeave={() => setRankedPressed(false)}
-              disabled={!RANKED_ACTIVE}
+              disabled={!isRankedAuthorized}
               style={{
                 backgroundImage: `url(${rankedPressed ? buttonRedClicked : buttonRedAvailable})`,
               }}
-              aria-label={RANKED_ACTIVE ? 'Ranked' : 'Ranked (coming soon)'}
-              title={RANKED_ACTIVE ? 'Ranked' : 'Ranked — Coming Soon'}
+              aria-label={isRankedAuthorized ? 'Ranked' : 'Ranked (restricted)'}
+              title={isRankedAuthorized ? 'Ranked' : 'Ranked — Access Restricted'}
             >
-              {!RANKED_ACTIVE && <img src={lockIcon} alt="" className="monitor-lock-icon" />}
+              {!isRankedAuthorized && <img src={lockIcon} alt="" className="monitor-lock-icon" />}
               Ranked
             </button>
 
