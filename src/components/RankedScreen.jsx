@@ -156,6 +156,12 @@ function OngoingPanel({ matches, loading }) {
 // ─── In-queue panel ───────────────────────────────────────────────────────────
 
 function InQueuePanel({ parties, loading, status, onSubmitGuard, registeredUser, eloGain, userTeamTotal }) {
+  const [, setTick] = React.useState(0);
+  React.useEffect(() => {
+    const t = setInterval(() => setTick(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
   const [guardCode,    setGuardCode]    = React.useState('');
   const [guardBusy,    setGuardBusy]    = React.useState(false);
   const [guardMsg,     setGuardMsg]     = React.useState('');
@@ -246,6 +252,7 @@ function InQueuePanel({ parties, loading, status, onSubmitGuard, registeredUser,
             <div className="ranked-queue-meta">
               <span className="ranked-queue-type">{queueLabel(p.partySize)}</span>
               <span>{regionLabel(p.region)}</span>
+              {p.firstSeen && <><span>·</span><span>{elapsed(new Date(p.firstSeen))}</span></>}
               {gain !== null && (
                 <span style={{ marginLeft: 'auto', fontFamily: '"Trajan Pro Bold", serif', fontSize: '0.68rem', color: gain > 16 ? '#f0a8a8' : gain < 16 ? '#a8d8f0' : '#ffd700', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 3, padding: '1px 5px' }}>
                   +{gain} ELO
