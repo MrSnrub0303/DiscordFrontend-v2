@@ -1657,7 +1657,11 @@ export default function App() {
 
     // Initialize background music
     try {
-      const files = [someOfAKindFile, revolootinFile, kothFile];
+      // Shuffle track order on each launch so the playlist doesn't always start the same way
+      const files = [someOfAKindFile, revolootinFile, kothFile]
+        .map(f => ({ f, sort: Math.random() }))
+        .sort((a, b) => a.sort - b.sort)
+        .map(({ f }) => f);
       const created = files.map((f, i) => {
         const a = new Audio(f);
         a.preload = "auto";
