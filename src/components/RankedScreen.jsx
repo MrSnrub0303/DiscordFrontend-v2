@@ -12,8 +12,9 @@ import nicknameBg        from '../assets/uiskirmishnickname_textentry.png';
 import flagRussian       from '../assets/flag_hc_russian.png';
 import flagSioux         from '../assets/flag_hc_sioux.png';
 import flagSpanish       from '../assets/flag_hc_spanish.png';
+import flagSwedish       from '../assets/flag_hc_swedish.png';
 
-const BUNDLED_FLAGS = { russian: flagRussian, sioux: flagSioux, spanish: flagSpanish };
+const BUNDLED_FLAGS = { russian: flagRussian, sioux: flagSioux, spanish: flagSpanish, swedish: flagSwedish };
 import btnNormal         from '../assets/ButtonRedAvailable.png';
 
 const POLL_MS        = 30_000;
@@ -55,7 +56,7 @@ const CIV_MAP = {
   13: { name: 'Chinese',       flag: 'chinese' },
   14: { name: 'Indian',        flag: 'indian' },
   15: { name: 'Inca',          flag: 'inca' },
-  16: { name: 'Swedes',        flag: null },
+  16: { name: 'Swedes',        flag: 'swedish' },
   17: { name: 'American',      flag: 'american' },
   18: { name: 'Ethiopian',     flag: 'ethiopian' },
   19: { name: 'Hausa',         flag: 'hausa' },
