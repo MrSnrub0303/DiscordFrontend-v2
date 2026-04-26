@@ -278,7 +278,7 @@ function InQueuePanel({ parties, loading, status, onSubmitGuard, registeredUser,
               ))}
             </div>
             {p.partySize > 1 && p.teamElo != null && (
-              <div className="ranked-team-elo-badge">Team ELO: {p.teamElo}</div>
+              <div className="ranked-team-elo-badge">Avg ELO: {p.teamElo}</div>
             )}
           </div>
           );
@@ -346,19 +346,20 @@ export function RankedScreen({
     return Math.max(0, Math.round((oppElo - myElo) / 25 + 16));
   };
 
-  // For team games: find the registered player's party in queue and sum all teammates' team ELOs
+  // For team games: average team ELO — actual queue party takes priority over simulated team
   const userTeamTotal = React.useMemo(() => {
     if (!registeredUser?.teamElo) return null;
     const myParty = parties.find(p =>
       p.partySize > 1 && p.players.some(pl => pl.profileId === registeredUser.profileId)
     );
-    if (!myParty) return registeredUser.teamElo;
-    // Sum team ELO of all party members (fall back to registeredUser.teamElo for themselves)
-    const total = myParty.players.reduce((sum, pl) => {
-      const elo = pl.profileId === registeredUser.profileId ? registeredUser.teamElo : (pl.elo ?? 0);
-      return sum + (elo || 0);
-    }, 0);
-    return total || registeredUser.teamElo;
+    if (myParty) {
+      const elos = myParty.players.map(pl =>
+        pl.profileId === registeredUser.profileId ? (registeredUser.teamElo ?? 0) : (pl.elo ?? 0)
+      ).filter(e => e > 0);
+      return elos.length ? Math.round(elos.reduce((a, b) => a + b, 0) / elos.length) : registeredUser.teamElo;
+    }
+    // No actual party found — use registered user's individual team ELO
+    return registeredUser.teamElo;
   }, [registeredUser, parties]);
 
   const pollRef = useRef(null);
