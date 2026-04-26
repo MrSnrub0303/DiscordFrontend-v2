@@ -251,18 +251,29 @@
 }
 
 .ranked-queue-meta {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   font-family: "Trajan Pro", serif;
   font-size: 0.7rem;
   color: rgba(255, 215, 0, 0.6);
+}
+
+.ranked-queue-meta-left {
+  text-align: left;
 }
 
 .ranked-queue-type {
   font-family: "Trajan Pro Bold", serif;
   font-size: 0.72rem;
   color: rgba(200, 164, 32, 0.9);
+  text-align: center;
+}
+
+.ranked-queue-meta-right {
+  text-align: right;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .ranked-queue-players {

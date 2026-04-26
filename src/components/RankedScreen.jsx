@@ -253,14 +253,20 @@ function InQueuePanel({ parties, loading, status, onSubmitGuard, registeredUser,
           return (
           <div key={p.lobbyId} className="ranked-queue-row">
             <div className="ranked-queue-meta">
+              {/* Left: region · time */}
+              <span className="ranked-queue-meta-left">
+                {regionLabel(p.region)}{p.firstSeen ? ` · ${elapsed(new Date(p.firstSeen))}` : ''}
+              </span>
+              {/* Centre: queue type (like "vs" in On-Going) */}
               <span className="ranked-queue-type">{queueLabel(p.partySize)}</span>
-              <span>{regionLabel(p.region)}</span>
-              {p.firstSeen && <><span>·</span><span>{elapsed(new Date(p.firstSeen))}</span></>}
-              {gain !== null && (
-                <span style={{ marginLeft: 'auto', fontFamily: '"Trajan Pro Bold", serif', fontSize: '0.68rem', color: gain > 16 ? '#f0a8a8' : gain < 16 ? '#a8d8f0' : '#ffd700', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 3, padding: '1px 5px' }}>
-                  +{gain} ELO
-                </span>
-              )}
+              {/* Right: ELO gain badge */}
+              <span className="ranked-queue-meta-right">
+                {gain !== null && (
+                  <span style={{ fontFamily: '"Trajan Pro Bold", serif', fontSize: '0.68rem', color: gain > 16 ? '#f0a8a8' : gain < 16 ? '#a8d8f0' : '#ffd700', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 3, padding: '1px 5px' }}>
+                    +{gain} ELO
+                  </span>
+                )}
+              </span>
             </div>
             <div className="ranked-queue-players">
               {p.players.map((pl, i) => (
