@@ -48,21 +48,22 @@ const CIV_MAP = {
   6:  { name: 'Russian',       flag: 'russian' },
   7:  { name: 'German',        flag: 'german' },
   8:  { name: 'Ottoman',       flag: 'ottoman' },
-  9:  { name: 'Lakota',        flag: 'sioux' },
-  10: { name: 'Haudenosaunee', flag: 'iroquois' },
+  9:  { name: 'Haudenosaunee', flag: 'iroquois' },  // swapped
+  10: { name: 'Lakota',        flag: 'sioux' },      // swapped
   11: { name: 'Aztec',         flag: 'aztec' },
   12: { name: 'Japanese',      flag: 'japanese' },
   13: { name: 'Chinese',       flag: 'chinese' },
   14: { name: 'Indian',        flag: 'indian' },
   15: { name: 'Inca',          flag: 'inca' },
-  16: { name: 'American',      flag: 'american' },
-  17: { name: 'Mexican',       flag: 'mexican' },
+  16: { name: 'Swedes',        flag: null },
+  17: { name: 'American',      flag: 'american' },
   18: { name: 'Ethiopian',     flag: 'ethiopian' },
   19: { name: 'Hausa',         flag: 'hausa' },
-  20: { name: 'Italian',       flag: 'italian' },
-  21: { name: 'Maltese',       flag: 'maltese' },
-  22: { name: 'Danish',        flag: 'danish' },
-  23: { name: 'Polish',        flag: 'polish' },
+  20: { name: 'Mexican',       flag: 'mexican' },
+  21: { name: 'Italian',       flag: 'italian' },
+  22: { name: 'Maltese',       flag: 'maltese' },
+  23: { name: 'Danish',        flag: 'danish' },
+  24: { name: 'Polish',        flag: 'polish' },
 };
 
 function civInfo(id) {
