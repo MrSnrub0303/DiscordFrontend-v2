@@ -10,7 +10,8 @@ import eventsPrizepool from '../assets/EventsPrizepool.png';
 import backgroundSpinner from '../assets/background-spinner.png';
 import registerPanel from '../assets/RegisterHerePanel.png';
 import nicknameBg from '../assets/uiskirmishnickname_textentry.png';
-import btnNormal from '../assets/ButtonRedAvailable.png';
+import btnNormal   from '../assets/ButtonRedAvailable.png';
+import btnClicked  from '../assets/ButtonRedClicked.png';
 
 // GGplz Challenge – Spring Rabbit Hunt (Apr 14 2026 → May 1 2026 10:00 PM PST)
 const TOURNAMENT_END = new Date(1777701600 * 1000); // 2026-05-02 06:00 UTC
@@ -52,8 +53,11 @@ export function EventsScreen({
   onVolumeChange,
   initialPlayers = [],
   isMobile,
+  playClickSound,
+  playHoverSound,
 }) {
   const [players, setPlayers] = useState(initialPlayers);
+  const [registerBtnPressed, setRegisterBtnPressed] = useState(false);
   const [username, setUsername] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerError, setRegisterError] = useState('');
@@ -248,9 +252,13 @@ export function EventsScreen({
                 />
                 <button
                   className="events-register-button"
-                  onClick={handleRegister}
+                  onClick={() => { playClickSound?.(); handleRegister(); }}
+                  onMouseEnter={() => playHoverSound?.()}
+                  onMouseDown={() => setRegisterBtnPressed(true)}
+                  onMouseUp={() => setRegisterBtnPressed(false)}
+                  onMouseLeave={() => setRegisterBtnPressed(false)}
                   disabled={isRegistering || !username.trim()}
-                  style={{ backgroundImage: `url(${btnNormal})` }}
+                  style={{ backgroundImage: `url(${registerBtnPressed ? btnClicked : btnNormal})`, padding: '0 16px 5px 16px' }}
                 >
                   {isRegistering ? 'Registering...' : 'Register'}
                 </button>

@@ -3475,6 +3475,8 @@ export default function App() {
           onVolumeChange={handleVolumeChange}
           initialPlayers={eventsInitialPlayers}
           isMobile={isMobile}
+          playClickSound={playClickSound}
+          playHoverSound={playHoverSound}
         />
         {renderScreenTransitionOverlay()}
       </>

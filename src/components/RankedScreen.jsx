@@ -16,6 +16,7 @@ import flagSwedish       from '../assets/flag_hc_swedish.png';
 
 const BUNDLED_FLAGS = { russian: flagRussian, sioux: flagSioux, spanish: flagSpanish, swedish: flagSwedish };
 import btnNormal         from '../assets/ButtonRedAvailable.png';
+import btnClicked        from '../assets/ButtonRedClicked.png';
 
 const POLL_MS        = 30_000;
 const POLL_MS_FAST   =  3_000;
@@ -316,6 +317,7 @@ export function RankedScreen({
   const [registeredUser, setRegisteredUser] = useState(null);
   const [registerStatus, setRegisterStatus] = useState('');
   const [registerBusy,   setRegisterBusy]   = useState(false);
+  const [regBtnPressed,  setRegBtnPressed]  = useState(false);
 
   const handleRegister = async () => {
     if (!registerName.trim() || registerBusy) return;
@@ -452,9 +454,12 @@ export function RankedScreen({
             <button
               className="events-register-button"
               onClick={handleRegister}
-              onMouseEnter={() => { if (playHoverSound) playHoverSound(); }}
-              style={{ backgroundImage: `url(${btnNormal})` }}
+              onMouseEnter={() => playHoverSound?.()}
+              onMouseDown={() => setRegBtnPressed(true)}
+              onMouseUp={() => setRegBtnPressed(false)}
+              onMouseLeave={() => setRegBtnPressed(false)}
               disabled={registerBusy}
+              style={{ backgroundImage: `url(${regBtnPressed ? btnClicked : btnNormal})`, padding: '0 16px 5px 16px' }}
             >
               {registerBusy ? '…' : 'Register'}
             </button>
