@@ -304,9 +304,16 @@ export function RankedScreen({
   const [loadingMatch, setLoadingMatch] = useState(true);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [registerName,   setRegisterName]   = useState('');
-  const [registeredUser, setRegisteredUser] = useState(null);
+  const [registeredUser, setRegisteredUser] = useState(null);   // primary player
+  const [teammates,      setTeammates]      = useState([]);     // simulated teammates (max 3)
   const [registerStatus, setRegisterStatus] = useState('');
   const [registerBusy,   setRegisterBusy]   = useState(false);
+  const [showAddInput,   setShowAddInput]   = useState(false);
+  const [addName,        setAddName]        = useState('');
+  const [addBusy,        setAddBusy]        = useState(false);
+  const [addStatus,      setAddStatus]      = useState('');
+
+  const allRegistered = [registeredUser, ...teammates].filter(Boolean); // up to 4
 
   const handleRegister = async () => {
     if (!registerName.trim() || registerBusy) return;
@@ -318,6 +325,7 @@ export function RankedScreen({
       const data = await r.json();
       if (data.found) {
         setRegisteredUser(data);
+        setTeammates([]);
         setRegisterStatus(`✓ ${data.alias} — Solo: ${data.soloElo ?? 'N/A'}  Team: ${data.teamElo ?? 'N/A'}`);
       } else {
         setRegisterStatus('Player not found — check spelling');
@@ -328,27 +336,66 @@ export function RankedScreen({
     setRegisterBusy(false);
   };
 
+  const handleAddTeammate = async () => {
+    if (!addName.trim() || addBusy || allRegistered.length >= 4) return;
+    if (playClickSound) playClickSound();
+    setAddBusy(true);
+    setAddStatus('Looking up…');
+    try {
+      const r = await fetch(`/api/ranked/find-player?alias=${encodeURIComponent(addName.trim())}`);
+      const data = await r.json();
+      if (data.found) {
+        if (allRegistered.some(p => p.profileId === data.profileId)) {
+          setAddStatus('Already added');
+        } else {
+          setTeammates(prev => [...prev, data]);
+          setAddName('');
+          setShowAddInput(allRegistered.length + 1 < 4); // keep open if still room
+          setAddStatus('');
+        }
+      } else {
+        setAddStatus('Player not found');
+      }
+    } catch {
+      setAddStatus('Lookup failed');
+    }
+    setAddBusy(false);
+  };
+
+  const removePlayer = (profileId) => {
+    if (registeredUser?.profileId === profileId) {
+      setRegisteredUser(null);
+      setTeammates([]);
+      setRegisterStatus('');
+    } else {
+      setTeammates(prev => prev.filter(p => p.profileId !== profileId));
+    }
+    setShowAddInput(false);
+    setAddStatus('');
+  };
+
   // ELO gain formula: (L_elo − W_elo) / 25 + 16, clamped ≥ 0
-  // L = loser (opponent), W = winner (us)
   const eloGain = (myElo, oppElo) => {
     if (!myElo || !oppElo) return null;
     return Math.max(0, Math.round((oppElo - myElo) / 25 + 16));
   };
 
-  // For team games: find the registered player's party in queue and sum all teammates' team ELOs
+  // Team ELO: queue party takes priority over simulated team
   const userTeamTotal = React.useMemo(() => {
-    if (!registeredUser?.teamElo) return null;
+    if (!registeredUser) return null;
+    // Check if registered user is actually in queue with a team
     const myParty = parties.find(p =>
       p.partySize > 1 && p.players.some(pl => pl.profileId === registeredUser.profileId)
     );
-    if (!myParty) return registeredUser.teamElo;
-    // Sum team ELO of all party members (fall back to registeredUser.teamElo for themselves)
-    const total = myParty.players.reduce((sum, pl) => {
-      const elo = pl.profileId === registeredUser.profileId ? registeredUser.teamElo : (pl.elo ?? 0);
-      return sum + (elo || 0);
-    }, 0);
-    return total || registeredUser.teamElo;
-  }, [registeredUser, parties]);
+    if (myParty) {
+      return myParty.players.reduce((sum, pl) => {
+        const elo = pl.profileId === registeredUser.profileId ? (registeredUser.teamElo ?? 0) : (pl.elo ?? 0);
+        return sum + elo;
+      }, 0) || registeredUser.teamElo;
+    }
+    // Otherwise use simulated team
+    return allRegistered.reduce((sum, p) => sum + (p.teamElo || 0), 0) || registeredUser.teamElo;
+  }, [registeredUser, teammates, parties]); // eslint-disable-line
 
   const pollRef = useRef(null);
 
@@ -430,6 +477,8 @@ export function RankedScreen({
         <div className="ranked-register-panel">
           <div className="ranked-panel-marble" style={{ backgroundImage: `url(${marbleBg})` }} />
           <img src={registerHereImg} alt="Register Here" className="ranked-register-title" />
+
+          {/* Primary register row */}
           <div className="ranked-register-row">
             <input
               className="events-register-input"
@@ -449,10 +498,69 @@ export function RankedScreen({
             >
               {registerBusy ? '…' : 'Register'}
             </button>
+            {/* + button: appears after first registration, up to 4 players total */}
+            {registeredUser && allRegistered.length < 4 && (
+              <button
+                onClick={() => { setShowAddInput(v => !v); setAddStatus(''); setAddName(''); }}
+                onMouseEnter={() => { if (playHoverSound) playHoverSound(); }}
+                title="Add teammate to simulate team ELO"
+                style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid rgba(200,164,32,0.7)', background: 'rgba(200,164,32,0.15)', color: '#ffd700', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
+              >
+                +
+              </button>
+            )}
           </div>
+
+          {/* Registered players chips */}
+          {allRegistered.length > 0 && (
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 6 }}>
+              {allRegistered.map((p, i) => (
+                <span key={p.profileId} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', border: '1px solid rgba(200,164,32,0.4)', borderRadius: 12, background: 'rgba(0,0,0,0.4)', fontFamily: '"Trajan Pro", serif', fontSize: '0.72rem', color: i === 0 ? '#ffd700' : '#e8d8b0' }}>
+                  {p.alias}{p.teamElo ? ` (${p.teamElo})` : ''}
+                  <button onClick={() => removePlayer(p.profileId)} style={{ background: 'none', border: 'none', color: 'rgba(255,100,100,0.8)', cursor: 'pointer', fontSize: '0.8rem', padding: 0, lineHeight: 1 }}>×</button>
+                </span>
+              ))}
+              {allRegistered.length > 1 && (
+                <span style={{ padding: '2px 8px', border: '1px solid rgba(200,164,32,0.25)', borderRadius: 12, background: 'rgba(0,0,0,0.3)', fontFamily: '"Trajan Pro Bold", serif', fontSize: '0.68rem', color: 'rgba(255,215,0,0.7)' }}>
+                  Team: {allRegistered.reduce((s, p) => s + (p.teamElo || 0), 0)}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Add teammate input */}
+          {showAddInput && allRegistered.length < 4 && (
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
+              <input
+                className="events-register-input"
+                placeholder="Teammate's in-game name…"
+                value={addName}
+                onChange={e => { setAddName(e.target.value); setAddStatus(''); }}
+                onKeyDown={e => e.key === 'Enter' && handleAddTeammate()}
+                style={{ backgroundImage: `url(${nicknameBg})` }}
+                disabled={addBusy}
+                autoFocus
+              />
+              <button
+                className="events-register-button"
+                onClick={handleAddTeammate}
+                style={{ backgroundImage: `url(${btnNormal})` }}
+                disabled={addBusy || !addName.trim()}
+              >
+                {addBusy ? '…' : 'Add'}
+              </button>
+            </div>
+          )}
+
+          {/* Status messages */}
           {registerStatus && (
             <p style={{ position: 'relative', zIndex: 1, margin: '4px 0 0', fontFamily: '"Trajan Pro", serif', fontSize: '0.75rem', color: registeredUser ? '#a8f0a8' : '#ffb3b3', textAlign: 'center' }}>
               {registerStatus}
+            </p>
+          )}
+          {addStatus && (
+            <p style={{ position: 'relative', zIndex: 1, margin: '2px 0 0', fontFamily: '"Trajan Pro", serif', fontSize: '0.72rem', color: addStatus.startsWith('✓') ? '#a8f0a8' : '#ffb3b3', textAlign: 'center' }}>
+              {addStatus}
             </p>
           )}
         </div>
