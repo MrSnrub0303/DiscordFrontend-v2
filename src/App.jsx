@@ -1828,8 +1828,12 @@ export default function App() {
     const tracks = bg.current?.tracks;
     if (!tracks) return;
     const current = tracks[currentIndexRef.current];
-    if (current && !current.paused) {
-      current.volume = Math.max(0, Math.min(1, NORMAL_VOLUME * newVol));
+    if (!current) return;
+    current.volume = Math.max(0, Math.min(1, NORMAL_VOLUME * newVol));
+    // Moving the slider above 0 while muted should unmute and resume playback
+    if (newVol > 0 && !musicEnabled) {
+      setMusicEnabled(true);
+      current.play().catch(() => {});
     }
   };
 
