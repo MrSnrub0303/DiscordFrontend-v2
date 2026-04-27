@@ -77,8 +77,6 @@ const MAX_TIME = 20;
 const JOIN_COUNTDOWN_SECONDS = 3;
 
 const NORMAL_VOLUME = 0.15;
-const FADED_VOLUME = 0.02;
-const FADE_DURATION = 800;
 
 const MAX_POINTS = 150;
 
@@ -1436,32 +1434,6 @@ export default function App() {
 
   const [scoreHighlight, setScoreHighlight] = useState({});
 
-  const fadeTo = (audio, targetVolume, duration = FADE_DURATION) => {
-    if (!audio) return;
-    if (fadeTimerRef.current) {
-      clearInterval(fadeTimerRef.current);
-      fadeTimerRef.current = null;
-    }
-
-    const intervalMs = 50;
-    const steps = Math.max(1, Math.floor(duration / intervalMs));
-    const start = Number(audio.volume) || 0;
-    const delta = targetVolume - start;
-    let step = 0;
-
-    fadeTimerRef.current = setInterval(() => {
-      step++;
-      const fraction = step / steps;
-      const newVol = Math.max(0, Math.min(1, start + delta * fraction));
-      audio.volume = newVol;
-      if (step >= steps) {
-        clearInterval(fadeTimerRef.current);
-        fadeTimerRef.current = null;
-        audio.volume = Math.max(0, Math.min(1, targetVolume));
-      }
-    }, intervalMs);
-  };
-
   const pauseAllTracks = () => {
     bg.current.tracks.forEach((t) => {
       try {
@@ -1488,7 +1460,7 @@ export default function App() {
     const current = tracks[index];
     if (!current) return;
 
-    current.volume = showResult ? FADED_VOLUME : NORMAL_VOLUME * musicVolumeRef.current;
+    current.volume = NORMAL_VOLUME * musicVolumeRef.current;
 
     const p = current.play();
     if (p && typeof p.catch === "function") {
@@ -1826,15 +1798,8 @@ export default function App() {
     const current = tracks[currentIndexRef.current] || tracks[0];
     if (!current) return;
 
-    if (showResult) {
-      fadeTo(current, FADED_VOLUME, FADE_DURATION);
-    } else {
-      current
-        .play()
-        .catch(() => { })
-        .finally(() => {
-          fadeTo(current, NORMAL_VOLUME * musicVolumeRef.current, FADE_DURATION);
-        });
+    if (!showResult) {
+      current.play().catch(() => { });
     }
   }, [showResult, musicEnabled]);
 
