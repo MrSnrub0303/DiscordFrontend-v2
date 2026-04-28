@@ -113,7 +113,7 @@ const eloBadgeStyle = gain => ({
   padding: '1px 5px',
 });
 
-function OngoingPanel({ matches, loading, registeredUser, eloGain }) {
+function OngoingPanel({ matches, loading, registeredUser, eloGain, userTeamTotal }) {
   // Tick every second so elapsed times update live
   const [, setTick] = React.useState(0);
   React.useEffect(() => {
@@ -132,9 +132,19 @@ function OngoingPanel({ matches, loading, registeredUser, eloGain }) {
           const teamA = m.players.filter(p => p.team === 0);
           const teamB = m.players.filter(p => p.team === 1);
           const partySize = Math.max(teamA.length, teamB.length);
-          const myElo = registeredUser
-            ? (partySize === 1 ? registeredUser.soloElo : registeredUser.teamElo)
-            : null;
+
+          // If the registered user is in this match, use their team's avg ELO as the
+          // reference (mirrors how the in-queue panel uses userTeamTotal / party avg).
+          // If they're not in the match, fall back to their individual ELO.
+          let myElo = null;
+          if (registeredUser) {
+            const inTeamA = teamA.some(p => p.profileId === registeredUser.profileId);
+            const inTeamB = teamB.some(p => p.profileId === registeredUser.profileId);
+            if (inTeamA) myElo = avgTeamElo(teamA);
+            else if (inTeamB) myElo = avgTeamElo(teamB);
+            else myElo = partySize === 1 ? registeredUser.soloElo : (userTeamTotal ?? registeredUser.teamElo);
+          }
+
           const gainVsA = myElo != null ? eloGain(myElo, avgTeamElo(teamA)) : null;
           const gainVsB = myElo != null ? eloGain(myElo, avgTeamElo(teamB)) : null;
           return (
@@ -458,7 +468,7 @@ export function RankedScreen({
       {/* Main panels */}
       <div className="ranked-content">
         <div className="ranked-panels-row">
-          <OngoingPanel matches={matches} loading={loadingMatch} registeredUser={registeredUser} eloGain={eloGain} />
+          <OngoingPanel matches={matches} loading={loadingMatch} registeredUser={registeredUser} eloGain={eloGain} userTeamTotal={userTeamTotal} />
           <InQueuePanel
             parties={parties}
             loading={loadingQueue}
