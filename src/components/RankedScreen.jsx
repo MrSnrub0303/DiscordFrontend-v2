@@ -99,7 +99,21 @@ function elapsed(startDate) {
 
 // ─── Ongoing matches panel ────────────────────────────────────────────────────
 
-function OngoingPanel({ matches, loading }) {
+const avgTeamElo = players => {
+  const elos = players.map(p => p.elo).filter(e => e != null);
+  return elos.length ? Math.round(elos.reduce((a, b) => a + b, 0) / elos.length) : null;
+};
+
+const eloBadgeStyle = gain => ({
+  fontFamily: '"Trajan Pro Bold", serif',
+  fontSize: '0.68rem',
+  color: gain > 16 ? '#f0a8a8' : gain < 16 ? '#a8d8f0' : '#ffd700',
+  border: '1px solid rgba(255,215,0,0.3)',
+  borderRadius: 3,
+  padding: '1px 5px',
+});
+
+function OngoingPanel({ matches, loading, registeredUser, eloGain }) {
   // Tick every second so elapsed times update live
   const [, setTick] = React.useState(0);
   React.useEffect(() => {
@@ -117,6 +131,12 @@ function OngoingPanel({ matches, loading }) {
         {matches.map(m => {
           const teamA = m.players.filter(p => p.team === 0);
           const teamB = m.players.filter(p => p.team === 1);
+          const partySize = Math.max(teamA.length, teamB.length);
+          const myElo = registeredUser
+            ? (partySize === 1 ? registeredUser.soloElo : registeredUser.teamElo)
+            : null;
+          const gainVsA = myElo != null ? eloGain(myElo, avgTeamElo(teamA)) : null;
+          const gainVsB = myElo != null ? eloGain(myElo, avgTeamElo(teamB)) : null;
           return (
             <div key={m.matchId} className="ranked-match-row">
               <div className="ranked-match-meta">
@@ -124,6 +144,12 @@ function OngoingPanel({ matches, loading }) {
                 <span>·</span>
                 <span>{elapsed(m.startDate)}</span>
                 {m.spectators > 0 && <><span>·</span><span>👁 {m.spectators}</span></>}
+                {(gainVsA != null || gainVsB != null) && (
+                  <span style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
+                    {gainVsA != null && <span style={eloBadgeStyle(gainVsA)}>+{gainVsA} ELO</span>}
+                    {gainVsB != null && <span style={eloBadgeStyle(gainVsB)}>+{gainVsB} ELO</span>}
+                  </span>
+                )}
               </div>
               <div className="ranked-match-teams">
                 {/* Team A — left */}
@@ -432,7 +458,7 @@ export function RankedScreen({
       {/* Main panels */}
       <div className="ranked-content">
         <div className="ranked-panels-row">
-          <OngoingPanel matches={matches} loading={loadingMatch} />
+          <OngoingPanel matches={matches} loading={loadingMatch} registeredUser={registeredUser} eloGain={eloGain} />
           <InQueuePanel
             parties={parties}
             loading={loadingQueue}
