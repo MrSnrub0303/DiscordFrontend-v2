@@ -169,15 +169,15 @@ export function EventsScreen({
         <div className="events-topleft-widgets">
           <div className="events-widget-asset">
             <img src={eventsDuration} alt="" className="events-widget-img" draggable={false} />
-            {countdown && (
-              <span className="events-widget-text">
-                {String(countdown.days).padStart(2, '0')}d : {String(countdown.hours).padStart(2, '0')}h : {String(countdown.minutes).padStart(2, '0')}m : {String(countdown.seconds).padStart(2, '0')}s
-              </span>
-            )}
+            <span className="events-widget-text">
+              {countdown
+                ? `${String(countdown.days).padStart(2, '0')}d : ${String(countdown.hours).padStart(2, '0')}h : ${String(countdown.minutes).padStart(2, '0')}m : ${String(countdown.seconds).padStart(2, '0')}s`
+                : 'Completed!'}
+            </span>
           </div>
           <div className="events-widget-asset">
             <img src={eventsPrizepool} alt="" className="events-widget-img" draggable={false} />
-            <span className="events-widget-text">$250</span>
+            <span className="events-widget-text">$250 Dollars</span>
           </div>
         </div>
       )}
