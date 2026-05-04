@@ -12,6 +12,7 @@ import { SpinnerScreen } from "./components/SpinnerScreen";
 import { EventsScreen } from "./components/EventsScreen";
 import { MonitorScreen } from "./components/MonitorScreen";
 import { RankedScreen } from "./components/RankedScreen";
+import { EmberCanvas } from "./components/EmberCanvas";
 import { VolumeControl } from "./components/VolumeControl";
 import { BackButton } from "./components/BackButton";
 import questions from "./questions.json";
@@ -3770,8 +3771,12 @@ export default function App() {
         alignItems: "stretch",
         boxSizing: "border-box",
         overflow: "hidden",
+        position: "relative",
       }}
     >
+      {/* Ember particles */}
+      <EmberCanvas />
+
       {renderScreenTransitionOverlay()}
       { }
       <aside
