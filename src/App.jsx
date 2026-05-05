@@ -574,15 +574,22 @@ export default function App() {
   const [socketStateVersion, setSocketStateVersion] = useState(0);
 
   useEffect(() => {
-    // Hidden video — only used for frame decoding, never in the DOM
-    const video = document.createElement("video");
-    video.src = inkTransitionVideo;
-    video.preload = "auto";
-    video.muted = true;
-    video.playsInline = true;
-    inkVideoRef.current = { video };
+    function makeVideo(startSecs) {
+      const v = document.createElement("video");
+      v.src = inkTransitionVideo;
+      v.preload = "auto";
+      v.muted = true;
+      v.playsInline = true;
+      // Pre-position each video at its segment start so no seeking is needed at transition time
+      if (startSecs > 0) v.currentTime = startSecs;
+      return v;
+    }
+    const videoLeave  = makeVideo(0); // 0–6s: leaving home → another screen
+    const videoReturn = makeVideo(6); // 6–12s: returning to home
+    inkVideoRef.current = { videoLeave, videoReturn };
     return () => {
-      video.pause();
+      videoLeave.pause();
+      videoReturn.pause();
       inkVideoRef.current = null;
     };
   }, []);
@@ -2932,16 +2939,15 @@ export default function App() {
       return;
     }
 
-    const { video } = refs;
-    const startTime = direction === "leave" ? 0 : 6;
+    // Pick the pre-positioned video for this direction — no seeking needed at transition time
+    const video = direction === "leave" ? refs.videoLeave : refs.videoReturn;
+    const resetTime = direction === "leave" ? 0 : 6;
 
-    // Show the leaving screen overlay (renders the old screen on top)
-    // then immediately switch appMode — new screen renders underneath
+    // Show leaving screen overlay and switch appMode simultaneously
     setLeavingMode(appModeRef.current);
     setAppMode(targetMode);
     if (action) action().catch((e) => console.warn("Ink transition action failed:", e));
 
-    // Small canvas — just for decoding video frames into JPEG data URLs each frame
     const maskCanvas = document.createElement("canvas");
     maskCanvas.width = 320;
     maskCanvas.height = 180;
@@ -2951,7 +2957,6 @@ export default function App() {
 
     function drawFrame() {
       maskCtx.drawImage(video, 0, 0, 320, 180);
-      // Use luminance mask: white video = leaving screen visible, black ink = hidden (new screen shows)
       const dataUrl = maskCanvas.toDataURL("image/jpeg", 0.6);
       const el = leavingOverlayRef.current;
       if (el) {
@@ -2964,29 +2969,22 @@ export default function App() {
     function cleanup() {
       cancelAnimationFrame(animFrameId);
       video.pause();
+      // Reset to segment start for next use (async seek, completes before next transition)
+      video.currentTime = resetTime;
       setLeavingMode(null);
       inkTransitioningRef.current = false;
     }
 
-    const hideTimer = setTimeout(cleanup, 1500);
-
-    function beginPlay() {
-      video.playbackRate = 4;
-      video.play().then(() => {
-        drawFrame();
-      }).catch((err) => {
-        console.warn("Ink video play failed:", err);
-        clearTimeout(hideTimer);
-        cleanup();
-      });
-    }
-
-    const onSeeked = () => {
-      video.removeEventListener("seeked", onSeeked);
-      beginPlay();
-    };
-    video.addEventListener("seeked", onSeeked);
-    video.currentTime = startTime;
+    // playbackRate set here — video is already at the right position, no seek needed
+    video.playbackRate = 4;
+    video.play().then(() => {
+      drawFrame();
+      // hideTimer starts only after play begins — guarantees full 1.5s of animation
+      setTimeout(cleanup, 1500);
+    }).catch((err) => {
+      console.warn("Ink video play failed:", err);
+      cleanup();
+    });
   }, []);
 
   const renderLeavingScreen = (mode) => {
