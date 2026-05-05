@@ -2957,6 +2957,18 @@ export default function App() {
 
     function drawFrame() {
       maskCtx.drawImage(video, 0, 0, 320, 180);
+      // Segment 2 (return) goes black→white (ink receding). Invert so the leaving
+      // screen starts visible (inverted black=white) and disappears as ink recedes.
+      if (direction === "return") {
+        const id = maskCtx.getImageData(0, 0, 320, 180);
+        const d = id.data;
+        for (let i = 0; i < d.length; i += 4) {
+          d[i] = 255 - d[i];
+          d[i + 1] = 255 - d[i + 1];
+          d[i + 2] = 255 - d[i + 2];
+        }
+        maskCtx.putImageData(id, 0, 0);
+      }
       const dataUrl = maskCanvas.toDataURL("image/jpeg", 0.6);
       const el = leavingOverlayRef.current;
       if (el) {
