@@ -2939,10 +2939,22 @@ export default function App() {
     const video = direction === "leave" ? refs.videoLeave : refs.videoReturn;
     const resetTime = direction === "leave" ? 0 : 6;
 
-    // Snapshot the current DOM before React re-renders — preserves exact visual state,
-    // prevents entry animations and API re-fetches from replaying on the leaving screen
+    // Inject a style rule that (a) freezes all CSS animations in the clone so entry
+    // animations don't replay, and (b) hides iframes to prevent them reloading.
+    // Must be injected BEFORE cloneNode so browsers apply it on the first paint.
+    const freezeStyle = document.createElement("style");
+    freezeStyle.textContent =
+      "#ink-leaving-wrapper * {" +
+      "  animation-play-state: paused !important;" +
+      "  animation-delay: -9999s !important;" +
+      "  animation-fill-mode: forwards !important;" +
+      "}" +
+      "#ink-leaving-wrapper iframe { visibility: hidden !important; }";
+    document.head.appendChild(freezeStyle);
+
     const root = document.getElementById("root");
     const wrapper = document.createElement("div");
+    wrapper.id = "ink-leaving-wrapper";
     wrapper.style.cssText = [
       "position:fixed", "inset:0", "z-index:9999",
       "pointer-events:none", "overflow:hidden",
@@ -2952,6 +2964,7 @@ export default function App() {
     ].join(";");
     if (root) {
       const clone = root.cloneNode(true);
+      clone.removeAttribute("id"); // avoid duplicate #root id
       clone.style.cssText += ";position:absolute;inset:0;pointer-events:none;";
       wrapper.appendChild(clone);
     }
@@ -2994,9 +3007,11 @@ export default function App() {
 
     function cleanup() {
       cancelAnimationFrame(animFrameId);
+      video.removeEventListener("ended", cleanup); // guard for return direction
       video.pause();
       video.currentTime = resetTime;
       if (document.body.contains(wrapper)) document.body.removeChild(wrapper);
+      if (document.head.contains(freezeStyle)) document.head.removeChild(freezeStyle);
       leavingOverlayRef.current = null;
       inkTransitioningRef.current = false;
     }
@@ -3004,7 +3019,12 @@ export default function App() {
     video.playbackRate = 4;
     video.play().then(() => {
       drawFrame();
-      setTimeout(cleanup, 1500);
+      if (direction === "return") {
+        // Let the video run to its natural end — ensures full animation regardless of exact duration
+        video.addEventListener("ended", cleanup, { once: true });
+      } else {
+        setTimeout(cleanup, 1500);
+      }
     }).catch((err) => {
       console.warn("Ink video play failed:", err);
       cleanup();
@@ -3375,16 +3395,12 @@ export default function App() {
         <HomeScreen
           onGameClick={() => {
             setLoadingTarget("GAME");
-            startInkTransition("GAME", "leave", async () => {
-              try {
-                await Promise.all([
-                  startQuizFromHome(),
-                  preloadImages(gameScreenAssets),
-                ]);
-              } finally {
+            Promise.all([startQuizFromHome(), preloadImages(gameScreenAssets)])
+              .catch((e) => console.warn("Game preload failed:", e))
+              .finally(() => {
                 setLoadingTarget(null);
-              }
-            });
+                startInkTransition("GAME", "leave", async () => {});
+              });
           }}
           onSpinnerClick={() => {
             setLoadingTarget("SPINNER");
@@ -3394,16 +3410,12 @@ export default function App() {
           }}
           onEventsClick={() => {
             setLoadingTarget("EVENTS");
-            startInkTransition("EVENTS", "leave", async () => {
-              try {
-                await Promise.all([
-                  preloadEventsLeaderboard(),
-                  preloadImages(eventsScreenAssets),
-                ]);
-              } finally {
+            Promise.all([preloadEventsLeaderboard(), preloadImages(eventsScreenAssets)])
+              .catch((e) => console.warn("Events preload failed:", e))
+              .finally(() => {
                 setLoadingTarget(null);
-              }
-            });
+                startInkTransition("EVENTS", "leave", async () => {});
+              });
           }}
           onCoOpClick={() => { /* Co-Op screen — to be implemented */ }}
           onRankedClick={() => { playClickSound(); startInkTransition("RANKED", "leave", async () => {}); }}
