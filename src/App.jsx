@@ -570,27 +570,33 @@ export default function App() {
   const [socketStateVersion, setSocketStateVersion] = useState(0);
 
   useEffect(() => {
+    // Hidden video for decoding (not in DOM — avoids blend-mode/compositing issues)
     const video = document.createElement("video");
     video.src = inkTransitionVideo;
     video.preload = "auto";
     video.muted = true;
     video.playsInline = true;
-    video.style.cssText = [
+
+    // Canvas renders the processed frames with real alpha transparency
+    const canvas = document.createElement("canvas");
+    // willReadFrequently speeds up repeated getImageData calls
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    canvas.style.cssText = [
       "position:fixed",
       "inset:0",
       "width:100%",
       "height:100%",
-      "object-fit:cover",
       "pointer-events:none",
       "z-index:9999",
-      "mix-blend-mode:multiply",
       "opacity:0",
       "display:block",
     ].join(";");
-    document.body.appendChild(video);
-    inkVideoRef.current = video;
+    document.body.appendChild(canvas);
+    inkVideoRef.current = { video, canvas, ctx };
+
     return () => {
-      if (document.body.contains(video)) document.body.removeChild(video);
+      video.pause();
+      if (document.body.contains(canvas)) document.body.removeChild(canvas);
       inkVideoRef.current = null;
     };
   }, []);
@@ -2932,17 +2938,48 @@ export default function App() {
     if (inkTransitioningRef.current) return;
     inkTransitioningRef.current = true;
 
-    const video = inkVideoRef.current;
-    if (!video) {
+    const refs = inkVideoRef.current;
+    if (!refs) {
       if (action) action().catch(() => {});
       setAppMode(targetMode);
       inkTransitioningRef.current = false;
       return;
     }
 
-    video.currentTime = direction === "leave" ? 0 : 6;
-    video.playbackRate = 4;
-    video.style.opacity = "1";
+    const { video, canvas, ctx } = refs;
+    const startTime = direction === "leave" ? 0 : 6;
+
+    // Render at 30% resolution — GPU scales it up smoothly; ink doesn't need pixel-perfect sharpness
+    canvas.width = Math.round(window.innerWidth * 0.3);
+    canvas.height = Math.round(window.innerHeight * 0.3);
+    canvas.style.opacity = "1";
+
+    let animFrameId;
+
+    function drawFrame() {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.drawImage(video, 0, 0, w, h);
+      const imageData = ctx.getImageData(0, 0, w, h);
+      const d = imageData.data;
+      // Convert luminance → alpha: white video pixel = transparent, black ink = opaque black
+      for (let i = 0; i < d.length; i += 4) {
+        const luma = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+        d[i] = 0;
+        d[i + 1] = 0;
+        d[i + 2] = 0;
+        d[i + 3] = 255 - luma;
+      }
+      ctx.putImageData(imageData, 0, 0);
+      animFrameId = requestAnimationFrame(drawFrame);
+    }
+
+    function cleanup() {
+      cancelAnimationFrame(animFrameId);
+      video.pause();
+      canvas.style.opacity = "0";
+      inkTransitioningRef.current = false;
+    }
 
     const modeSwitchTimer = setTimeout(async () => {
       if (action) {
@@ -2951,21 +2988,31 @@ export default function App() {
       setAppMode(targetMode);
     }, 750);
 
-    const hideTimer = setTimeout(() => {
-      video.pause();
-      video.style.opacity = "0";
-      inkTransitioningRef.current = false;
-    }, 1500);
+    const hideTimer = setTimeout(cleanup, 1500);
 
-    video.play().catch((err) => {
-      console.warn("Ink video play failed:", err);
-      clearTimeout(modeSwitchTimer);
-      clearTimeout(hideTimer);
-      if (action) action().catch(() => {});
-      setAppMode(targetMode);
-      video.style.opacity = "0";
-      inkTransitioningRef.current = false;
-    });
+    function beginPlay() {
+      // Set playbackRate AFTER seek completes to avoid it being reset by the browser
+      video.playbackRate = 4;
+      video.play().then(() => {
+        drawFrame();
+      }).catch((err) => {
+        console.warn("Ink video play failed:", err);
+        clearTimeout(modeSwitchTimer);
+        clearTimeout(hideTimer);
+        if (action) action().catch(() => {});
+        setAppMode(targetMode);
+        cleanup();
+      });
+    }
+
+    // Seek to the correct segment, then play — always go through seeked to ensure
+    // the position is confirmed before beginPlay sets playbackRate and calls play()
+    const onSeeked = () => {
+      video.removeEventListener("seeked", onSeeked);
+      beginPlay();
+    };
+    video.addEventListener("seeked", onSeeked);
+    video.currentTime = startTime;
   }, []);
 
   const renderJoinCountdownOverlay = () => {
