@@ -548,6 +548,10 @@ export default function App() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const inkVideoRef = useRef(null);
   const inkTransitioningRef = useRef(false);
+  const [leavingMode, setLeavingMode] = useState(null);
+  const leavingOverlayRef = useRef(null);
+  const appModeRef = useRef("HOME");
+  useEffect(() => { appModeRef.current = appMode; }, [appMode]);
 
   const [cardInput, setCardInput] = useState("");
   const [cardLastWrong, setCardLastWrong] = useState(false);
@@ -2931,79 +2935,42 @@ export default function App() {
     const { video } = refs;
     const startTime = direction === "leave" ? 0 : 6;
 
-    // Freeze the current screen visually before React re-renders the new one
-    const root = document.getElementById("root");
-    const leavingClone = root ? root.cloneNode(true) : null;
-
-    // Mask canvas — drawn into with destination-out to progressively erase the clone
-    const maskCanvas = document.createElement("canvas");
-    maskCanvas.width = Math.round(window.innerWidth * 0.3);
-    maskCanvas.height = Math.round(window.innerHeight * 0.3);
-    const maskCtx = maskCanvas.getContext("2d", { willReadFrequently: true });
-    maskCanvas.style.cssText = [
-      "position:absolute",
-      "top:0",
-      "left:0",
-      "width:100%",
-      "height:100%",
-      "mix-blend-mode:destination-out",
-      "pointer-events:none",
-    ].join(";");
-
-    // Wrapper: isolation:isolate keeps destination-out scoped to this layer only
-    const wrapper = document.createElement("div");
-    wrapper.style.cssText = [
-      "position:fixed",
-      "inset:0",
-      "z-index:9999",
-      "isolation:isolate",
-      "overflow:hidden",
-      "pointer-events:none",
-    ].join(";");
-
-    if (leavingClone) {
-      leavingClone.style.cssText += ";position:absolute;inset:0;pointer-events:none;";
-      wrapper.appendChild(leavingClone);
-    }
-    wrapper.appendChild(maskCanvas);
-    document.body.appendChild(wrapper);
-
-    // Switch to new screen immediately — it renders beneath the leaving clone
-    if (action) action().catch((e) => console.warn("Ink transition action failed:", e));
+    // Show the leaving screen overlay (renders the old screen on top)
+    // then immediately switch appMode — new screen renders underneath
+    setLeavingMode(appModeRef.current);
     setAppMode(targetMode);
+    if (action) action().catch((e) => console.warn("Ink transition action failed:", e));
+
+    // Small canvas — just for decoding video frames into JPEG data URLs each frame
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width = 320;
+    maskCanvas.height = 180;
+    const maskCtx = maskCanvas.getContext("2d");
 
     let animFrameId;
 
     function drawFrame() {
-      const w = maskCanvas.width;
-      const h = maskCanvas.height;
-      maskCtx.drawImage(video, 0, 0, w, h);
-      const imageData = maskCtx.getImageData(0, 0, w, h);
-      const d = imageData.data;
-      // White video pixel (no ink) → alpha 0 → no erasure → old screen stays
-      // Black video pixel (ink)    → alpha 255 → destination-out erases old screen → new screen revealed
-      for (let i = 0; i < d.length; i += 4) {
-        const luma = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-        d[i] = 0;
-        d[i + 1] = 0;
-        d[i + 2] = 0;
-        d[i + 3] = 255 - luma;
+      maskCtx.drawImage(video, 0, 0, 320, 180);
+      // Use luminance mask: white video = leaving screen visible, black ink = hidden (new screen shows)
+      const dataUrl = maskCanvas.toDataURL("image/jpeg", 0.6);
+      const el = leavingOverlayRef.current;
+      if (el) {
+        el.style.WebkitMaskImage = `url("${dataUrl}")`;
+        el.style.maskImage = `url("${dataUrl}")`;
       }
-      maskCtx.putImageData(imageData, 0, 0);
       animFrameId = requestAnimationFrame(drawFrame);
     }
 
     function cleanup() {
       cancelAnimationFrame(animFrameId);
       video.pause();
-      if (document.body.contains(wrapper)) document.body.removeChild(wrapper);
+      setLeavingMode(null);
       inkTransitioningRef.current = false;
     }
 
     const hideTimer = setTimeout(cleanup, 1500);
 
     function beginPlay() {
-      // Set playbackRate after seek completes — browsers reset it during seeking
       video.playbackRate = 4;
       video.play().then(() => {
         drawFrame();
@@ -3014,7 +2981,6 @@ export default function App() {
       });
     }
 
-    // Always wait for seeked before playing — ensures correct position and rate
     const onSeeked = () => {
       video.removeEventListener("seeked", onSeeked);
       beginPlay();
@@ -3022,6 +2988,80 @@ export default function App() {
     video.addEventListener("seeked", onSeeked);
     video.currentTime = startTime;
   }, []);
+
+  const renderLeavingScreen = (mode) => {
+    const noOp = () => {};
+    if (mode === "HOME") return (
+      <HomeScreen
+        onGameClick={noOp} onSpinnerClick={noOp} onCoOpClick={noOp}
+        onEventsClick={noOp} onRankedClick={noOp} onMonitorClick={noOp}
+        isMonitorAuthorized={isMonitorAuthorized} isRankedAuthorized={isRankedAuthorized}
+        onButtonHover={noOp} onButtonClick={noOp}
+        musicEnabled={musicEnabled} onToggleMusic={noOp}
+        musicVolume={musicVolume} onVolumeChange={noOp}
+        isLoading={false} loadingTarget={null} isMobile={isMobile}
+      />
+    );
+    if (mode === "EVENTS") return (
+      <EventsScreen
+        onBackClick={noOp} onBackHover={noOp} onBackPress={noOp}
+        musicEnabled={musicEnabled} onToggleMusic={noOp}
+        musicVolume={musicVolume} onVolumeChange={noOp}
+        initialPlayers={eventsInitialPlayers} isMobile={isMobile}
+        playClickSound={noOp} playHoverSound={noOp}
+      />
+    );
+    if (mode === "SPINNER") return (
+      <SpinnerScreen
+        onBackClick={noOp} onBackHover={noOp} onBackPress={noOp}
+        musicEnabled={musicEnabled} onToggleMusic={noOp}
+        musicVolume={musicVolume} onVolumeChange={noOp}
+        iframeLoaded={spinnerIframeLoaded} onIframeLoad={noOp} isMobile={isMobile}
+      />
+    );
+    if (mode === "RANKED") return (
+      <RankedScreen
+        onBack={noOp} onBackHover={noOp}
+        musicEnabled={musicEnabled} onToggleMusic={noOp}
+        musicVolume={musicVolume} onVolumeChange={noOp}
+        playClickSound={noOp} playHoverSound={noOp} isMobile={isMobile}
+      />
+    );
+    if (mode === "MONITOR") return (
+      <MonitorScreen onBack={noOp} onBackHover={noOp} isMobile={isMobile} />
+    );
+    // GAME: approximate with the background image
+    return (
+      <div style={{
+        position: "fixed", inset: 0,
+        backgroundImage: `url(${quizScreenBg})`,
+        backgroundSize: "cover", backgroundPosition: "center",
+      }} />
+    );
+  };
+
+  const renderLeavingOverlay = () => {
+    if (!leavingMode) return null;
+    return (
+      <div
+        ref={leavingOverlayRef}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 9999,
+          pointerEvents: "none",
+          WebkitMaskRepeat: "no-repeat",
+          WebkitMaskSize: "100% 100%",
+          WebkitMaskMode: "luminance",
+          maskRepeat: "no-repeat",
+          maskSize: "100% 100%",
+          maskMode: "luminance",
+        }}
+      >
+        {renderLeavingScreen(leavingMode)}
+      </div>
+    );
+  };
 
   const renderJoinCountdownOverlay = () => {
     if (!joinCountdown.active) return null;
@@ -3449,6 +3489,7 @@ export default function App() {
             />
           </div>
         )}
+        {renderLeavingOverlay()}
         {renderJoinCountdownOverlay()}
       </>
     );
@@ -3459,29 +3500,35 @@ export default function App() {
   // ─────────────────────────────────────────────────────────────────
   if (appMode === "MONITOR") {
     return (
-      <MonitorScreen
-        onBack={() => { playClickSound(); startInkTransition("HOME", "return", async () => {}); }}
-        onBackHover={playHoverSound}
-        discordAccessToken={currentUser?.accessToken}
-        discordUsername={currentUser?.username}
-        isMobile={isMobile}
-      />
+      <>
+        <MonitorScreen
+          onBack={() => { playClickSound(); startInkTransition("HOME", "return", async () => {}); }}
+          onBackHover={playHoverSound}
+          discordAccessToken={currentUser?.accessToken}
+          discordUsername={currentUser?.username}
+          isMobile={isMobile}
+        />
+        {renderLeavingOverlay()}
+      </>
     );
   }
 
   if (appMode === "RANKED") {
     return (
-      <RankedScreen
-        onBack={() => { playClickSound(); startInkTransition("HOME", "return", async () => {}); }}
-        onBackHover={playHoverSound}
-        musicEnabled={musicEnabled}
-        onToggleMusic={toggleMusic}
-        musicVolume={musicVolume}
-        onVolumeChange={handleVolumeChange}
-        playClickSound={playClickSound}
-        playHoverSound={playHoverSound}
-        isMobile={isMobile}
-      />
+      <>
+        <RankedScreen
+          onBack={() => { playClickSound(); startInkTransition("HOME", "return", async () => {}); }}
+          onBackHover={playHoverSound}
+          musicEnabled={musicEnabled}
+          onToggleMusic={toggleMusic}
+          musicVolume={musicVolume}
+          onVolumeChange={handleVolumeChange}
+          playClickSound={playClickSound}
+          playHoverSound={playHoverSound}
+          isMobile={isMobile}
+        />
+        {renderLeavingOverlay()}
+      </>
     );
   }
 
@@ -3509,6 +3556,7 @@ export default function App() {
           playClickSound={playClickSound}
           playHoverSound={playHoverSound}
         />
+        {renderLeavingOverlay()}
         {renderJoinCountdownOverlay()}
       </>
     );
@@ -3537,6 +3585,7 @@ export default function App() {
           onIframeLoad={handleSpinnerIframeLoad}
           isMobile={isMobile}
         />
+        {renderLeavingOverlay()}
         {renderJoinCountdownOverlay()}
       </>
     );
@@ -3583,6 +3632,7 @@ export default function App() {
             {"Preparing your Age of Empires III challenge"}
           </p>
         </div>
+        {renderLeavingOverlay()}
         {renderJoinCountdownOverlay()}
       </>
     );
@@ -3743,6 +3793,7 @@ export default function App() {
             }}
           ></button>
         </div>
+        {renderLeavingOverlay()}
         {renderJoinCountdownOverlay()}
       </>
     );
@@ -3825,6 +3876,7 @@ export default function App() {
       {/* Ember particles */}
       <EmberCanvas />
 
+      {renderLeavingOverlay()}
       {renderJoinCountdownOverlay()}
       { }
       <aside
