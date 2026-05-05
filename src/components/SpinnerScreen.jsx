@@ -1,5 +1,6 @@
 import React from 'react';
 import '../styles/SpinnerScreen.css';
+import { EmberCanvas } from './EmberCanvas';
 import { BackButton } from './BackButton';
 import { VolumeControl } from './VolumeControl';
 import topBarBg from '../assets/marblebg2.png';
@@ -19,6 +20,9 @@ export function SpinnerScreen({
 }) {
   return (
     <div className="spinner-screen-container">
+      {/* Ember particles */}
+      <EmberCanvas />
+
       <VolumeControl
         musicEnabled={musicEnabled}
         onToggleMusic={onToggleMusic}
