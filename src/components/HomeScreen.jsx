@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import '../styles/HomeScreen.css';
-import { EmberCanvas } from './EmberCanvas';
 import { VolumeControl } from './VolumeControl';
 import backgroundImg from '../assets/background-spinner.png';
 import marbleBg from '../assets/marblebg2.png';
@@ -91,9 +90,6 @@ export function HomeScreen({
 
       {/* Smoke layer */}
       <div className="home-smoke-layer" />
-
-      {/* Ember particles */}
-      <EmberCanvas />
 
       {/* Volume control - top right */}
       <VolumeControl

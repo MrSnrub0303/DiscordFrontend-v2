@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import '../styles/EventsScreen.css';
-import { EmberCanvas } from './EmberCanvas';
 import { BackButton } from './BackButton';
 import { VolumeControl } from './VolumeControl';
 import topBarBg from '../assets/marblebg2.png';
@@ -143,9 +142,6 @@ export function EventsScreen({
       className="events-screen-container"
       style={{ backgroundImage: `url(${backgroundSpinner})` }}
     >
-      {/* Ember particles */}
-      <EmberCanvas />
-
       {/* Volume control */}
       <VolumeControl
         musicEnabled={musicEnabled}
