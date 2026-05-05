@@ -2939,10 +2939,10 @@ export default function App() {
     const video = direction === "leave" ? refs.videoLeave : refs.videoReturn;
     const resetTime = direction === "leave" ? 0 : 6;
 
-    // Capture each iframe's visible canvas content BEFORE cloning.
-    // cloneNode creates new iframe elements that reload their src; capturing the canvas
-    // lets us replace them with a frozen image of the current state instead.
     const root = document.getElementById("root");
+
+    // ── Pre-clone snapshots ───────────────────────────────────────────
+    // 1. Iframes: cloneNode reloads them — capture their canvas instead.
     const iframeSnapshots = [];
     if (root) {
       root.querySelectorAll("iframe").forEach((iframe) => {
@@ -2950,17 +2950,46 @@ export default function App() {
           const cvs = iframe.contentDocument?.querySelector("canvas");
           iframeSnapshots.push(cvs ? cvs.toDataURL("image/jpeg", 0.9) : null);
         } catch {
-          iframeSnapshots.push(null); // cross-origin
+          iframeSnapshots.push(null);
         }
       });
     }
 
-    // Inject a style rule that freezes all CSS animations in the clone so entry
-    // animations don't replay. Must be injected BEFORE cloneNode so the browser
-    // applies it on the first paint.
+    // 2. Canvases (ember particles): cloneNode creates blank canvases — snapshot
+    //    each one so the leaving overlay shows the current particle frame.
+    const canvasSnapshots = [];
+    if (root) {
+      root.querySelectorAll("canvas").forEach((cvs) => {
+        try {
+          canvasSnapshots.push({
+            dataUrl: cvs.toDataURL("image/jpeg", 0.85),
+            style: cvs.getAttribute("style") || "",
+            className: cvs.className,
+          });
+        } catch {
+          canvasSnapshots.push(null);
+        }
+      });
+    }
+
+    // 3. Smoke scroll position: capture computed backgroundPositionX so the clone
+    //    continues from the same position (avoids the freeze-then-jump artefact).
+    let smokeElapsedS = 0;
+    if (root) {
+      const smokeEl = root.querySelector(".home-smoke-layer");
+      if (smokeEl) {
+        const cs = window.getComputedStyle(smokeEl);
+        const posX = parseFloat(cs.backgroundPositionX || cs.backgroundPosition) || 0;
+        smokeElapsedS = (posX / 750) * 40; // seconds into the 40 s cycle
+      }
+    }
+
+    // Inject freeze rule BEFORE cloneNode so the browser applies it on the first
+    // paint. Exclude .home-smoke-layer so its animation continues from the
+    // correct offset set below.
     const freezeStyle = document.createElement("style");
     freezeStyle.textContent =
-      "#ink-leaving-wrapper * {" +
+      "#ink-leaving-wrapper *:not(.home-smoke-layer) {" +
       "  animation-play-state: paused !important;" +
       "  animation-delay: -9999s !important;" +
       "  animation-fill-mode: forwards !important;" +
@@ -2980,10 +3009,29 @@ export default function App() {
       const clone = root.cloneNode(true);
       clone.removeAttribute("id");
       clone.style.cssText += ";position:absolute;inset:0;pointer-events:none;";
-      // Replace cloned iframes with static image snapshots to prevent reload
-      let snapIdx = 0;
+
+      // Continue smoke from captured position
+      clone.querySelectorAll(".home-smoke-layer").forEach((el) => {
+        el.style.animationDelay = `-${smokeElapsedS}s`;
+      });
+
+      // Replace cloned canvases with snapshots
+      let cvIdx = 0;
+      clone.querySelectorAll("canvas").forEach((clonedCvs) => {
+        const snap = canvasSnapshots[cvIdx++];
+        if (snap) {
+          const img = document.createElement("img");
+          img.src = snap.dataUrl;
+          if (snap.style) img.setAttribute("style", snap.style);
+          img.className = snap.className;
+          clonedCvs.parentNode?.replaceChild(img, clonedCvs);
+        }
+      });
+
+      // Replace cloned iframes with snapshots
+      let ifIdx = 0;
       clone.querySelectorAll("iframe").forEach((clonedIframe) => {
-        const snap = iframeSnapshots[snapIdx++];
+        const snap = iframeSnapshots[ifIdx++];
         const replacement = document.createElement(snap ? "img" : "div");
         if (snap) {
           replacement.src = snap;
@@ -2993,6 +3041,7 @@ export default function App() {
         replacement.className = clonedIframe.className;
         clonedIframe.parentNode?.replaceChild(replacement, clonedIframe);
       });
+
       wrapper.appendChild(clone);
     }
     document.body.appendChild(wrapper);
