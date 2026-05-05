@@ -14,7 +14,6 @@
 }
 
 .spinner-screen-header {
-  animation: spinnerHeaderFadeIn 0.6s ease-in-out;
 }
 
 
@@ -88,7 +87,6 @@
   border: none;
   background: #000;
   display: block;
-  animation: spinnerElementFadeIn 0.6s ease-in-out;
 }
 
 .spinner-screen-loading-overlay {

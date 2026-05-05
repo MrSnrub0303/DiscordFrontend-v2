@@ -2939,20 +2939,34 @@ export default function App() {
     const video = direction === "leave" ? refs.videoLeave : refs.videoReturn;
     const resetTime = direction === "leave" ? 0 : 6;
 
-    // Inject a style rule that (a) freezes all CSS animations in the clone so entry
-    // animations don't replay, and (b) hides iframes to prevent them reloading.
-    // Must be injected BEFORE cloneNode so browsers apply it on the first paint.
+    // Capture each iframe's visible canvas content BEFORE cloning.
+    // cloneNode creates new iframe elements that reload their src; capturing the canvas
+    // lets us replace them with a frozen image of the current state instead.
+    const root = document.getElementById("root");
+    const iframeSnapshots = [];
+    if (root) {
+      root.querySelectorAll("iframe").forEach((iframe) => {
+        try {
+          const cvs = iframe.contentDocument?.querySelector("canvas");
+          iframeSnapshots.push(cvs ? cvs.toDataURL("image/jpeg", 0.9) : null);
+        } catch {
+          iframeSnapshots.push(null); // cross-origin
+        }
+      });
+    }
+
+    // Inject a style rule that freezes all CSS animations in the clone so entry
+    // animations don't replay. Must be injected BEFORE cloneNode so the browser
+    // applies it on the first paint.
     const freezeStyle = document.createElement("style");
     freezeStyle.textContent =
       "#ink-leaving-wrapper * {" +
       "  animation-play-state: paused !important;" +
       "  animation-delay: -9999s !important;" +
       "  animation-fill-mode: forwards !important;" +
-      "}" +
-      "#ink-leaving-wrapper iframe { visibility: hidden !important; }";
+      "}";
     document.head.appendChild(freezeStyle);
 
-    const root = document.getElementById("root");
     const wrapper = document.createElement("div");
     wrapper.id = "ink-leaving-wrapper";
     wrapper.style.cssText = [
@@ -2964,8 +2978,21 @@ export default function App() {
     ].join(";");
     if (root) {
       const clone = root.cloneNode(true);
-      clone.removeAttribute("id"); // avoid duplicate #root id
+      clone.removeAttribute("id");
       clone.style.cssText += ";position:absolute;inset:0;pointer-events:none;";
+      // Replace cloned iframes with static image snapshots to prevent reload
+      let snapIdx = 0;
+      clone.querySelectorAll("iframe").forEach((clonedIframe) => {
+        const snap = iframeSnapshots[snapIdx++];
+        const replacement = document.createElement(snap ? "img" : "div");
+        if (snap) {
+          replacement.src = snap;
+          replacement.style.cssText =
+            "width:100%;height:100%;object-fit:cover;display:block;border:none;";
+        }
+        replacement.className = clonedIframe.className;
+        clonedIframe.parentNode?.replaceChild(replacement, clonedIframe);
+      });
       wrapper.appendChild(clone);
     }
     document.body.appendChild(wrapper);
