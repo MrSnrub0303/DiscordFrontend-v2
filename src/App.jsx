@@ -47,6 +47,7 @@ import kothFile from "./assets/KOTH.mp3";
 
 
 import revealSoundFile from "./assets/chatreceived.wav";
+import inkTransitionVideo from "./assets/black-ink-transition.mp4";
 
 import { getCardImageUrl } from "./utils/cardImages";
 import { preloadImages } from "./utils/preloadImages";
@@ -297,7 +298,6 @@ const createJoinCountdownState = () => ({
   questionId: null,
 });
 
-const SCREEN_TRANSITION_MS = 1000;
 
 export default function App() {
   const [players, setPlayers] = useState([]);
@@ -546,8 +546,9 @@ export default function App() {
   const [eventsInitialPlayers, setEventsInitialPlayers] = useState([]);
   const [spinnerIframeLoaded, setSpinnerIframeLoaded] = useState(false);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [screenTransitionStage, setScreenTransitionStage] = useState("idle");
+  const inkVideoRef = useRef(null);
+  const inkTransitioningRef = useRef(false);
+  const leavingOverlayRef = useRef(null);
 
   const [cardInput, setCardInput] = useState("");
   const [cardLastWrong, setCardLastWrong] = useState(false);
@@ -570,27 +571,25 @@ export default function App() {
   const [socketStateVersion, setSocketStateVersion] = useState(0);
 
   useEffect(() => {
-    if (!isTransitioning) {
-      setScreenTransitionStage("idle");
-      return;
+    function makeVideo(startSecs) {
+      const v = document.createElement("video");
+      v.src = inkTransitionVideo;
+      v.preload = "auto";
+      v.muted = true;
+      v.playsInline = true;
+      // Pre-position each video at its segment start so no seeking is needed at transition time
+      if (startSecs > 0) v.currentTime = startSecs;
+      return v;
     }
-
-    setScreenTransitionStage("enter");
-
-    const fadeOutTimer = setTimeout(() => {
-      setScreenTransitionStage("out");
-    }, 600);
-
-    const doneTimer = setTimeout(() => {
-      setIsTransitioning(false);
-      setScreenTransitionStage("idle");
-    }, 960);
-
+    const videoLeave  = makeVideo(0); // 0–6s: leaving home → another screen
+    const videoReturn = makeVideo(6); // 6–12s: returning to home
+    inkVideoRef.current = { videoLeave, videoReturn };
     return () => {
-      clearTimeout(fadeOutTimer);
-      clearTimeout(doneTimer);
+      videoLeave.pause();
+      videoReturn.pause();
+      inkVideoRef.current = null;
     };
-  }, [isTransitioning]);
+  }, []);
 
   const timerRef = useRef(null);
 
@@ -617,18 +616,16 @@ export default function App() {
   };
 
   // Once the hidden SpinnerScreen iframe finishes loading, trigger the transition.
-  // triggerScreenTransition is a stable useCallback([]) — safe to omit from deps.
+  // startInkTransition is a stable useCallback([]) — safe to omit from deps.
   useEffect(() => {
     if (spinnerIframeLoaded && loadingTarget === "SPINNER" && appMode === "HOME") {
-      triggerScreenTransition("SPINNER", async () => {
+      startInkTransition("SPINNER", "leave", async () => {
         setLoadingTarget(null);
       });
     }
   }, [spinnerIframeLoaded, loadingTarget, appMode]);
 
   const awardedDoneRef = useRef(false);
-
-  const transitionDebounceRef = useRef(null);
 
   const currentSelectionRef = useRef(null);
 
@@ -793,13 +790,7 @@ export default function App() {
         fadeTimerRef.current = null;
       }
 
-      if (transitionDebounceRef.current) {
-        clearTimeout(transitionDebounceRef.current);
-        transitionDebounceRef.current = null;
-      }
-
       setIsTimerRunning(false);
-      setIsTransitioning(false);
 
       if (socket?.connected && roomId) {
         socket.emit("activity_ended", { roomId });
@@ -1528,10 +1519,6 @@ export default function App() {
 
       if (fadeTimerRef.current) {
         clearInterval(fadeTimerRef.current);
-      }
-
-      if (transitionDebounceRef.current) {
-        clearTimeout(transitionDebounceRef.current);
       }
 
       if (joinCountdownTimerRef.current) {
@@ -2937,38 +2924,102 @@ export default function App() {
     awardedDoneRef.current = true;
   }, [showResult]);
 
-  const triggerScreenTransition = useCallback((targetMode, action) => {
-    if (transitionDebounceRef.current) {
-      clearTimeout(transitionDebounceRef.current);
-      transitionDebounceRef.current = null;
+  const startInkTransition = useCallback((targetMode, direction, action) => {
+    if (inkTransitioningRef.current) return;
+    inkTransitioningRef.current = true;
+
+    const refs = inkVideoRef.current;
+    if (!refs) {
+      if (action) action().catch(() => {});
+      setAppMode(targetMode);
+      inkTransitioningRef.current = false;
+      return;
     }
 
-    setIsTransitioning(true);
+    const video = direction === "leave" ? refs.videoLeave : refs.videoReturn;
+    const resetTime = direction === "leave" ? 0 : 6;
 
-    transitionDebounceRef.current = setTimeout(async () => {
-      try {
-        await action();
-      } finally {
-        setAppMode(targetMode);
-        transitionDebounceRef.current = null;
+    // Snapshot the current DOM before React re-renders — preserves exact visual state,
+    // prevents entry animations and API re-fetches from replaying on the leaving screen
+    const root = document.getElementById("root");
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = [
+      "position:fixed", "inset:0", "z-index:9999",
+      "pointer-events:none", "overflow:hidden",
+      "-webkit-mask-repeat:no-repeat", "-webkit-mask-size:100% 100%",
+      "-webkit-mask-mode:luminance",
+      "mask-repeat:no-repeat", "mask-size:100% 100%", "mask-mode:luminance",
+    ].join(";");
+    if (root) {
+      const clone = root.cloneNode(true);
+      clone.style.cssText += ";position:absolute;inset:0;pointer-events:none;";
+      wrapper.appendChild(clone);
+    }
+    document.body.appendChild(wrapper);
+    leavingOverlayRef.current = wrapper;
+
+    // Switch to new screen — renders beneath the frozen clone
+    setAppMode(targetMode);
+    if (action) action().catch((e) => console.warn("Ink transition action failed:", e));
+
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width = 320;
+    maskCanvas.height = 180;
+    const maskCtx = maskCanvas.getContext("2d");
+
+    let animFrameId;
+
+    function drawFrame() {
+      maskCtx.drawImage(video, 0, 0, 320, 180);
+      // Segment 2 (return) goes black→white (ink receding). Invert so the leaving
+      // screen starts visible (inverted black=white) and disappears as ink recedes.
+      if (direction === "return") {
+        const id = maskCtx.getImageData(0, 0, 320, 180);
+        const d = id.data;
+        for (let i = 0; i < d.length; i += 4) {
+          d[i] = 255 - d[i];
+          d[i + 1] = 255 - d[i + 1];
+          d[i + 2] = 255 - d[i + 2];
+        }
+        maskCtx.putImageData(id, 0, 0);
       }
-    }, 320);
+      const dataUrl = maskCanvas.toDataURL("image/jpeg", 0.6);
+      const el = leavingOverlayRef.current;
+      if (el) {
+        el.style.WebkitMaskImage = `url("${dataUrl}")`;
+        el.style.maskImage = `url("${dataUrl}")`;
+      }
+      animFrameId = requestAnimationFrame(drawFrame);
+    }
+
+    function cleanup() {
+      cancelAnimationFrame(animFrameId);
+      video.pause();
+      video.currentTime = resetTime;
+      if (document.body.contains(wrapper)) document.body.removeChild(wrapper);
+      leavingOverlayRef.current = null;
+      inkTransitioningRef.current = false;
+    }
+
+    video.playbackRate = 4;
+    video.play().then(() => {
+      drawFrame();
+      setTimeout(cleanup, 1500);
+    }).catch((err) => {
+      console.warn("Ink video play failed:", err);
+      cleanup();
+    });
   }, []);
 
-  const renderScreenTransitionOverlay = () => {
-    if (!joinCountdown.active && !isTransitioning) {
-      return null;
-    }
-
+  const renderJoinCountdownOverlay = () => {
+    if (!joinCountdown.active) return null;
     return (
       <div
-        className={`join-countdown-overlay ${isTransitioning ? "screen-transition-overlay" : ""} ${isTransitioning ? `screen-transition-${screenTransitionStage}` : ""}`}
+        className="join-countdown-overlay"
         style={{
           position: "fixed",
           inset: 0,
-          background: isTransitioning
-            ? "transparent"
-            : "rgba(255, 255, 255, 0.1)",
+          background: "rgba(255, 255, 255, 0.1)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -2981,20 +3032,10 @@ export default function App() {
           fontFamily: '"Trajan Pro Bold", serif',
         }}
       >
-        {isTransitioning && (
-          <>
-            <div className="screen-transition-dip" />
-            <div className="screen-transition-wipe" />
-          </>
-        )}
-        {joinCountdown.active && !isTransitioning && (
-          <>
-            <p style={{ fontSize: 22, marginBottom: 4 }}>Joining mid-round</p>
-            <p style={{ fontSize: 42, margin: 0 }}>
-              Syncing in {joinCountdown.remaining}s
-            </p>
-          </>
-        )}
+        <p style={{ fontSize: 22, marginBottom: 4 }}>Joining mid-round</p>
+        <p style={{ fontSize: 42, margin: 0 }}>
+          Syncing in {joinCountdown.remaining}s
+        </p>
       </div>
     );
   };
@@ -3008,7 +3049,6 @@ export default function App() {
     userClickedStartRef.current = true; // Mark that user explicitly clicked
 
     try {
-      setIsTransitioning(true);
       const attemptStartQuestion = async (retryCount = 0) => {
         const response = await fetch(`${API_BASE_URL}/start_question`, {
           method: "POST",
@@ -3086,13 +3126,11 @@ export default function App() {
             });
           }
         } catch (err) { }
-        setIsTransitioning(false);
       } else {
       }
     } catch (error) {
     } finally {
       setIsLoading(false);
-      setIsTransitioning(false);
     }
   };
 
@@ -3337,7 +3375,7 @@ export default function App() {
         <HomeScreen
           onGameClick={() => {
             setLoadingTarget("GAME");
-            triggerScreenTransition("GAME", async () => {
+            startInkTransition("GAME", "leave", async () => {
               try {
                 await Promise.all([
                   startQuizFromHome(),
@@ -3356,7 +3394,7 @@ export default function App() {
           }}
           onEventsClick={() => {
             setLoadingTarget("EVENTS");
-            triggerScreenTransition("EVENTS", async () => {
+            startInkTransition("EVENTS", "leave", async () => {
               try {
                 await Promise.all([
                   preloadEventsLeaderboard(),
@@ -3368,8 +3406,8 @@ export default function App() {
             });
           }}
           onCoOpClick={() => { /* Co-Op screen — to be implemented */ }}
-          onRankedClick={() => { playClickSound(); setAppMode("RANKED"); }}
-          onMonitorClick={() => setAppMode("MONITOR")}
+          onRankedClick={() => { playClickSound(); startInkTransition("RANKED", "leave", async () => {}); }}
+          onMonitorClick={() => startInkTransition("MONITOR", "leave", async () => {})}
           isMonitorAuthorized={isMonitorAuthorized}
           isRankedAuthorized={isRankedAuthorized}
           onButtonHover={playHoverSound}
@@ -3399,7 +3437,7 @@ export default function App() {
             />
           </div>
         )}
-        {renderScreenTransitionOverlay()}
+        {renderJoinCountdownOverlay()}
       </>
     );
   }
@@ -3409,29 +3447,33 @@ export default function App() {
   // ─────────────────────────────────────────────────────────────────
   if (appMode === "MONITOR") {
     return (
-      <MonitorScreen
-        onBack={() => { playClickSound(); setAppMode("HOME"); }}
-        onBackHover={playHoverSound}
-        discordAccessToken={currentUser?.accessToken}
-        discordUsername={currentUser?.username}
-        isMobile={isMobile}
-      />
+      <>
+        <MonitorScreen
+          onBack={() => { playClickSound(); startInkTransition("HOME", "return", async () => {}); }}
+          onBackHover={playHoverSound}
+          discordAccessToken={currentUser?.accessToken}
+          discordUsername={currentUser?.username}
+          isMobile={isMobile}
+        />
+      </>
     );
   }
 
   if (appMode === "RANKED") {
     return (
-      <RankedScreen
-        onBack={() => { playClickSound(); setAppMode("HOME"); }}
-        onBackHover={playHoverSound}
-        musicEnabled={musicEnabled}
-        onToggleMusic={toggleMusic}
-        musicVolume={musicVolume}
-        onVolumeChange={handleVolumeChange}
-        playClickSound={playClickSound}
-        playHoverSound={playHoverSound}
-        isMobile={isMobile}
-      />
+      <>
+        <RankedScreen
+          onBack={() => { playClickSound(); startInkTransition("HOME", "return", async () => {}); }}
+          onBackHover={playHoverSound}
+          musicEnabled={musicEnabled}
+          onToggleMusic={toggleMusic}
+          musicVolume={musicVolume}
+          onVolumeChange={handleVolumeChange}
+          playClickSound={playClickSound}
+          playHoverSound={playHoverSound}
+          isMobile={isMobile}
+        />
+      </>
     );
   }
 
@@ -3443,7 +3485,7 @@ export default function App() {
       <>
         <EventsScreen
           onBackClick={() =>
-            triggerScreenTransition("HOME", async () => { })
+            startInkTransition("HOME", "return", async () => {})
           }
           onBackHover={playHoverSound}
           onBackPress={(handler) => {
@@ -3459,7 +3501,7 @@ export default function App() {
           playClickSound={playClickSound}
           playHoverSound={playHoverSound}
         />
-        {renderScreenTransitionOverlay()}
+        {renderJoinCountdownOverlay()}
       </>
     );
   }
@@ -3472,7 +3514,7 @@ export default function App() {
       <>
         <SpinnerScreen
           onBackClick={() =>
-            triggerScreenTransition("HOME", async () => { })
+            startInkTransition("HOME", "return", async () => {})
           }
           onBackHover={playHoverSound}
           onBackPress={(handler) => {
@@ -3487,7 +3529,7 @@ export default function App() {
           onIframeLoad={handleSpinnerIframeLoad}
           isMobile={isMobile}
         />
-        {renderScreenTransitionOverlay()}
+        {renderJoinCountdownOverlay()}
       </>
     );
   }
@@ -3496,7 +3538,7 @@ export default function App() {
   // Game mode - render quiz
   // ─────────────────────────────────────────────────────────────────
 
-  if (isLoading || isTransitioning) {
+  if (isLoading) {
     const isInGameLoading = questionFetchInProgressRef.current || !!currentQuestion;
     return (
       <>
@@ -3530,12 +3572,10 @@ export default function App() {
               letterSpacing: 1,
             }}
           >
-            {isTransitioning
-              ? "Preparing your next challenge"
-              : "Preparing your Age of Empires III challenge"}
+            {"Preparing your Age of Empires III challenge"}
           </p>
         </div>
-        {renderScreenTransitionOverlay()}
+        {renderJoinCountdownOverlay()}
       </>
     );
   }
@@ -3695,7 +3735,7 @@ export default function App() {
             }}
           ></button>
         </div>
-        {renderScreenTransitionOverlay()}
+        {renderJoinCountdownOverlay()}
       </>
     );
   }
@@ -3777,7 +3817,7 @@ export default function App() {
       {/* Ember particles */}
       <EmberCanvas />
 
-      {renderScreenTransitionOverlay()}
+      {renderJoinCountdownOverlay()}
       { }
       <aside
         className={`leaderboard-container ${isLeaderboardCollapsed ? "collapsed" : ""} ${isDraggingLeaderboard ? "dragging" : ""}`}
@@ -3869,7 +3909,7 @@ export default function App() {
             onMouseEnter={playHoverSound}
             onClick={() => {
               playClickSound();
-              triggerScreenTransition("HOME", async () => { });
+              startInkTransition("HOME", "return", async () => {});
             }}
           />
         </div>
@@ -4739,37 +4779,6 @@ export default function App() {
           .leaderboard-container {
             display: none;
           }
-        }
-
-        .screen-transition-overlay {
-          backdrop-filter: blur(4px);
-          -webkit-backdrop-filter: blur(4px);
-        }
-
-        .screen-transition-dip,
-        .screen-transition-wipe {
-          position: absolute;
-          inset: 0;
-          background: black;
-          opacity: 0;
-        }
-
-        .screen-transition-enter .screen-transition-dip {
-          animation: fadeInDark 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
-
-        .screen-transition-out .screen-transition-dip {
-          animation: fadeOutDark 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
-
-        @keyframes fadeInDark {
-          0% { opacity: 0; }
-          100% { opacity: 0.92; }
-        }
-
-        @keyframes fadeOutDark {
-          0% { opacity: 0.92; }
-          100% { opacity: 0; }
         }
 
         /* Card input customizations */
