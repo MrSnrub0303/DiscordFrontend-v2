@@ -11,7 +11,7 @@ export function EmberCanvas() {
     const particles = [];
     const mouse = { x: -1000, y: -1000, radius: 110 };
 
-    // Anchor settings based on your preferred 1080p look
+    // Anchor settings based on your preferred 1080p look.
     const REF_WIDTH = 1920;
     const REF_HEIGHT = 1080;
     const REF_COUNT = 135;
