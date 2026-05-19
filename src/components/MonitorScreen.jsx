@@ -53,7 +53,20 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
   const DASHBOARD_URL = `${import.meta.env.VITE_SERVER_URL || ''}/obs-dashboard`;
 
   const copyDashboardUrl = () => {
-    navigator.clipboard.writeText(DASHBOARD_URL);
+    const fallback = () => {
+      const el = document.createElement('textarea');
+      el.value = DASHBOARD_URL;
+      el.style.cssText = 'position:fixed;opacity:0;';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    };
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(DASHBOARD_URL).catch(fallback);
+    } else {
+      fallback();
+    }
     setObsCopied(true);
     setTimeout(() => setObsCopied(false), 2000);
   };
@@ -271,7 +284,7 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
             <li>In OBS: <strong>Tools → WebSocket Server Settings</strong> → tick <em>Enable WebSocket Server</em></li>
             <li>Set <strong>Server Port</strong> to <code className="monitor-obs-code">4455</code> and <strong>Password</strong> to <code className="monitor-obs-code">RoyplmJZZXNdwUzL</code></li>
             <li>Go to <strong>Docks → Custom Browser Docks</strong> → add a new dock</li>
-            <li>Paste the dashboard URL below into the dock URL field, click <strong>Apply</strong></li>
+            <li>Name the dock as <strong>ESOC Docker</strong>, and then paste the URL below into the dock URL field, click <strong>Apply</strong></li>
             <li>Open <strong>ESOC Admin</strong> from the Docks menu</li>
           </ol>
           <div className="monitor-obs-url-row">
