@@ -44,11 +44,19 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
   const [fetchError, setFetchError] = useState('');
+  const [obsCopied, setObsCopied] = useState(false);
   const logEndRef = useRef(null);
   const logContainerRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const apiBase = API_BASE_URL;
+  const DASHBOARD_URL = `${import.meta.env.VITE_SERVER_URL || ''}/obs-dashboard`;
+
+  const copyDashboardUrl = () => {
+    navigator.clipboard.writeText(DASHBOARD_URL);
+    setObsCopied(true);
+    setTimeout(() => setObsCopied(false), 2000);
+  };
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -249,6 +257,28 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* ── OBS Dashboard Setup ── */}
+        <div className="monitor-section">
+          <h2 className="monitor-section-title">OBS Dashboard Setup</h2>
+          <p className="monitor-obs-intro">
+            The ESOC Admin Dashboard is hosted on this server — no file download needed.
+            Configure OBS once and paste the URL below as your Custom Browser Dock.
+          </p>
+          <ol className="monitor-obs-steps">
+            <li>In OBS: <strong>Tools → WebSocket Server Settings</strong> → tick <em>Enable WebSocket Server</em></li>
+            <li>Set <strong>Server Port</strong> to <code className="monitor-obs-code">4455</code> and <strong>Password</strong> to <code className="monitor-obs-code">RoyplmJZZXNdwUzL</code></li>
+            <li>Go to <strong>Docks → Custom Browser Docks</strong> → add a new dock</li>
+            <li>Paste the dashboard URL below into the dock URL field, click <strong>Apply</strong></li>
+            <li>Open <strong>ESOC Admin</strong> from the Docks menu</li>
+          </ol>
+          <div className="monitor-obs-url-row">
+            <span className="monitor-obs-url">{DASHBOARD_URL}</span>
+            <button className="monitor-obs-copy-btn" onClick={copyDashboardUrl}>
+              {obsCopied ? 'Copied!' : 'Copy URL'}
+            </button>
           </div>
         </div>
       </div>
