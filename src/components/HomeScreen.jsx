@@ -17,7 +17,7 @@ import buttonRedAvailable from '../assets/ButtonRedAvailable.png';
 import buttonRedClicked from '../assets/ButtonRedClicked.png';
 
 // Set to true when an event is running, false to lock the button between events
-const EVENT_ACTIVE = true;
+const EVENT_ACTIVE = false;
 
 // Set to true when Co-Op mode is available
 const CO_OP_ACTIVE = false;
