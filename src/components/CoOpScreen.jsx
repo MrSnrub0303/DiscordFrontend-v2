@@ -150,36 +150,36 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
   return (
     <button
       className="coop-level-card"
-      style={maskStyle}
       onMouseEnter={() => { setHovered(true); playHoverSound?.(); }}
       onMouseLeave={() => setHovered(false)}
       onClick={() => { playClickSound?.(); /* TODO: launch co-op level */ }}
       title={level.name}
       aria-label={level.name}
     >
-      {/* Shadow — bottom layer; torn dark border visible at the mask boundary */}
+      {/* Shadow — unmasked; dark torn border shows in the zone outside the masked base div */}
       <img src={lvlcardShadow} className="coop-level-overlay" alt="" draggable={false} />
 
-      {/* Base level image — no individual mask needed; card-level mask clips everything */}
+      {/* Glow — unmasked, behind the masked base div; its cream centre is hidden by the
+          opaque base, so only the pink/red torn border shows at the card edge on hover */}
+      <img src={lvlcardGlow} className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`} alt="" draggable={false} />
+
+      {/* Base level image — masked; sits above shadow+glow, covering their centres */}
       <div
         className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
-        style={{ backgroundImage: imgMissing ? 'none' : `url(${imgUrl})` }}
+        style={{ backgroundImage: imgMissing ? 'none' : `url(${imgUrl})`, ...maskStyle }}
       >
         <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
       </div>
 
-      {/* Highlight — overlay blend: warm gold toning without fully covering the level image */}
-      <img src={lvlcardHighlight} className="coop-level-overlay" style={{ mixBlendMode: 'overlay' }} alt="" draggable={false} />
+      {/* Highlight — masked + overlay blend; warm gold toning confined to the card shape */}
+      <img src={lvlcardHighlight} className="coop-level-overlay" style={{ mixBlendMode: 'overlay', ...maskStyle }} alt="" draggable={false} />
 
-      {/* Title plate — z-index 10 */}
-      <div className="coop-level-footer">
+      {/* Title plate — masked; kept inside the card's torn-edge shape */}
+      <div className="coop-level-footer" style={maskStyle}>
         <div className="coop-level-titlebg" style={{ backgroundImage: `url(${titlebg})` }}>
           <span className="coop-level-title-text">{level.name}</span>
         </div>
       </div>
-
-      {/* Glow — screen blend adds pink/red glow to the border on hover */}
-      <img src={lvlcardGlow} className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`} style={{ mixBlendMode: 'screen' }} alt="" draggable={false} />
     </button>
   );
 }
