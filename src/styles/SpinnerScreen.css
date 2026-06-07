@@ -23,6 +23,7 @@
   overflow: hidden;
   background: #000;
   position: relative;
+  padding-top: 40px;
 }
 
 /* ── IFrame Styling ── */
