@@ -25,18 +25,17 @@ const CAMPAIGN_DATA = [
     acts: [
       {
         id: 1,
-        name: 'Act I — Blood',
+        name: 'Act I: Blood',
         levels: [
-          { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
-          { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
-          { id: 5, name: 'Mission 5' }, { id: 6, name: 'Mission 6' },
-          { id: 7, name: 'Mission 7' }, { id: 8, name: 'Mission 8' },
-          { id: 9, name: 'Mission 9' },
+          { id: 1, name: 'Breakout' }, { id: 2, name: 'Into the Caves' },
+          { id: 3, name: 'PIRATES!' }, { id: 4, name: 'The Ottoman Fort' },
+          { id: 5, name: 'Temples of the Aztec' }, { id: 6, name: 'A Pirates Help' },
+          { id: 7, name: 'Spanish Treasure Fleet' }, { id: 8, name: 'The Fountain of Youth?' },
         ],
       },
       {
         id: 2,
-        name: 'Act II — Ice',
+        name: 'Act II: Ice',
         levels: [
           { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
           { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
@@ -47,7 +46,7 @@ const CAMPAIGN_DATA = [
       },
       {
         id: 3,
-        name: 'Act III — Steel',
+        name: 'Act III: Steel',
         levels: [
           { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
           { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
@@ -63,7 +62,7 @@ const CAMPAIGN_DATA = [
     acts: [
       {
         id: 1,
-        name: 'Act I',
+        name: 'Act I: Fire',
         levels: [
           { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
           { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
@@ -73,7 +72,7 @@ const CAMPAIGN_DATA = [
       },
       {
         id: 2,
-        name: 'Act II',
+        name: 'Act II: Shadow',
         levels: [
           { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
           { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
@@ -89,7 +88,7 @@ const CAMPAIGN_DATA = [
     acts: [
       {
         id: 1,
-        name: 'The Japanese',
+        name: 'Act I: Japan',
         levels: [
           { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
           { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
@@ -99,7 +98,7 @@ const CAMPAIGN_DATA = [
       },
       {
         id: 2,
-        name: 'The Indian',
+        name: 'Act II: India',
         levels: [
           { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
           { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
@@ -109,7 +108,7 @@ const CAMPAIGN_DATA = [
       },
       {
         id: 3,
-        name: 'The Chinese',
+        name: 'Act III: China',
         levels: [
           { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
           { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
