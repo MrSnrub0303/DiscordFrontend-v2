@@ -11,10 +11,11 @@ import goldDivider      from '../assets/GoldDivider.png';
 
 // Formatting overlays — place in client/src/assets/coop/
 // All overlay images are 1120×260px (same dimensions as level images)
-import lvlcardGlow      from '../assets/coop/lvlcard_glow.png';
-import lvlcardMask      from '../assets/coop/lvlcard_mask.png'; // used as CSS mask-image
-import lvlcardShadow    from '../assets/coop/lvlcard_shadow.png';
-import titlebg          from '../assets/coop/titlebg.png'; // 1120×90px
+import lvlcardGlow          from '../assets/coop/lvlcard_glow.png';
+import lvlcardMask          from '../assets/coop/lvlcard_mask.png';          // 1120×260 — masks level image
+import lvlcardMaskTitlebg   from '../assets/coop/lvlcard_mask_titlebg.png'; // 1120×90  — masks title plate
+import lvlcardShadow        from '../assets/coop/lvlcard_shadow.png';
+import titlebg              from '../assets/coop/titlebg.png';               // 1120×90px
 
 // ─── Campaign / Act / Level data ──────────────────────────────────────────────
 // Edit names here. Images load from client/public/coop/:
@@ -130,6 +131,17 @@ const CAMPAIGN_DATA = [
 // shadow, highlight, glow are stacked overlays on top of the masked base.
 // titlebg (1120×90) is centered at the bottom as a background-image plate.
 
+const maskAlpha = (url) => ({
+  maskImage: `url(${url})`,
+  WebkitMaskImage: `url(${url})`,
+  maskMode: 'alpha',
+  WebkitMaskMode: 'alpha',
+  maskSize: '100% 100%',
+  WebkitMaskSize: '100% 100%',
+  maskRepeat: 'no-repeat',
+  WebkitMaskRepeat: 'no-repeat',
+});
+
 function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound }) {
   const [hovered, setHovered]       = useState(false);
   const [imgMissing, setImgMissing] = useState(false);
@@ -144,52 +156,34 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
       title={level.name}
       aria-label={level.name}
     >
-      {/* Shadow + glow sit outside the isolated container so they bleed past the
-          torn card edge without being clipped by the mask. */}
+      {/* Shadow + glow — unmasked; torn border bleeds outside the card edges */}
       <img src={lvlcardShadow} className="coop-level-overlay" alt="" draggable={false} />
       <img src={lvlcardGlow} className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`} alt="" draggable={false} />
 
-      {/* isolation: isolate creates an offscreen compositing buffer at 1120×260.
-          The mask PNG (destination-in) clips ALL content inside at the full card
-          coordinate space — titlebg's bottom-strip is correctly masked using the
-          lower 90px rows of the 260px mask, not a squished copy of the whole mask. */}
-      <div style={{ position: 'absolute', inset: 0, isolation: 'isolate' }}>
-        <div
-          className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
-          style={imgMissing ? undefined : {
-            backgroundImage: `url(${imgUrl})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
-        </div>
+      {/* Level image — masked with the full 1120×260 mask (exact size match) */}
+      <div
+        className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
+        style={imgMissing ? maskAlpha(lvlcardMask) : {
+          backgroundImage: `url(${imgUrl})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          ...maskAlpha(lvlcardMask),
+        }}
+      >
+        <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
+      </div>
 
-        <div
-          className="coop-level-titlebg"
-          style={{
-            backgroundImage: `url(${titlebg})`,
-            backgroundSize: '100% 100%',
-            backgroundRepeat: 'no-repeat',
-          }}
-        >
-          <span className="coop-level-title-text">{level.name}</span>
-        </div>
-
-        {/* Mask — destination-in: keeps destination pixels where this image is opaque,
-            clears them where transparent. Applied at full 1120×260 card size. */}
-        <img
-          src={lvlcardMask}
-          style={{
-            position: 'absolute', inset: 0,
-            width: '100%', height: '100%',
-            objectFit: 'fill',
-            mixBlendMode: 'destination-in',
-            display: 'block',
-          }}
-          alt=""
-          draggable={false}
-        />
+      {/* Title plate — masked with the pre-cropped 1120×90 mask (exact size match) */}
+      <div
+        className="coop-level-titlebg"
+        style={{
+          backgroundImage: `url(${titlebg})`,
+          backgroundSize: '100% 100%',
+          backgroundRepeat: 'no-repeat',
+          ...maskAlpha(lvlcardMaskTitlebg),
+        }}
+      >
+        <span className="coop-level-title-text">{level.name}</span>
       </div>
     </button>
   );
