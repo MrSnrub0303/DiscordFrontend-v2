@@ -87,11 +87,14 @@
   filter: brightness(1.2);
 }
 
-/* ── Gold divider — natural image size, not stretched ── */
+/* ── Gold divider — rendered at natural pixel size ──
+   align-self: flex-start prevents the flex column from stretching the
+   <img> to full container width, which would cause blurry upscaling. */
 
 .coop-divider {
   position: relative;
   z-index: 1;
+  align-self: flex-start;
   width: auto;
   max-width: 100%;
   height: auto;
@@ -183,9 +186,7 @@
   transition-duration: 0.08s;
 }
 
-/* ── Base level image ──
-   The CSS mask-image (lvlcard_mask.png) clips the base image into the
-   desired shape. Mask size matches the card exactly (100% 100%). */
+/* ── Base level image ── */
 
 .coop-level-base {
   position: absolute;
