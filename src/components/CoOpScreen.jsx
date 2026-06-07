@@ -136,53 +136,50 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
   const [imgMissing, setImgMissing] = useState(false);
   const imgUrl = `/coop/${campaignId}act${actId}lvl${level.id}.png`;
 
+  const maskStyle = {
+    maskImage: `url(${lvlcardMask})`,
+    WebkitMaskImage: `url(${lvlcardMask})`,
+    maskMode: 'alpha',
+    WebkitMaskMode: 'alpha',
+    maskSize: '100% 100%',
+    WebkitMaskSize: '100% 100%',
+    maskRepeat: 'no-repeat',
+    WebkitMaskRepeat: 'no-repeat',
+  };
+
   return (
     <button
       className="coop-level-card"
+      style={maskStyle}
       onMouseEnter={() => { setHovered(true); playHoverSound?.(); }}
       onMouseLeave={() => setHovered(false)}
       onClick={() => { playClickSound?.(); /* TODO: launch co-op level */ }}
       title={level.name}
       aria-label={level.name}
     >
-      {/* Layer 1 (bottom): shadow — dark torn border visible in the mask's clipped zone */}
+      {/* Shadow — bottom layer; torn dark border visible at the mask boundary */}
       <img src={lvlcardShadow} className="coop-level-overlay" alt="" draggable={false} />
 
-      {/* Layer 2: glow — behind the base div; only its torn-border zone peeks through the
-          mask clip, so the pink/red glow appears around the card edge, not over the image */}
-      <img src={lvlcardGlow} className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`} alt="" draggable={false} />
-
-      {/* Layer 3: masked base — alpha mask clips it to the card's torn-edge shape.
-          Sitting above shadow+glow in DOM order, it covers their opaque centres. */}
+      {/* Base level image — no individual mask needed; card-level mask clips everything */}
       <div
         className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
-        style={{
-          backgroundImage: imgMissing ? 'none' : `url(${imgUrl})`,
-          maskImage: `url(${lvlcardMask})`,
-          WebkitMaskImage: `url(${lvlcardMask})`,
-          maskMode: 'alpha',
-          WebkitMaskMode: 'alpha',
-          maskSize: '100% 100%',
-          WebkitMaskSize: '100% 100%',
-          maskRepeat: 'no-repeat',
-          WebkitMaskRepeat: 'no-repeat',
-        }}
+        style={{ backgroundImage: imgMissing ? 'none' : `url(${imgUrl})` }}
       >
         <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
       </div>
 
-      {/* Layer 4: highlight — overlay blend tones the level image with warm gold */}
+      {/* Highlight — overlay blend: warm gold toning without fully covering the level image */}
       <img src={lvlcardHighlight} className="coop-level-overlay" style={{ mixBlendMode: 'overlay' }} alt="" draggable={false} />
 
-      {/* Layer 5 (top): title plate — z-index 10, above all overlays */}
+      {/* Title plate — z-index 10 */}
       <div className="coop-level-footer">
-        <div
-          className="coop-level-titlebg"
-          style={{ backgroundImage: `url(${titlebg})` }}
-        >
+        <div className="coop-level-titlebg" style={{ backgroundImage: `url(${titlebg})` }}>
           <span className="coop-level-title-text">{level.name}</span>
         </div>
       </div>
+
+      {/* Glow — screen blend adds pink/red glow to the border on hover */}
+      <img src={lvlcardGlow} className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`} style={{ mixBlendMode: 'screen' }} alt="" draggable={false} />
     </button>
   );
 }
