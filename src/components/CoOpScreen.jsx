@@ -145,16 +145,26 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
       title={level.name}
       aria-label={level.name}
     >
-      {/* Base level image */}
+      {/* Base level image — mask-image (luminance) clips it to the card shape */}
       <div
         className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
-        style={{ backgroundImage: imgMissing ? 'none' : `url(${imgUrl})` }}
+        style={{
+          backgroundImage: imgMissing ? 'none' : `url(${imgUrl})`,
+          maskImage: `url(${lvlcardMask})`,
+          WebkitMaskImage: `url(${lvlcardMask})`,
+          maskMode: 'luminance',
+          WebkitMaskMode: 'luminance',
+          maskSize: '100% 100%',
+          WebkitMaskSize: '100% 100%',
+          maskRepeat: 'no-repeat',
+          WebkitMaskRepeat: 'no-repeat',
+        }}
       >
         {/* Hidden img used only to detect a missing level file */}
         <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
       </div>
 
-      {/* Title plate — below the mask so the mask frame sits on top of it */}
+      {/* Title plate — below the overlay stack so shadow/highlight sit on top */}
       <div className="coop-level-footer">
         <div
           className="coop-level-titlebg"
@@ -164,8 +174,7 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
         </div>
       </div>
 
-      {/* Overlay stack (bottom → top): mask frame → shadow → highlight → glow */}
-      <img src={lvlcardMask}      className="coop-level-overlay"                                               alt="" draggable={false} />
+      {/* Overlay stack (bottom → top): shadow → highlight → glow */}
       <img src={lvlcardShadow}    className="coop-level-overlay"                                               alt="" draggable={false} />
       <img src={lvlcardHighlight} className="coop-level-overlay"                                               alt="" draggable={false} />
       <img src={lvlcardGlow}      className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`}  alt="" draggable={false} />
