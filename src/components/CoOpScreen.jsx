@@ -163,19 +163,25 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
           shows at the card edge on hover; cream centre is covered by the base div */}
       <img src={lvlcardGlow} className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`} alt="" draggable={false} />
 
-      {/* Masked wrapper — same dimensions as the card; mask-size 100% 100% is exact.
-          Both the base image and the title plate are clipped here together. */}
-      <div style={{ position: 'absolute', inset: 0, ...maskStyle }}>
-        <div
-          className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
-          style={{ backgroundImage: imgMissing ? 'none' : `url(${imgUrl})` }}
-        >
-          <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
-        </div>
-
-        <div className="coop-level-titlebg" style={{ backgroundImage: `url(${titlebg})` }}>
-          <span className="coop-level-title-text">{level.name}</span>
-        </div>
+      {/* Single full-card div — level image + titlebg as stacked CSS backgrounds.
+          The mask at 100%×100% is exact for this element (same size as the card),
+          so both backgrounds share the correct 1120×260 mask coordinate space. */}
+      <div
+        className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
+        style={{
+          backgroundImage: imgMissing
+            ? `url(${titlebg})`
+            : `url(${titlebg}), url(${imgUrl})`,
+          backgroundSize: imgMissing
+            ? '100% auto'
+            : '100% auto, cover',
+          backgroundPosition: 'center bottom, center center',
+          backgroundRepeat: 'no-repeat',
+          ...maskStyle,
+        }}
+      >
+        <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
+        <span className="coop-level-title-text">{level.name}</span>
       </div>
     </button>
   );
