@@ -186,7 +186,7 @@
   transition-duration: 0.08s;
 }
 
-/* ── Base level image (also carries titlebg as a stacked background layer) ── */
+/* ── Base level image ── */
 
 .coop-level-base {
   position: absolute;
@@ -195,6 +195,16 @@
 
 .coop-level-base--missing {
   background-color: rgba(10, 8, 5, 0.8);
+}
+
+/* ── Title plate — occupies the bottom 90px of the 260px card ── */
+
+.coop-level-titlebg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  aspect-ratio: 1120 / 90;
 }
 
 /* ── Overlay images (shadow, highlight, glow) ──
@@ -225,14 +235,10 @@
    Displayed at 85% of card width, centred, pinned to the card's bottom edge.
    aspect-ratio: 1120/90 keeps the plate at the exact correct height for any card size. */
 
-/* Title text — sits in the bottom strip that the titlebg image occupies.
-   Height = titlebg 90px / card 260px = 34.615% of card height. */
+/* Title text — fills the titlebg div (its direct parent). */
 .coop-level-title-text {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 34.615%;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
