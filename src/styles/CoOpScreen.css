@@ -21,77 +21,86 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: 60px 24px 16px; /* top clearance for fixed back button */
+  padding: 60px 24px 16px;
 }
 
 .coop-main--mobile {
   padding-top: 112px;
 }
 
-/* ── Marble chrome overlay (behind tabs / divider) ── */
+/* ── Marble chrome tint ── */
 
 .coop-chrome-marble {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 100px; /* covers the tab row area */
+  height: 110px;
   background-size: cover;
   background-position: center;
-  opacity: 0.18;
+  opacity: 0.15;
   pointer-events: none;
   z-index: 0;
 }
 
-/* ── Campaign tabs ── */
+/* ── Campaign toggles (checkbox + label, matching civ spinner style) ── */
 
-.coop-tabs {
+.coop-toggle-row {
   position: relative;
   z-index: 1;
   display: flex;
-  gap: 6px;
-  flex-shrink: 0;
+  align-items: center;
+  gap: 24px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  user-select: none;
 }
 
-.coop-tab {
-  font-family: "Trajan Pro Bold", serif;
-  font-size: clamp(0.72rem, 1.4vw, 0.95rem);
-  letter-spacing: 0.5px;
-  color: rgba(255, 215, 0, 0.55);
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 215, 0, 0.2);
-  border-radius: 4px;
-  padding: 7px 18px 8px;
+.coop-toggle-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
-  outline: none;
+  font-family: "Trajan Pro Bold", serif;
+  font-size: clamp(0.72rem, 1.3vw, 0.95rem);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #f0d070;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  transition: color 0.15s;
 }
 
-.coop-tab:hover {
+.coop-toggle-option:hover {
   color: #ffd700;
-  border-color: rgba(255, 215, 0, 0.45);
-  background: rgba(0, 0, 0, 0.6);
 }
 
-.coop-tab--active {
-  color: #ffd700;
-  border-color: rgba(255, 215, 0, 0.65);
-  background: rgba(0, 0, 0, 0.65);
-  box-shadow: 0 0 14px rgba(255, 215, 0, 0.14), inset 0 0 8px rgba(255, 215, 0, 0.06);
+.coop-toggle-checkbox {
+  width: 30px;
+  height: 30px;
+  display: block;
+  flex-shrink: 0;
+  transition: filter 0.15s;
 }
 
-/* ── Gold divider ── */
+.coop-toggle-option:hover .coop-toggle-checkbox {
+  filter: brightness(1.2);
+}
+
+/* ── Gold divider — natural image size, not stretched ── */
 
 .coop-divider {
   position: relative;
   z-index: 1;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: auto;
+  display: block;
   flex-shrink: 0;
-  margin: 10px 0 8px;
+  margin: 8px 0 6px;
   pointer-events: none;
   user-select: none;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.55));
   opacity: 0.85;
 }
 
@@ -105,8 +114,8 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(200, 164, 32, 0.4) transparent;
-  padding-bottom: 24px;
   padding-right: 4px;
+  padding-bottom: 24px;
 }
 
 .coop-scroll::-webkit-scrollbar       { width: 5px; }
@@ -119,7 +128,7 @@
 /* ── Act section ── */
 
 .coop-act-section {
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
 .coop-act-section:last-child {
@@ -128,61 +137,66 @@
 
 .coop-act-title {
   font-family: "Trajan Pro Bold", serif;
-  font-size: clamp(0.78rem, 1.6vw, 1rem);
-  color: rgba(255, 215, 0, 0.7);
+  font-size: clamp(0.78rem, 1.5vw, 1rem);
+  color: rgba(255, 215, 0, 0.72);
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  margin: 0 0 12px 2px;
+  margin: 0 0 10px 2px;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
 }
 
-/* ── Level grid ── */
+/* ── Level grid ──
+   Cards are 1120×260 px → aspect-ratio 1120/260 ≈ 4.31:1 (very wide, short).
+   minmax keeps 2 columns minimum even on narrow viewports. */
 
 .coop-levels-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px 16px;
 }
 
-/* ── Level card ── */
+/* ── Level card ──
+   aspect-ratio matches the actual 1120×260 image dimensions exactly. */
 
 .coop-level-card {
   position: relative;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 1120 / 260;
+  width: 100%;
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
   outline: none;
-  border-radius: 4px;
+  display: block;
   overflow: visible;
   transition: transform 0.18s ease, filter 0.18s ease;
   user-select: none;
 }
 
 .coop-level-card:hover {
-  transform: translateY(-4px) scale(1.025);
-  filter: brightness(1.08);
+  transform: translateY(-3px) scale(1.015);
+  filter: brightness(1.06);
 }
 
 .coop-level-card:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
   transition-duration: 0.08s;
 }
 
-/* Base level image */
+/* ── Base level image ──
+   The CSS mask-image (lvlcard_mask.png) clips the base image into the
+   desired shape. Mask size matches the card exactly (100% 100%). */
+
 .coop-level-base {
   position: absolute;
   inset: 0;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  border-radius: 4px;
 }
 
 .coop-level-base--missing {
-  background-color: rgba(10, 8, 5, 0.75);
-  /* subtle diagonal stripe for missing images */
+  background-color: rgba(10, 8, 5, 0.7);
   background-image: repeating-linear-gradient(
     -45deg,
     rgba(255, 215, 0, 0.04) 0px,
@@ -190,9 +204,13 @@
     transparent 1px,
     transparent 12px
   );
+  /* Still apply the mask so the missing state respects the card shape */
 }
 
-/* All overlay images share this base */
+/* ── Overlay images (shadow, highlight, glow) ──
+   object-fit: fill stretches each overlay to exactly cover the card,
+   matching the 1120×260 source dimensions. */
+
 .coop-level-overlay {
   position: absolute;
   inset: 0;
@@ -200,10 +218,9 @@
   height: 100%;
   object-fit: fill;
   pointer-events: none;
-  border-radius: 4px;
+  display: block;
 }
 
-/* Glow — hidden by default, fades in on hover */
 .coop-level-glow {
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -213,7 +230,10 @@
   opacity: 1;
 }
 
-/* ── Title plate ── */
+/* ── Title plate ──
+   titlebg.png is 1120×90 — same width as the card images.
+   Displayed at 85% of card width, centred, pinned to the card's bottom edge.
+   aspect-ratio: 1120/90 keeps the plate at the exact correct height for any card size. */
 
 .coop-level-footer {
   position: absolute;
@@ -227,12 +247,10 @@
 }
 
 .coop-level-titlebg {
-  /* titlebg.png used as background; width is 85% of card, height auto via padding */
   width: 85%;
+  aspect-ratio: 1120 / 90;
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  /* Height derived from the image's own aspect ratio — adjust padding-bottom to match */
-  padding-bottom: 18%;
   position: relative;
   display: flex;
   align-items: center;
@@ -246,21 +264,22 @@
   align-items: center;
   justify-content: center;
   font-family: "Trajan Pro Bold", serif;
-  font-size: clamp(0.5rem, 1vw, 0.68rem);
+  font-size: clamp(0.48rem, 0.85vw, 0.62rem);
   color: #ffd700;
   text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.95);
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 6px;
+  padding: 0 8px;
 }
 
-/* ── Mobile responsive ── */
+/* ── Mobile ── */
 
-@media (max-width: 600px) {
-  .coop-main { padding: 112px 12px 12px; }
-  .coop-levels-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-  .coop-act-title { font-size: 0.78rem; }
-  .coop-tab { font-size: 0.72rem; padding: 6px 12px 7px; }
+@media (max-width: 640px) {
+  .coop-main            { padding: 112px 10px 10px; }
+  .coop-levels-grid     { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .coop-toggle-label    { font-size: 0.65rem; letter-spacing: 1px; }
+  .coop-toggle-checkbox { width: 22px; height: 22px; }
+  .coop-toggle-row      { gap: 14px; }
 }
