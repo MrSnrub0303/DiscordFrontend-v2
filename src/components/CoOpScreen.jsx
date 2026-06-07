@@ -6,8 +6,6 @@ import '../styles/CoOpScreen.css';
 
 import backgroundImg    from '../assets/background-spinner.png';
 import marbleBg         from '../assets/marblebg2.png';
-import aoe3Logo         from '../assets/aoe3_de_logo.png';
-import goldDivider      from '../assets/GoldDivider.png';
 
 // Formatting overlays — place in client/src/assets/coop/
 // All overlay images are 1120×260px (same dimensions as level images)
@@ -225,17 +223,6 @@ export function CoOpScreen({
         isMobile={isMobile}
       />
 
-      {/* AoE3 logo — bottom left */}
-      <img
-        src={aoe3Logo}
-        alt="Age of Empires III DE"
-        style={{
-          position: 'fixed', bottom: 16, left: 16,
-          width: '16vw', height: 'auto',
-          zIndex: 999, pointerEvents: 'none',
-        }}
-      />
-
       {/* ── Main layout ── */}
       <div className={`coop-main${isMobile ? ' coop-main--mobile' : ''}`}>
 
@@ -267,9 +254,6 @@ export function CoOpScreen({
             </div>
           ))}
         </div>
-
-        {/* Gold divider at natural size */}
-        <img src={goldDivider} alt="" className="coop-divider" draggable={false} />
 
         {/* Scrollable level browser */}
         <div className="coop-scroll">
