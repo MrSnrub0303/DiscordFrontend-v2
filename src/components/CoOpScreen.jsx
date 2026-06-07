@@ -146,22 +146,6 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
     WebkitMaskRepeat: 'no-repeat',
   };
 
-  // Footer sits at the bottom of the card. The mask must be sized to the full
-  // card dimensions (100% wide, auto height to maintain 1120:260 ratio) and
-  // anchored to the bottom so that the correct opaque portion covers the footer.
-  // mask-position: 0 100% aligns the mask's bottom edge with the footer's bottom.
-  const footerMaskStyle = {
-    maskImage: `url(${lvlcardMask})`,
-    WebkitMaskImage: `url(${lvlcardMask})`,
-    maskMode: 'alpha',
-    WebkitMaskMode: 'alpha',
-    maskSize: '100% auto',
-    WebkitMaskSize: '100% auto',
-    maskRepeat: 'no-repeat',
-    WebkitMaskRepeat: 'no-repeat',
-    maskPosition: '0 100%',
-    WebkitMaskPosition: '0 100%',
-  };
 
   return (
     <button
@@ -179,18 +163,20 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
           shows at the card edge on hover; cream centre is covered by the base div */}
       <img src={lvlcardGlow} className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`} alt="" draggable={false} />
 
-      {/* Base level image — masked to the card's torn-edge shape */}
-      <div
-        className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
-        style={{ backgroundImage: imgMissing ? 'none' : `url(${imgUrl})`, ...maskStyle }}
-      >
-        <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
-      </div>
+      {/* Masked wrapper — same dimensions as the card; mask-size 100% 100% is exact.
+          Both the base image and the title plate are clipped here together. */}
+      <div style={{ position: 'absolute', inset: 0, ...maskStyle }}>
+        <div
+          className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
+          style={{ backgroundImage: imgMissing ? 'none' : `url(${imgUrl})` }}
+        >
+          <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
+        </div>
 
-      {/* Title plate — masked with card-aligned positioning */}
-      <div className="coop-level-footer" style={footerMaskStyle}>
-        <div className="coop-level-titlebg" style={{ backgroundImage: `url(${titlebg})` }}>
-          <span className="coop-level-title-text">{level.name}</span>
+        <div className="coop-level-footer">
+          <div className="coop-level-titlebg" style={{ backgroundImage: `url(${titlebg})` }}>
+            <span className="coop-level-title-text">{level.name}</span>
+          </div>
         </div>
       </div>
     </button>
