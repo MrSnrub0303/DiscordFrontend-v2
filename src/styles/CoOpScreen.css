@@ -241,9 +241,9 @@
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding-top: 60px;
+  transform: translateY(-3px);
   font-family: "Trajan Pro Bold", serif;
   font-size: clamp(0.48rem, 0.85vw, 0.62rem);
   color: #ffd700;
