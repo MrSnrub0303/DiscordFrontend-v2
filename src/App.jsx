@@ -12,6 +12,7 @@ import { SpinnerScreen } from "./components/SpinnerScreen";
 import { EventsScreen } from "./components/EventsScreen";
 import { MonitorScreen } from "./components/MonitorScreen";
 import { RankedScreen } from "./components/RankedScreen";
+import { CoOpScreen } from "./components/CoOpScreen";
 import { EmberCanvas } from "./components/EmberCanvas";
 import { VolumeControl } from "./components/VolumeControl";
 import { BackButton } from "./components/BackButton";
@@ -301,7 +302,7 @@ const SCREEN_TRANSITION_MS = 1000;
 export default function App() {
   const [players, setPlayers] = useState([]);
 
-  const [appMode, setAppMode] = useState("HOME"); // "HOME", "GAME", "SPINNER", "EVENTS", or "MONITOR"
+  const [appMode, setAppMode] = useState("HOME"); // "HOME", "GAME", "SPINNER", "EVENTS", "COOP", "RANKED", or "MONITOR"
 
   const [socket, setSocket] = useState(null);
 
@@ -3366,7 +3367,7 @@ export default function App() {
               }
             });
           }}
-          onCoOpClick={() => { /* Co-Op screen — to be implemented */ }}
+          onCoOpClick={() => { playClickSound(); triggerScreenTransition("COOP", async () => {}); }}
           onRankedClick={() => { playClickSound(); setAppMode("RANKED"); }}
           onMonitorClick={() => setAppMode("MONITOR")}
           isMonitorAuthorized={isMonitorAuthorized}
@@ -3454,6 +3455,29 @@ export default function App() {
           musicVolume={musicVolume}
           onVolumeChange={handleVolumeChange}
           initialPlayers={eventsInitialPlayers}
+          isMobile={isMobile}
+          playClickSound={playClickSound}
+          playHoverSound={playHoverSound}
+        />
+        {renderScreenTransitionOverlay()}
+      </>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Render Co-Op
+  // ─────────────────────────────────────────────────────────────────
+  if (appMode === "COOP") {
+    return (
+      <>
+        <CoOpScreen
+          onBackClick={() => triggerScreenTransition("HOME", async () => {})}
+          onBackHover={playHoverSound}
+          onBackPress={(handler) => { playClickSound(); handler(); }}
+          musicEnabled={musicEnabled}
+          onToggleMusic={toggleMusic}
+          musicVolume={musicVolume}
+          onVolumeChange={handleVolumeChange}
           isMobile={isMobile}
           playClickSound={playClickSound}
           playHoverSound={playHoverSound}

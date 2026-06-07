@@ -1,0 +1,266 @@
+/* ── Co-Op Screen ── */
+
+.coop-screen {
+  position: fixed;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+/* ── Main layout wrapper ── */
+
+.coop-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 60px 24px 16px; /* top clearance for fixed back button */
+}
+
+.coop-main--mobile {
+  padding-top: 112px;
+}
+
+/* ── Marble chrome overlay (behind tabs / divider) ── */
+
+.coop-chrome-marble {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100px; /* covers the tab row area */
+  background-size: cover;
+  background-position: center;
+  opacity: 0.18;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Campaign tabs ── */
+
+.coop-tabs {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.coop-tab {
+  font-family: "Trajan Pro Bold", serif;
+  font-size: clamp(0.72rem, 1.4vw, 0.95rem);
+  letter-spacing: 0.5px;
+  color: rgba(255, 215, 0, 0.55);
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 4px;
+  padding: 7px 18px 8px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+
+.coop-tab:hover {
+  color: #ffd700;
+  border-color: rgba(255, 215, 0, 0.45);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.coop-tab--active {
+  color: #ffd700;
+  border-color: rgba(255, 215, 0, 0.65);
+  background: rgba(0, 0, 0, 0.65);
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.14), inset 0 0 8px rgba(255, 215, 0, 0.06);
+}
+
+/* ── Gold divider ── */
+
+.coop-divider {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: auto;
+  flex-shrink: 0;
+  margin: 10px 0 8px;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.85;
+}
+
+/* ── Scrollable content area ── */
+
+.coop-scroll {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200, 164, 32, 0.4) transparent;
+  padding-bottom: 24px;
+  padding-right: 4px;
+}
+
+.coop-scroll::-webkit-scrollbar       { width: 5px; }
+.coop-scroll::-webkit-scrollbar-track { background: transparent; }
+.coop-scroll::-webkit-scrollbar-thumb {
+  background: rgba(200, 164, 32, 0.4);
+  border-radius: 3px;
+}
+
+/* ── Act section ── */
+
+.coop-act-section {
+  margin-bottom: 32px;
+}
+
+.coop-act-section:last-child {
+  margin-bottom: 0;
+}
+
+.coop-act-title {
+  font-family: "Trajan Pro Bold", serif;
+  font-size: clamp(0.78rem, 1.6vw, 1rem);
+  color: rgba(255, 215, 0, 0.7);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin: 0 0 12px 2px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
+}
+
+/* ── Level grid ── */
+
+.coop-levels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+}
+
+/* ── Level card ── */
+
+.coop-level-card {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  outline: none;
+  border-radius: 4px;
+  overflow: visible;
+  transition: transform 0.18s ease, filter 0.18s ease;
+  user-select: none;
+}
+
+.coop-level-card:hover {
+  transform: translateY(-4px) scale(1.025);
+  filter: brightness(1.08);
+}
+
+.coop-level-card:active {
+  transform: scale(0.97);
+  transition-duration: 0.08s;
+}
+
+/* Base level image */
+.coop-level-base {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 4px;
+}
+
+.coop-level-base--missing {
+  background-color: rgba(10, 8, 5, 0.75);
+  /* subtle diagonal stripe for missing images */
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 215, 0, 0.04) 0px,
+    rgba(255, 215, 0, 0.04) 1px,
+    transparent 1px,
+    transparent 12px
+  );
+}
+
+/* All overlay images share this base */
+.coop-level-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  border-radius: 4px;
+}
+
+/* Glow — hidden by default, fades in on hover */
+.coop-level-glow {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.coop-level-glow.active {
+  opacity: 1;
+}
+
+/* ── Title plate ── */
+
+.coop-level-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.coop-level-titlebg {
+  /* titlebg.png used as background; width is 85% of card, height auto via padding */
+  width: 85%;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  /* Height derived from the image's own aspect ratio — adjust padding-bottom to match */
+  padding-bottom: 18%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.coop-level-title-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Trajan Pro Bold", serif;
+  font-size: clamp(0.5rem, 1vw, 0.68rem);
+  color: #ffd700;
+  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.95);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 6px;
+}
+
+/* ── Mobile responsive ── */
+
+@media (max-width: 600px) {
+  .coop-main { padding: 112px 12px 12px; }
+  .coop-levels-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .coop-act-title { font-size: 0.78rem; }
+  .coop-tab { font-size: 0.72rem; padding: 6px 12px 7px; }
+}
