@@ -3,7 +3,6 @@ import '../styles/SpinnerScreen.css';
 import { EmberCanvas } from './EmberCanvas';
 import { BackButton } from './BackButton';
 import { VolumeControl } from './VolumeControl';
-import topBarBg from '../assets/marblebg2.png';
 import aoe3Logo from '../assets/aoe3_de_logo.png';
 
 export function SpinnerScreen({
@@ -31,16 +30,11 @@ export function SpinnerScreen({
         isMobile={isMobile}
       />
 
-      <div
-        className={`spinner-screen-header${isMobile ? ' spinner-screen-header--mobile' : ''}`}
-        style={{ backgroundImage: `url(${topBarBg})` }}
-      >
+      <div style={{ position: 'fixed', top: isMobile ? 62 : 12, left: 12, zIndex: 1001 }}>
         <BackButton
           onClick={onBackPress ? () => onBackPress(onBackClick) : onBackClick}
           onMouseEnter={onBackHover}
-          style={isMobile ? { position: 'fixed', top: 62, left: 12, zIndex: 1001 } : {}}
         />
-        {!isMobile && <h1 className="spinner-title">Civilization Spinner</h1>}
       </div>
 
       <img

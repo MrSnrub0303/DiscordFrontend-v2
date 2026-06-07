@@ -24,7 +24,6 @@ import btnNormal from "./assets/combobox_button_normal.png";
 import btnHover from "./assets/combobox_button_hover.png";
 import btnDisabled from "./assets/combobox_button_disabled.png";
 import marbleBg from "./assets/marblebg2.png";
-import topBarBg from "./assets/marblebg2.png";
 import btnMainMenuDisabled from "./assets/button_mainmenu_disabled.png";
 import restartButtonBg from "./assets/button.webp";
 import restartScreenBg from "./assets/background.webp";
@@ -3851,51 +3850,14 @@ export default function App() {
         onVolumeChange={handleVolumeChange}
       />
 
-      <div
-        className="spinner-screen-header"
-        style={{
-          backgroundImage: `url(${topBarBg})`,
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "1rem 1.5rem",
-          minHeight: "74px",
-          boxSizing: "border-box",
-        }}
-      >
-        <div style={{ position: "absolute", left: 20, top: "50%", transform: "translateY(-50%)" }}>
-          <BackButton
-            onMouseEnter={playHoverSound}
-            onClick={() => {
-              playClickSound();
-              triggerScreenTransition("HOME", async () => { });
-            }}
-          />
-        </div>
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: "50%",
-            transform: "translateY(-50%)",
-            display: "flex",
-            justifyContent: "center",
-            pointerEvents: "none",
+      <div style={{ position: "fixed", top: isMobile ? 62 : 12, left: 12, zIndex: 1001 }}>
+        <BackButton
+          onMouseEnter={playHoverSound}
+          onClick={() => {
+            playClickSound();
+            triggerScreenTransition("HOME", async () => { });
           }}
-        >
-          <h1
-            className="spinner-title"
-            style={{
-              margin: 0,
-              textAlign: "center",
-              "--spinner-title-offset-y": "-3px",
-            }}
-          >
-            Age of Empires III Trivia
-          </h1>
-        </div>
+        />
       </div>
 
       <div

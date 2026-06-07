@@ -3,7 +3,6 @@ import '../styles/EventsScreen.css';
 import { EmberCanvas } from './EmberCanvas';
 import { BackButton } from './BackButton';
 import { VolumeControl } from './VolumeControl';
-import topBarBg from '../assets/marblebg2.png';
 import marbleBg from '../assets/marblebg2.png';
 import aoe3Logo from '../assets/aoe3_de_logo.png';
 import eventsDuration from '../assets/EventsDuration.png';
@@ -155,17 +154,11 @@ export function EventsScreen({
         isMobile={isMobile}
       />
 
-      {/* Marble top bar */}
-      <div
-        className={`events-screen-header${isMobile ? ' events-screen-header--mobile' : ''}`}
-        style={{ backgroundImage: `url(${topBarBg})` }}
-      >
+      <div style={{ position: 'fixed', top: isMobile ? 62 : 12, left: 12, zIndex: 1001 }}>
         <BackButton
           onClick={onBackPress ? () => onBackPress(onBackClick) : onBackClick}
           onMouseEnter={onBackHover}
-          style={isMobile ? { position: 'fixed', top: 62, left: 12, zIndex: 1001 } : {}}
         />
-        {!isMobile && <h1 className="events-title">GGplz Challenge – Spring Rabbit Hunt</h1>}
       </div>
 
       {/* Top-left: EventsDuration + EventsPrizepool widgets — hidden on mobile */}
