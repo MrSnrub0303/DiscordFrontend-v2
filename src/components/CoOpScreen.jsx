@@ -146,6 +146,23 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
     WebkitMaskRepeat: 'no-repeat',
   };
 
+  // Footer sits at the bottom of the card. The mask must be sized to the full
+  // card dimensions (100% wide, auto height to maintain 1120:260 ratio) and
+  // anchored to the bottom so that the correct opaque portion covers the footer.
+  // mask-position: 0 100% aligns the mask's bottom edge with the footer's bottom.
+  const footerMaskStyle = {
+    maskImage: `url(${lvlcardMask})`,
+    WebkitMaskImage: `url(${lvlcardMask})`,
+    maskMode: 'alpha',
+    WebkitMaskMode: 'alpha',
+    maskSize: '100% auto',
+    WebkitMaskSize: '100% auto',
+    maskRepeat: 'no-repeat',
+    WebkitMaskRepeat: 'no-repeat',
+    maskPosition: '0 100%',
+    WebkitMaskPosition: '0 100%',
+  };
+
   return (
     <button
       className="coop-level-card"
@@ -170,8 +187,8 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
         <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
       </div>
 
-      {/* Title plate — masked to card shape */}
-      <div className="coop-level-footer" style={maskStyle}>
+      {/* Title plate — masked with card-aligned positioning */}
+      <div className="coop-level-footer" style={footerMaskStyle}>
         <div className="coop-level-titlebg" style={{ backgroundImage: `url(${titlebg})` }}>
           <span className="coop-level-title-text">{level.name}</span>
         </div>
