@@ -12,7 +12,6 @@ import goldDivider      from '../assets/GoldDivider.png';
 // Formatting overlays — place in client/src/assets/coop/
 // All overlay images are 1120×260px (same dimensions as level images)
 import lvlcardGlow      from '../assets/coop/lvlcard_glow.png';
-import lvlcardHighlight from '../assets/coop/lvlcard_highlight.png';
 import lvlcardMask      from '../assets/coop/lvlcard_mask.png'; // used as CSS mask-image
 import lvlcardShadow    from '../assets/coop/lvlcard_shadow.png';
 import titlebg          from '../assets/coop/titlebg.png'; // 1120×90px
@@ -156,14 +155,14 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
       title={level.name}
       aria-label={level.name}
     >
-      {/* Shadow — unmasked; dark torn border shows in the zone outside the masked base div */}
+      {/* Shadow — unmasked; dark torn border shows outside the masked base div */}
       <img src={lvlcardShadow} className="coop-level-overlay" alt="" draggable={false} />
 
-      {/* Glow — unmasked, behind the masked base div; its cream centre is hidden by the
-          opaque base, so only the pink/red torn border shows at the card edge on hover */}
+      {/* Glow — unmasked, behind the masked base div; only the pink/red torn border
+          shows at the card edge on hover; cream centre is covered by the base div */}
       <img src={lvlcardGlow} className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`} alt="" draggable={false} />
 
-      {/* Base level image — masked; sits above shadow+glow, covering their centres */}
+      {/* Base level image — masked to the card's torn-edge shape */}
       <div
         className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
         style={{ backgroundImage: imgMissing ? 'none' : `url(${imgUrl})`, ...maskStyle }}
@@ -171,11 +170,8 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
         <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
       </div>
 
-      {/* Highlight — masked + overlay blend; warm gold toning confined to the card shape */}
-      <img src={lvlcardHighlight} className="coop-level-overlay" style={{ mixBlendMode: 'overlay', ...maskStyle }} alt="" draggable={false} />
-
-      {/* Title plate — masked; kept inside the card's torn-edge shape */}
-      <div className="coop-level-footer" style={maskStyle}>
+      {/* Title plate */}
+      <div className="coop-level-footer">
         <div className="coop-level-titlebg" style={{ backgroundImage: `url(${titlebg})` }}>
           <span className="coop-level-title-text">{level.name}</span>
         </div>
