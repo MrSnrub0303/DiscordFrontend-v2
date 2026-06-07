@@ -50,6 +50,7 @@
   z-index: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 24px;
   flex-wrap: wrap;
   flex-shrink: 0;
@@ -240,8 +241,9 @@
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding-top: 6px;
   font-family: "Trajan Pro Bold", serif;
   font-size: clamp(0.48rem, 0.85vw, 0.62rem);
   color: #ffd700;
