@@ -131,15 +131,17 @@ const CAMPAIGN_DATA = [
 // shadow, highlight, glow are stacked overlays on top of the masked base.
 // titlebg (1120×90) is centered at the bottom as a background-image plate.
 
-const maskAlpha = (url) => ({
+const maskAlpha = (url, h = '100%') => ({
   maskImage: `url(${url})`,
   WebkitMaskImage: `url(${url})`,
   maskMode: 'alpha',
   WebkitMaskMode: 'alpha',
-  maskSize: '100% 100%',
-  WebkitMaskSize: '100% 100%',
+  maskSize: `100% ${h}`,
+  WebkitMaskSize: `100% ${h}`,
   maskRepeat: 'no-repeat',
   WebkitMaskRepeat: 'no-repeat',
+  maskPosition: 'center',
+  WebkitMaskPosition: 'center',
 });
 
 function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound }) {
@@ -163,11 +165,11 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
       {/* Level image — masked with the full 1120×260 mask (exact size match) */}
       <div
         className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
-        style={imgMissing ? maskAlpha(lvlcardMask) : {
+        style={imgMissing ? maskAlpha(lvlcardMask, '100%') : {
           backgroundImage: `url(${imgUrl})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          ...maskAlpha(lvlcardMask),
+          ...maskAlpha(lvlcardMask, '100%'),
         }}
       >
         <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
@@ -181,9 +183,7 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
           backgroundSize: '100% 100%',
           backgroundRepeat: 'no-repeat',
           backgroundPosition: 'center bottom',
-          ...maskAlpha(lvlcardMaskTitlebg),
-          maskSize: '100% 90px',
-          WebkitMaskSize: '100% 90px',
+          ...maskAlpha(lvlcardMaskTitlebg, '90px'),
         }}
       >
         <span className="coop-level-title-text">{level.name}</span>
