@@ -173,10 +173,8 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
           <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
         </div>
 
-        <div className="coop-level-footer">
-          <div className="coop-level-titlebg" style={{ backgroundImage: `url(${titlebg})` }}>
-            <span className="coop-level-title-text">{level.name}</span>
-          </div>
+        <div className="coop-level-titlebg" style={{ backgroundImage: `url(${titlebg})` }}>
+          <span className="coop-level-title-text">{level.name}</span>
         </div>
       </div>
     </button>

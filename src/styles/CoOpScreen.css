@@ -236,26 +236,18 @@
    Displayed at 85% of card width, centred, pinned to the card's bottom edge.
    aspect-ratio: 1120/90 keeps the plate at the exact correct height for any card size. */
 
-.coop-level-footer {
+.coop-level-titlebg {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.coop-level-titlebg {
-  width: 100%;
   aspect-ratio: 1120 / 90;
   background-size: 100% 100%;
   background-repeat: no-repeat;
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 
 .coop-level-title-text {
