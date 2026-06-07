@@ -180,7 +180,10 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
           backgroundImage: `url(${titlebg})`,
           backgroundSize: '100% 100%',
           backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center bottom',
           ...maskAlpha(lvlcardMaskTitlebg),
+          maskSize: '100% 90px',
+          WebkitMaskSize: '100% 90px',
         }}
       >
         <span className="coop-level-title-text">{level.name}</span>

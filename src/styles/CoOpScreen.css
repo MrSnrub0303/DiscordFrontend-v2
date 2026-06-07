@@ -201,10 +201,10 @@
 
 .coop-level-titlebg {
   position: absolute;
-  bottom: 0;
   left: 0;
   right: 0;
-  aspect-ratio: 1120 / 90;
+  bottom: 0;
+  height: 90px;
 }
 
 /* ── Overlay images (shadow, highlight, glow) ──
