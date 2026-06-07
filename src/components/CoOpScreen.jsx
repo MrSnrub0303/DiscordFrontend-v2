@@ -170,8 +170,8 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
         <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
       </div>
 
-      {/* Title plate */}
-      <div className="coop-level-footer">
+      {/* Title plate — masked to card shape */}
+      <div className="coop-level-footer" style={maskStyle}>
         <div className="coop-level-titlebg" style={{ backgroundImage: `url(${titlebg})` }}>
           <span className="coop-level-title-text">{level.name}</span>
         </div>
