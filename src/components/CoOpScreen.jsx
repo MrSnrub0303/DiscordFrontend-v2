@@ -145,7 +145,15 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
       title={level.name}
       aria-label={level.name}
     >
-      {/* Base level image — mask-image (luminance) clips it to the card shape */}
+      {/* Layer 1 (bottom): shadow — dark torn border visible in the mask's clipped zone */}
+      <img src={lvlcardShadow} className="coop-level-overlay" alt="" draggable={false} />
+
+      {/* Layer 2: glow — behind the base div; only its torn-border zone peeks through the
+          mask clip, so the pink/red glow appears around the card edge, not over the image */}
+      <img src={lvlcardGlow} className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`} alt="" draggable={false} />
+
+      {/* Layer 3: masked base — alpha mask clips it to the card's torn-edge shape.
+          Sitting above shadow+glow in DOM order, it covers their opaque centres. */}
       <div
         className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
         style={{
@@ -160,11 +168,13 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
           WebkitMaskRepeat: 'no-repeat',
         }}
       >
-        {/* Hidden img used only to detect a missing level file */}
         <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
       </div>
 
-      {/* Title plate — below the overlay stack so shadow/highlight sit on top */}
+      {/* Layer 4: highlight — overlay blend tones the level image with warm gold */}
+      <img src={lvlcardHighlight} className="coop-level-overlay" style={{ mixBlendMode: 'overlay' }} alt="" draggable={false} />
+
+      {/* Layer 5 (top): title plate — z-index 10, above all overlays */}
       <div className="coop-level-footer">
         <div
           className="coop-level-titlebg"
@@ -173,11 +183,6 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
           <span className="coop-level-title-text">{level.name}</span>
         </div>
       </div>
-
-      {/* Overlay stack (bottom → top): shadow → highlight → glow */}
-      <img src={lvlcardShadow}    className="coop-level-overlay"                                               alt="" draggable={false} />
-      <img src={lvlcardHighlight} className="coop-level-overlay"                                               alt="" draggable={false} />
-      <img src={lvlcardGlow}      className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`}  alt="" draggable={false} />
     </button>
   );
 }
