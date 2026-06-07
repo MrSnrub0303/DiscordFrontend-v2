@@ -204,8 +204,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 90px;
-  overflow: hidden;
+  height: 34.615%; /* 90 / 260 — proportional to parent card height */
 }
 
 /* ── Overlay images (shadow, highlight, glow) ──

@@ -11,11 +11,10 @@ import goldDivider      from '../assets/GoldDivider.png';
 
 // Formatting overlays — place in client/src/assets/coop/
 // All overlay images are 1120×260px (same dimensions as level images)
-import lvlcardGlow          from '../assets/coop/lvlcard_glow.png';
-import lvlcardMask          from '../assets/coop/lvlcard_mask.png';          // 1120×260 — masks level image
-import lvlcardMaskTitlebg   from '../assets/coop/lvlcard_mask_titlebg.png'; // 1120×90  — masks title plate
-import lvlcardShadow        from '../assets/coop/lvlcard_shadow.png';
-import titlebg              from '../assets/coop/titlebg.png';               // 1120×90px
+import lvlcardGlow      from '../assets/coop/lvlcard_glow.png';
+import lvlcardMask      from '../assets/coop/lvlcard_mask.png'; // 1120×260 — masks the whole card
+import lvlcardShadow    from '../assets/coop/lvlcard_shadow.png';
+import titlebg          from '../assets/coop/titlebg.png';       // 1120×90px
 
 // ─── Campaign / Act / Level data ──────────────────────────────────────────────
 // Edit names here. Images load from client/public/coop/:
@@ -162,7 +161,9 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
       <img src={lvlcardShadow} className="coop-level-overlay" alt="" draggable={false} />
       <img src={lvlcardGlow} className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`} alt="" draggable={false} />
 
-      {/* Level image — masked with the full 1120×260 mask (exact size match) */}
+      {/* Level image + titlebg — both inside one masked div.
+          mask-image clips the element AND all its children, so the titlebg
+          inherits the card's torn-edge shape from the same 1120×260 mask. */}
       <div
         className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
         style={imgMissing ? maskAlpha(lvlcardMask, '100%') : {
@@ -173,20 +174,16 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
         }}
       >
         <img src={imgUrl} alt="" style={{ display: 'none' }} onError={() => setImgMissing(true)} />
-      </div>
-
-      {/* Title plate — masked with the pre-cropped 1120×90 mask (exact size match) */}
-      <div
-        className="coop-level-titlebg"
-        style={{
-          backgroundImage: `url(${titlebg})`,
-          backgroundSize: '100% 100%',
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'center bottom',
-          ...maskAlpha(lvlcardMaskTitlebg, '90px'),
-        }}
-      >
-        <span className="coop-level-title-text">{level.name}</span>
+        <div
+          className="coop-level-titlebg"
+          style={{
+            backgroundImage: `url(${titlebg})`,
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat',
+          }}
+        >
+          <span className="coop-level-title-text">{level.name}</span>
+        </div>
       </div>
     </button>
   );
