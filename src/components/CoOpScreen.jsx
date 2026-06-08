@@ -136,7 +136,7 @@ const maskAlpha = (url, h = '100%') => ({
   WebkitMaskPosition: 'center',
 });
 
-function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound }) {
+function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound, addDebugLog }) {
   const [hovered,    setHovered]    = useState(false);
   const [imgMissing, setImgMissing] = useState(false);
   const imgUrl = `/coop/${campaignId}act${actId}lvl${level.id}.png`;
@@ -145,17 +145,14 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
     playClickSound?.();
     const url = `/api/coop/download/${campaignId}/${actId}/${level.id}`;
 
-    // DEBUG — remove after diagnosis
-    alert(`[DEBUG] Attempting download\nURL: ${url}\nFilename: ${level.name}.age3Yscen`);
+    addDebugLog(`Clicked: ${level.name} → ${url}`);
 
-    // Async probe — fires independently, does NOT affect the synchronous click below
     fetch(url).then(resp => {
-      alert(`[DEBUG] Server responded: ${resp.status} ${resp.statusText}\nContent-Disposition: ${resp.headers.get('Content-Disposition') ?? '(none)'}`);
+      addDebugLog(`Status: ${resp.status} ${resp.statusText} | Content-Disposition: ${resp.headers.get('Content-Disposition') ?? '(none)'}`);
     }).catch(err => {
-      alert(`[DEBUG] Fetch error: ${err.message}`);
+      addDebugLog(`Fetch error: ${err.message}`);
     });
 
-    // Synchronous anchor click — must stay in user-gesture context
     const a = document.createElement('a');
     a.href = url;
     a.download = `${level.name}.age3Yscen`;
@@ -222,6 +219,8 @@ export function CoOpScreen({
   playHoverSound,
 }) {
   const [activeCampaign, setActiveCampaign] = useState(0);
+  const [debugLog, setDebugLog] = useState([]);  // DEBUG
+  const addDebugLog = (msg) => setDebugLog(prev => [...prev, msg]);  // DEBUG
   const campaign = CAMPAIGN_DATA[activeCampaign];
 
   return (
@@ -275,6 +274,13 @@ export function CoOpScreen({
 
       {/* Scroll covers the full screen; padding-top pushes initial content
           below the header. Content scrolls up behind the header. */}
+      {/* DEBUG overlay — remove after diagnosis */}
+      {debugLog.length > 0 && (
+        <div style={{ position: 'fixed', bottom: 10, left: 10, right: 10, zIndex: 9999, background: 'rgba(0,0,0,0.85)', color: '#0f0', fontFamily: 'monospace', fontSize: 12, padding: 10, borderRadius: 6, maxHeight: 200, overflowY: 'auto', pointerEvents: 'none' }}>
+          {debugLog.map((msg, i) => <div key={i}>{msg}</div>)}
+        </div>
+      )}
+
       <div className="coop-scroll">
         {campaign.acts.map(act => (
           <div key={act.id} className="coop-act-section">
@@ -288,6 +294,7 @@ export function CoOpScreen({
                   level={level}
                   playHoverSound={playHoverSound}
                   playClickSound={playClickSound}
+                  addDebugLog={addDebugLog}
                 />
               ))}
             </div>
