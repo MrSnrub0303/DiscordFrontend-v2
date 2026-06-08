@@ -335,7 +335,7 @@
 .coop-modal-divider {
   position: relative;
   z-index: 1;
-  width: calc(100% + 48px);
+  width: 75%;
   height: auto;
   object-fit: contain;
   opacity: 0.75;

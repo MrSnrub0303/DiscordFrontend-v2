@@ -136,12 +136,13 @@ const maskAlpha = (url, h = '100%') => ({
 });
 
 // Red button matching the HomeScreen Ranked/Monitor style
-function ModalBtn({ onClick, children }) {
+function ModalBtn({ onClick, onPlayHover, onPlayClick, children }) {
   const [pressed, setPressed] = useState(false);
   return (
     <button
       className="coop-modal-btn"
-      onClick={onClick}
+      onClick={() => { onPlayClick?.(); onClick?.(); }}
+      onMouseEnter={() => onPlayHover?.()}
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
       onMouseLeave={() => setPressed(false)}
@@ -237,19 +238,31 @@ export function CoOpScreen({
 
   const handleAutoDownload = () => {
     const { level, campaignId, actId } = selectedLevel;
-    const name = encodeURIComponent(level.name);
-    onDownloadScenario?.(`${serverUrl}/api/coop/install/${campaignId}/${actId}/${level.id}?name=${name}`);
+    const name  = encodeURIComponent(level.name);
+    // Pass the full download URL so the bat doesn't need to guess the server address
+    const dlurl = encodeURIComponent(`${serverUrl}/api/coop/download/${campaignId}/${actId}/${level.id}`);
+    onDownloadScenario?.(`${serverUrl}/api/coop/install/${campaignId}/${actId}/${level.id}?name=${name}&dlurl=${dlurl}`);
     setDownloadStep('auto-done');
   };
 
-  const copyPath = async () => {
-    try {
-      await navigator.clipboard.writeText('%USERPROFILE%\\Games\\Age of Empires 3 DE');
-      setPathCopied(true);
-      setTimeout(() => setPathCopied(false), 2000);
-    } catch {
-      // Clipboard unavailable — ignore
+  const copyPath = () => {
+    const text = '%USERPROFILE%\\Games\\Age of Empires 3 DE';
+    const fallback = () => {
+      const el = document.createElement('textarea');
+      el.value = text;
+      el.style.cssText = 'position:fixed;opacity:0;';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    };
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).catch(fallback);
+    } else {
+      fallback();
     }
+    setPathCopied(true);
+    setTimeout(() => setPathCopied(false), 2000);
   };
 
   return (
@@ -329,7 +342,12 @@ export function CoOpScreen({
             <div className="coop-modal-marble" style={{ backgroundImage: `url(${marbleBg})` }} />
 
             {/* Close */}
-            <button className="coop-modal-close" onClick={closeModal} aria-label="Close">✕</button>
+            <button
+              className="coop-modal-close"
+              onClick={() => { playClickSound?.(); closeModal(); }}
+              onMouseEnter={playHoverSound}
+              aria-label="Close"
+            >✕</button>
 
             {/* Title */}
             <h2 className="coop-modal-title">{selectedLevel.level.name}</h2>
@@ -341,7 +359,7 @@ export function CoOpScreen({
                 <p className="coop-modal-subtitle">How would you like to install this scenario?</p>
 
                 <div className="coop-modal-option">
-                  <ModalBtn onClick={handleManualDownload}>Download Manually</ModalBtn>
+                  <ModalBtn onClick={handleManualDownload} onPlayHover={playHoverSound} onPlayClick={playClickSound}>Download Manually</ModalBtn>
                   <p className="coop-modal-option-desc">
                     Downloads the scenario file to your Downloads folder.
                     We'll show you where to move it.
@@ -349,7 +367,7 @@ export function CoOpScreen({
                 </div>
 
                 <div className="coop-modal-option">
-                  <ModalBtn onClick={handleAutoDownload}>Download Automatically</ModalBtn>
+                  <ModalBtn onClick={handleAutoDownload} onPlayHover={playHoverSound} onPlayClick={playClickSound}>Download Automatically</ModalBtn>
                   <p className="coop-modal-option-desc">
                     Downloads a small installer that detects your AoE3 profile
                     folders and places the file in the right location automatically.
@@ -377,8 +395,8 @@ export function CoOpScreen({
                 </p>
 
                 <div className="coop-modal-actions">
-                  <ModalBtn onClick={copyPath}>{pathCopied ? 'Copied!' : 'Copy Base Path'}</ModalBtn>
-                  <ModalBtn onClick={closeModal}>Done</ModalBtn>
+                  <ModalBtn onClick={copyPath} onPlayHover={playHoverSound} onPlayClick={playClickSound}>{pathCopied ? 'Copied!' : 'Copy Base Path'}</ModalBtn>
+                  <ModalBtn onClick={closeModal} onPlayHover={playHoverSound} onPlayClick={playClickSound}>Done</ModalBtn>
                 </div>
               </div>
             )}
@@ -400,7 +418,7 @@ export function CoOpScreen({
                   If Windows shows a security warning, click <strong>More info</strong> →
                   then <strong>Run anyway</strong>.
                 </p>
-                <ModalBtn onClick={closeModal}>Done</ModalBtn>
+                <ModalBtn onClick={closeModal} onPlayHover={playHoverSound} onPlayClick={playClickSound}>Done</ModalBtn>
               </div>
             )}
 
