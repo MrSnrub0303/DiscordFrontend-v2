@@ -195,6 +195,11 @@
   transition-duration: 0.08s;
 }
 
+.coop-level-card.downloading {
+  opacity: 0.75;
+  cursor: wait;
+}
+
 /* ── Base level image ── */
 
 .coop-level-base {
