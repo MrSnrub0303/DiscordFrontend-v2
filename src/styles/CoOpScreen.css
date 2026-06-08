@@ -427,7 +427,7 @@
 
 /* Red button — matches HomeScreen Ranked/Monitor style */
 .coop-modal-btn {
-  width: 90%;
+  width: 68%;
   aspect-ratio: 166 / 37;
   border: none;
   background-color: transparent;
@@ -452,7 +452,7 @@
 .coop-modal-btn:hover  { transform: scale(1.04); filter: drop-shadow(0 4px 12px rgba(0,0,0,0.75)); }
 .coop-modal-btn:active { transform: scale(0.97); }
 
-/* When two buttons sit side by side in .coop-modal-actions */
+/* Buttons inside .coop-modal-actions — two side by side, or one centred */
 .coop-modal-actions .coop-modal-btn {
   width: calc(50% - 5px);
 }

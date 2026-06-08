@@ -392,7 +392,6 @@ export function CoOpScreen({
 
                 <p className="coop-modal-hint">
                   The SteamID is the long numbered folder inside the Age of Empires 3 DE directory.
-                  There may be multiple — copy into each one that has a Scenario subfolder.
                 </p>
 
                 <div className="coop-modal-actions">
@@ -410,16 +409,13 @@ export function CoOpScreen({
                   Find <strong>Install {selectedLevel.level.name}.bat</strong> in your
                   Downloads folder and double-click it.
                 </p>
-                <p className="coop-modal-hint">
-                  The installer scans all your AoE3 profile folders and copies
-                  the scenario to each valid Scenario directory. Files that already
-                  exist are skipped automatically.
-                </p>
                 <p className="coop-modal-hint coop-modal-hint--warn">
                   If Windows shows a security warning, click <strong>More info</strong> →
                   then <strong>Run anyway</strong>.
                 </p>
-                <ModalBtn onClick={closeModal} onPlayHover={playHoverSound} onPlayClick={playClickSound}>Done</ModalBtn>
+                <div className="coop-modal-actions">
+                  <ModalBtn onClick={closeModal} onPlayHover={playHoverSound} onPlayClick={playClickSound}>Done</ModalBtn>
+                </div>
               </div>
             )}
 
