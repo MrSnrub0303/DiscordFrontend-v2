@@ -232,15 +232,16 @@ export function CoOpScreen({
 
   const handleManualDownload = () => {
     const { level, campaignId, actId } = selectedLevel;
-    onDownloadScenario?.(`${serverUrl}/api/coop/download/${campaignId}/${actId}/${level.id}`);
+    const name = encodeURIComponent(level.name);
+    onDownloadScenario?.(`${serverUrl}/api/coop/download/${campaignId}/${actId}/${level.id}?name=${name}`);
     setDownloadStep('manual-done');
   };
 
   const handleAutoDownload = () => {
     const { level, campaignId, actId } = selectedLevel;
     const name  = encodeURIComponent(level.name);
-    // Pass the full download URL so the bat doesn't need to guess the server address
-    const dlurl = encodeURIComponent(`${serverUrl}/api/coop/download/${campaignId}/${actId}/${level.id}`);
+    // Pass the full download URL (with name) so the bat uses the correct server + filename
+    const dlurl = encodeURIComponent(`${serverUrl}/api/coop/download/${campaignId}/${actId}/${level.id}?name=${name}`);
     onDownloadScenario?.(`${serverUrl}/api/coop/install/${campaignId}/${actId}/${level.id}?name=${name}&dlurl=${dlurl}`);
     setDownloadStep('auto-done');
   };
