@@ -137,41 +137,26 @@ const maskAlpha = (url, h = '100%') => ({
 });
 
 function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound }) {
-  const [hovered,     setHovered]     = useState(false);
-  const [imgMissing,  setImgMissing]  = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [hovered,    setHovered]    = useState(false);
+  const [imgMissing, setImgMissing] = useState(false);
   const imgUrl = `/coop/${campaignId}act${actId}lvl${level.id}.png`;
 
-  const handleDownload = async () => {
-    if (downloading) return;
+  const handleDownload = () => {
     playClickSound?.();
-    setDownloading(true);
-    try {
-      const resp = await fetch(`/api/coop/download/${campaignId}/${actId}/${level.id}`);
-      if (!resp.ok) return;
-      const blob = await resp.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = objectUrl;
-      a.download = `${level.name}.age3Yscen`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      // Network error — do nothing
-    } finally {
-      setDownloading(false);
-    }
+    const a = document.createElement('a');
+    a.href = `/api/coop/download/${campaignId}/${actId}/${level.id}`;
+    a.download = `${level.name}.age3Yscen`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
     <button
-      className={`coop-level-card${downloading ? ' downloading' : ''}`}
+      className="coop-level-card"
       onMouseEnter={() => { setHovered(true); playHoverSound?.(); }}
       onMouseLeave={() => setHovered(false)}
       onClick={handleDownload}
-      disabled={downloading}
       title={level.name}
       aria-label={level.name}
     >
