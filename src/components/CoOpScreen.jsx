@@ -136,7 +136,7 @@ const maskAlpha = (url, h = '100%') => ({
   WebkitMaskPosition: 'center',
 });
 
-function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound, addDebugLog, onDownloadScenario }) {
+function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound, onDownloadScenario }) {
   const [hovered,    setHovered]    = useState(false);
   const [imgMissing, setImgMissing] = useState(false);
   const imgUrl = `/coop/${campaignId}act${actId}lvl${level.id}.png`;
@@ -144,15 +144,8 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound, a
   const handleDownload = () => {
     playClickSound?.();
     const serverUrl = import.meta.env.VITE_SERVER_URL || '';
-    const path = `/api/coop/download/${campaignId}/${actId}/${level.id}`;
-    const fullUrl = `${serverUrl}${path}`;
-    addDebugLog(`Clicked: ${level.name} → ${fullUrl}`);
-    if (onDownloadScenario) {
-      onDownloadScenario(fullUrl);
-      addDebugLog('openExternalLink called');
-    } else {
-      addDebugLog('onDownloadScenario not available');
-    }
+    const fullUrl = `${serverUrl}/api/coop/download/${campaignId}/${actId}/${level.id}`;
+    onDownloadScenario?.(fullUrl);
   };
 
   return (
@@ -214,8 +207,6 @@ export function CoOpScreen({
   onDownloadScenario,
 }) {
   const [activeCampaign, setActiveCampaign] = useState(0);
-  const [debugLog, setDebugLog] = useState([]);  // DEBUG
-  const addDebugLog = (msg) => setDebugLog(prev => [...prev, msg]);  // DEBUG
   const campaign = CAMPAIGN_DATA[activeCampaign];
 
   return (
@@ -269,13 +260,6 @@ export function CoOpScreen({
 
       {/* Scroll covers the full screen; padding-top pushes initial content
           below the header. Content scrolls up behind the header. */}
-      {/* DEBUG overlay — remove after diagnosis */}
-      {debugLog.length > 0 && (
-        <div style={{ position: 'fixed', bottom: 10, left: 10, right: 10, zIndex: 9999, background: 'rgba(0,0,0,0.85)', color: '#0f0', fontFamily: 'monospace', fontSize: 12, padding: 10, borderRadius: 6, maxHeight: 200, overflowY: 'auto', pointerEvents: 'none' }}>
-          {debugLog.map((msg, i) => <div key={i}>{msg}</div>)}
-        </div>
-      )}
-
       <div className="coop-scroll">
         {campaign.acts.map(act => (
           <div key={act.id} className="coop-act-section">
@@ -289,7 +273,6 @@ export function CoOpScreen({
                   level={level}
                   playHoverSound={playHoverSound}
                   playClickSound={playClickSound}
-                  addDebugLog={addDebugLog}
                   onDownloadScenario={onDownloadScenario}
                 />
               ))}
