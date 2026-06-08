@@ -400,7 +400,8 @@
   font-size: 0.7rem;
   color: #e0c880;
   line-height: 1.5;
-  word-break: break-all;
+  white-space: nowrap;
+  overflow-x: auto;
   text-align: left;
   box-sizing: border-box;
 }
