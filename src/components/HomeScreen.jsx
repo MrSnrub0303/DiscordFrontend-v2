@@ -15,6 +15,7 @@ import loadingSpinner from '../assets/loadingspinner.png';
 import goldDivider from '../assets/GoldDivider.png';
 import buttonRedAvailable from '../assets/ButtonRedAvailable.png';
 import buttonRedClicked from '../assets/ButtonRedClicked.png';
+import buttonBackNormal from '../assets/button_back_normal.png';
 
 // Set to true when an event is running, false to lock the button between events
 const EVENT_ACTIVE = false;
@@ -121,6 +122,7 @@ export function HomeScreen({
           <img src={goldDivider} alt="" className="home-gold-divider" />
 
           {/* Scrollable button area — shows 3 on desktop, all 4 on mobile */}
+          <div className="home-buttons-wrap">
           <div className="home-panel-buttons" ref={scrollRef}>
 
             {/* Play Game */}
@@ -188,6 +190,12 @@ export function HomeScreen({
               }
             </button>
 
+          </div>
+          {!isMobile && (
+            <div className="home-scroll-arrow-wrap">
+              <img src={buttonBackNormal} className="home-scroll-arrow" alt="" draggable={false} />
+            </div>
+          )}
           </div>
 
           {/* Bottom gold divider */}

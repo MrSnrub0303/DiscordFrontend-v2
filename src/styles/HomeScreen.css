@@ -335,3 +335,35 @@
     transform: none;
   }
 }
+
+/* ── Scroll hint arrow ── */
+
+.home-buttons-wrap {
+  position: relative;
+}
+
+.home-scroll-arrow-wrap {
+  position: absolute;
+  bottom: -18px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+  animation: homeArrowBob 1.4s ease-in-out infinite;
+}
+
+.home-scroll-arrow {
+  width: 26px;
+  height: auto;
+  transform: rotate(90deg);
+  opacity: 0.75;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.85));
+  display: block;
+}
+
+@keyframes homeArrowBob {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(7px); }
+}
