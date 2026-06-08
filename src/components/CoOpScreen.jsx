@@ -143,8 +143,21 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
 
   const handleDownload = () => {
     playClickSound?.();
+    const url = `/api/coop/download/${campaignId}/${actId}/${level.id}`;
+
+    // DEBUG — remove after diagnosis
+    alert(`[DEBUG] Attempting download\nURL: ${url}\nFilename: ${level.name}.age3Yscen`);
+
+    // Async probe — fires independently, does NOT affect the synchronous click below
+    fetch(url).then(resp => {
+      alert(`[DEBUG] Server responded: ${resp.status} ${resp.statusText}\nContent-Disposition: ${resp.headers.get('Content-Disposition') ?? '(none)'}`);
+    }).catch(err => {
+      alert(`[DEBUG] Fetch error: ${err.message}`);
+    });
+
+    // Synchronous anchor click — must stay in user-gesture context
     const a = document.createElement('a');
-    a.href = `/api/coop/download/${campaignId}/${actId}/${level.id}`;
+    a.href = url;
     a.download = `${level.name}.age3Yscen`;
     document.body.appendChild(a);
     a.click();
