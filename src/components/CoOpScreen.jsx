@@ -155,7 +155,7 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound, a
 
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${level.name}.age3Yscen`;
+    a.download = `${level.name}.age3Yscn`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
