@@ -6,6 +6,9 @@ import '../styles/CoOpScreen.css';
 
 import backgroundImg    from '../assets/background-spinner.png';
 import marbleBg         from '../assets/marblebg2.png';
+import goldDivider      from '../assets/GoldDivider.png';
+import buttonRedAvail   from '../assets/ButtonRedAvailable.png';
+import buttonRedClick   from '../assets/ButtonRedClicked.png';
 
 // Formatting overlays — place in client/src/assets/coop/
 // All overlay images are 1120×260px (same dimensions as level images)
@@ -117,11 +120,7 @@ const CAMPAIGN_DATA = [
   },
 ];
 
-// ─── Level Card ───────────────────────────────────────────────────────────────
-// All images (level base + overlays) share the same 1120×260 dimensions.
-// lvlcard_mask is applied as a CSS mask-image to clip the base image shape.
-// shadow, highlight, glow are stacked overlays on top of the masked base.
-// titlebg (1120×90) is centered at the bottom as a background-image plate.
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const maskAlpha = (url, h = '100%') => ({
   maskImage: `url(${url})`,
@@ -136,34 +135,41 @@ const maskAlpha = (url, h = '100%') => ({
   WebkitMaskPosition: 'center',
 });
 
-function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound, onDownloadScenario }) {
+// Red button matching the HomeScreen Ranked/Monitor style
+function ModalBtn({ onClick, children }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <button
+      className="coop-modal-btn"
+      onClick={onClick}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      style={{ backgroundImage: `url(${pressed ? buttonRedClick : buttonRedAvail})` }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ─── Level Card ───────────────────────────────────────────────────────────────
+
+function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound, onLevelSelect }) {
   const [hovered,    setHovered]    = useState(false);
   const [imgMissing, setImgMissing] = useState(false);
   const imgUrl = `/coop/${campaignId}act${actId}lvl${level.id}.png`;
-
-  const handleDownload = () => {
-    playClickSound?.();
-    const serverUrl = import.meta.env.VITE_SERVER_URL || '';
-    const fullUrl = `${serverUrl}/api/coop/download/${campaignId}/${actId}/${level.id}`;
-    onDownloadScenario?.(fullUrl);
-  };
 
   return (
     <button
       className="coop-level-card"
       onMouseEnter={() => { setHovered(true); playHoverSound?.(); }}
       onMouseLeave={() => setHovered(false)}
-      onClick={handleDownload}
+      onClick={() => { playClickSound?.(); onLevelSelect(); }}
       title={level.name}
       aria-label={level.name}
     >
-      {/* Shadow + glow — unmasked; torn border bleeds outside the card edges */}
       <img src={lvlcardShadow} className="coop-level-overlay" alt="" draggable={false} />
       <img src={lvlcardGlow} className={`coop-level-overlay coop-level-glow${hovered ? ' active' : ''}`} alt="" draggable={false} />
-
-      {/* Level image + titlebg — both inside one masked div.
-          mask-image clips the element AND all its children, so the titlebg
-          inherits the card's torn-edge shape from the same 1120×260 mask. */}
       <div
         className={`coop-level-base${imgMissing ? ' coop-level-base--missing' : ''}`}
         style={imgMissing ? maskAlpha(lvlcardMask, '100%') : {
@@ -184,7 +190,6 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound, o
         >
           <span className="coop-level-title-text">{level.name}</span>
         </div>
-        {/* Highlight — inside the masked div so it's clipped to the torn card shape */}
         <img src={lvlcardHighlight} className="coop-level-overlay" alt="" draggable={false} />
       </div>
     </button>
@@ -207,7 +212,45 @@ export function CoOpScreen({
   onDownloadScenario,
 }) {
   const [activeCampaign, setActiveCampaign] = useState(0);
+  // selectedLevel: null | { level, campaignId, actId }
+  const [selectedLevel,  setSelectedLevel]  = useState(null);
+  // step: 'choose' | 'manual-done' | 'auto-done'
+  const [downloadStep,   setDownloadStep]   = useState('choose');
+  const [pathCopied,     setPathCopied]     = useState(false);
+
   const campaign = CAMPAIGN_DATA[activeCampaign];
+
+  const openModal = (level, campaignId, actId) => {
+    setSelectedLevel({ level, campaignId, actId });
+    setDownloadStep('choose');
+    setPathCopied(false);
+  };
+  const closeModal = () => setSelectedLevel(null);
+
+  const serverUrl = import.meta.env.VITE_SERVER_URL || '';
+
+  const handleManualDownload = () => {
+    const { level, campaignId, actId } = selectedLevel;
+    onDownloadScenario?.(`${serverUrl}/api/coop/download/${campaignId}/${actId}/${level.id}`);
+    setDownloadStep('manual-done');
+  };
+
+  const handleAutoDownload = () => {
+    const { level, campaignId, actId } = selectedLevel;
+    const name = encodeURIComponent(level.name);
+    onDownloadScenario?.(`${serverUrl}/api/coop/install/${campaignId}/${actId}/${level.id}?name=${name}`);
+    setDownloadStep('auto-done');
+  };
+
+  const copyPath = async () => {
+    try {
+      await navigator.clipboard.writeText('%USERPROFILE%\\Games\\Age of Empires 3 DE');
+      setPathCopied(true);
+      setTimeout(() => setPathCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable — ignore
+    }
+  };
 
   return (
     <div className="coop-screen" style={{ backgroundImage: `url(${backgroundImg})` }}>
@@ -228,8 +271,7 @@ export function CoOpScreen({
         isMobile={isMobile}
       />
 
-      {/* Header: marble backdrop + toggles. z-index above scroll so content
-          slides behind it as the user scrolls up. */}
+      {/* Header */}
       <div className={`coop-header${isMobile ? ' coop-header--mobile' : ''}`}>
         <div className="coop-chrome-marble" style={{ backgroundImage: `url(${marbleBg})` }} />
         <div className="coop-toggle-row">
@@ -245,9 +287,7 @@ export function CoOpScreen({
               onKeyDown={e => e.key === 'Enter' && setActiveCampaign(i)}
             >
               <img
-                src={i === activeCampaign
-                  ? '/civ-spinner/checkbox_on.png'
-                  : '/civ-spinner/checkbox_off.png'}
+                src={i === activeCampaign ? '/civ-spinner/checkbox_on.png' : '/civ-spinner/checkbox_off.png'}
                 className="coop-toggle-checkbox"
                 alt={i === activeCampaign ? 'selected' : 'unselected'}
                 draggable={false}
@@ -258,8 +298,7 @@ export function CoOpScreen({
         </div>
       </div>
 
-      {/* Scroll covers the full screen; padding-top pushes initial content
-          below the header. Content scrolls up behind the header. */}
+      {/* Scrollable level grid */}
       <div className="coop-scroll">
         {campaign.acts.map(act => (
           <div key={act.id} className="coop-act-section">
@@ -273,13 +312,101 @@ export function CoOpScreen({
                   level={level}
                   playHoverSound={playHoverSound}
                   playClickSound={playClickSound}
-                  onDownloadScenario={onDownloadScenario}
+                  onLevelSelect={() => openModal(level, campaign.id, act.id)}
                 />
               ))}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Download modal */}
+      {selectedLevel && (
+        <div className="coop-modal-overlay" onClick={closeModal}>
+          <div className="coop-modal" onClick={e => e.stopPropagation()}>
+
+            {/* Marble tint */}
+            <div className="coop-modal-marble" style={{ backgroundImage: `url(${marbleBg})` }} />
+
+            {/* Close */}
+            <button className="coop-modal-close" onClick={closeModal} aria-label="Close">✕</button>
+
+            {/* Title */}
+            <h2 className="coop-modal-title">{selectedLevel.level.name}</h2>
+            <img src={goldDivider} alt="" className="coop-modal-divider" draggable={false} />
+
+            {/* ── Choose method ── */}
+            {downloadStep === 'choose' && (
+              <div className="coop-modal-body">
+                <p className="coop-modal-subtitle">How would you like to install this scenario?</p>
+
+                <div className="coop-modal-option">
+                  <ModalBtn onClick={handleManualDownload}>Download Manually</ModalBtn>
+                  <p className="coop-modal-option-desc">
+                    Downloads the scenario file to your Downloads folder.
+                    We'll show you where to move it.
+                  </p>
+                </div>
+
+                <div className="coop-modal-option">
+                  <ModalBtn onClick={handleAutoDownload}>Download Automatically</ModalBtn>
+                  <p className="coop-modal-option-desc">
+                    Downloads a small installer that detects your AoE3 profile
+                    folders and places the file in the right location automatically.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* ── Manual instructions ── */}
+            {downloadStep === 'manual-done' && (
+              <div className="coop-modal-body">
+                <p className="coop-modal-check">✓ File sent to your Downloads folder</p>
+                <p className="coop-modal-subtitle">Move it to your AoE3 Scenario folder:</p>
+
+                <div className="coop-modal-path">
+                  <span className="coop-modal-path-env">%USERPROFILE%</span>
+                  \Games\Age of Empires 3 DE\
+                  <span className="coop-modal-path-var">&lt;SteamID&gt;</span>
+                  \Scenario
+                </div>
+
+                <p className="coop-modal-hint">
+                  The SteamID is the long numbered folder inside the Age of Empires 3 DE directory.
+                  There may be multiple — copy into each one that has a Scenario subfolder.
+                </p>
+
+                <div className="coop-modal-actions">
+                  <ModalBtn onClick={copyPath}>{pathCopied ? 'Copied!' : 'Copy Base Path'}</ModalBtn>
+                  <ModalBtn onClick={closeModal}>Done</ModalBtn>
+                </div>
+              </div>
+            )}
+
+            {/* ── Auto instructions ── */}
+            {downloadStep === 'auto-done' && (
+              <div className="coop-modal-body">
+                <p className="coop-modal-check">✓ Installer downloaded</p>
+                <p className="coop-modal-subtitle">
+                  Find <strong>Install {selectedLevel.level.name}.bat</strong> in your
+                  Downloads folder and double-click it.
+                </p>
+                <p className="coop-modal-hint">
+                  The installer scans all your AoE3 profile folders and copies
+                  the scenario to each valid Scenario directory. Files that already
+                  exist are skipped automatically.
+                </p>
+                <p className="coop-modal-hint coop-modal-hint--warn">
+                  If Windows shows a security warning, click <strong>More info</strong> →
+                  then <strong>Run anyway</strong>.
+                </p>
+                <ModalBtn onClick={closeModal}>Done</ModalBtn>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

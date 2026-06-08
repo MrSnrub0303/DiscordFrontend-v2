@@ -265,6 +265,198 @@
   pointer-events: none;
 }
 
+/* ── Download Modal ── */
+
+.coop-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.coop-modal {
+  position: relative;
+  width: 380px;
+  max-width: 100%;
+  background: rgba(10, 8, 5, 0.97);
+  border: 2px solid rgba(200, 164, 32, 0.85);
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.9), inset 0 0 40px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 22px 24px 24px;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.coop-modal-marble {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.coop-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: rgba(200, 164, 32, 0.7);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+  transition: color 0.15s;
+  z-index: 1;
+}
+.coop-modal-close:hover { color: #ffd700; }
+
+.coop-modal-title {
+  position: relative;
+  z-index: 1;
+  font-family: "Trajan Pro Bold", serif;
+  font-size: clamp(0.85rem, 2vw, 1.05rem);
+  color: #f0d070;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+  margin: 0;
+  padding-right: 20px; /* avoid close button overlap */
+}
+
+.coop-modal-divider {
+  position: relative;
+  z-index: 1;
+  width: calc(100% + 48px);
+  height: auto;
+  object-fit: contain;
+  opacity: 0.75;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.coop-modal-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.coop-modal-subtitle {
+  font-family: "Trajan Pro Bold", serif;
+  font-size: clamp(0.65rem, 1.2vw, 0.78rem);
+  color: #c8a42a;
+  letter-spacing: 0.8px;
+  text-align: center;
+  margin: 0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.coop-modal-check {
+  font-family: "Trajan Pro Bold", serif;
+  font-size: clamp(0.7rem, 1.3vw, 0.82rem);
+  color: #7dbd5a;
+  letter-spacing: 0.8px;
+  text-align: center;
+  margin: 0;
+}
+
+.coop-modal-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding-top: 4px;
+}
+
+.coop-modal-option-desc {
+  font-size: 0.7rem;
+  color: rgba(230, 210, 150, 0.65);
+  text-align: center;
+  margin: 0;
+  line-height: 1.45;
+  max-width: 300px;
+}
+
+/* Path display box */
+.coop-modal-path {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(200, 164, 32, 0.35);
+  padding: 8px 12px;
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: #e0c880;
+  line-height: 1.5;
+  word-break: break-all;
+  text-align: left;
+  box-sizing: border-box;
+}
+.coop-modal-path-env  { color: #7dbd5a; }
+.coop-modal-path-var  { color: rgba(200, 164, 32, 0.75); font-style: italic; }
+
+.coop-modal-hint {
+  font-size: 0.68rem;
+  color: rgba(230, 210, 150, 0.6);
+  text-align: center;
+  margin: 0;
+  line-height: 1.45;
+  max-width: 320px;
+}
+.coop-modal-hint--warn { color: rgba(255, 190, 100, 0.75); }
+
+.coop-modal-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Red button — matches HomeScreen Ranked/Monitor style */
+.coop-modal-btn {
+  width: 90%;
+  aspect-ratio: 166 / 37;
+  border: none;
+  background-color: transparent;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  font-family: "Trajan Pro Bold", serif;
+  font-size: clamp(0.65rem, 1.2vw, 0.82rem);
+  color: #e8d090;
+  text-shadow: 1px 2px 3px rgba(0, 0, 0, 0.85);
+  letter-spacing: 1.5px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+  transition: transform 0.15s ease, filter 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 4px 0;
+  outline: none;
+  user-select: none;
+  flex-shrink: 0;
+}
+.coop-modal-btn:hover  { transform: scale(1.04); filter: drop-shadow(0 4px 12px rgba(0,0,0,0.75)); }
+.coop-modal-btn:active { transform: scale(0.97); }
+
+/* When two buttons sit side by side in .coop-modal-actions */
+.coop-modal-actions .coop-modal-btn {
+  width: calc(50% - 5px);
+}
+
 /* ── Mobile ── */
 
 @media (max-width: 640px) {
