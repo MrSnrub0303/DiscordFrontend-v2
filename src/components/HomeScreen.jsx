@@ -48,9 +48,15 @@ export function HomeScreen({
   loadingTarget,
   isMobile,
 }) {
-  const [monitorPressed, setMonitorPressed] = useState(false);
-  const [rankedPressed,  setRankedPressed]  = useState(false);
+  const [monitorPressed,   setMonitorPressed]   = useState(false);
+  const [rankedPressed,    setRankedPressed]    = useState(false);
+  const [showScrollArrow,  setShowScrollArrow]  = useState(true);
   const scrollRef = useRef(null);
+
+  const onButtonsScroll = (e) => {
+    const el = e.currentTarget;
+    setShowScrollArrow(el.scrollHeight - el.scrollTop > el.clientHeight + 2);
+  };
 
   const isEventsLoading  = EVENT_ACTIVE && loadingTarget === 'EVENTS';
   const isSpinnerLoading = loadingTarget === 'SPINNER';
@@ -122,7 +128,8 @@ export function HomeScreen({
           <img src={goldDivider} alt="" className="home-gold-divider" />
 
           {/* Scrollable button area — shows 3 on desktop, all 4 on mobile */}
-          <div className="home-panel-buttons" ref={scrollRef}>
+          <div className="home-buttons-wrap">
+          <div className="home-panel-buttons" ref={scrollRef} onScroll={onButtonsScroll}>
 
             {/* Play Game */}
             <button
@@ -191,10 +198,11 @@ export function HomeScreen({
 
           </div>
           {!isMobile && (
-            <div className="home-scroll-arrow-wrap">
+            <div className="home-scroll-arrow-wrap" style={{ opacity: showScrollArrow ? 1 : 0 }}>
               <img src={buttonBackNormal} className="home-scroll-arrow" alt="" draggable={false} />
             </div>
           )}
+          </div>
 
           {/* Bottom gold divider */}
           <img src={goldDivider} alt="" className="home-gold-divider" />

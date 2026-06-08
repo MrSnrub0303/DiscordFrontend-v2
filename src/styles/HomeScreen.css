@@ -338,13 +338,23 @@
 
 /* ── Scroll hint arrow ── */
 
+.home-buttons-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+}
+
 .home-scroll-arrow-wrap {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 28px;
-  flex-shrink: 0;
   pointer-events: none;
+  z-index: 5;
+  transition: opacity 0.3s ease;
   animation: homeArrowBob 1.4s ease-in-out infinite;
 }
 
@@ -352,12 +362,12 @@
   width: 26px;
   height: auto;
   transform: rotate(-90deg);
-  opacity: 0.75;
-  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.85));
+  opacity: 0.85;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.9));
   display: block;
 }
 
 @keyframes homeArrowBob {
   0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(7px); }
+  50%       { transform: translateY(6px); }
 }
