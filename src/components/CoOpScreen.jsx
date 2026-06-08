@@ -220,13 +220,10 @@ export function CoOpScreen({
         isMobile={isMobile}
       />
 
-      {/* ── Main layout ── */}
-      <div className={`coop-main${isMobile ? ' coop-main--mobile' : ''}`}>
-
-        {/* Subtle marble tint behind chrome */}
+      {/* Header: marble backdrop + toggles. z-index above scroll so content
+          slides behind it as the user scrolls up. */}
+      <div className={`coop-header${isMobile ? ' coop-header--mobile' : ''}`}>
         <div className="coop-chrome-marble" style={{ backgroundImage: `url(${marbleBg})` }} />
-
-        {/* Campaign toggles — checkbox style matching civ spinner */}
         <div className="coop-toggle-row">
           {CAMPAIGN_DATA.map((c, i) => (
             <div
@@ -251,28 +248,28 @@ export function CoOpScreen({
             </div>
           ))}
         </div>
+      </div>
 
-        {/* Scrollable level browser */}
-        <div className="coop-scroll">
-          {campaign.acts.map(act => (
-            <div key={act.id} className="coop-act-section">
-              <h2 className="coop-act-title">{act.name}</h2>
-              <div className="coop-levels-grid">
-                {act.levels.map(level => (
-                  <LevelCard
-                    key={level.id}
-                    campaignId={campaign.id}
-                    actId={act.id}
-                    level={level}
-                    playHoverSound={playHoverSound}
-                    playClickSound={playClickSound}
-                  />
-                ))}
-              </div>
+      {/* Scroll covers the full screen; padding-top pushes initial content
+          below the header. Content scrolls up behind the header. */}
+      <div className="coop-scroll">
+        {campaign.acts.map(act => (
+          <div key={act.id} className="coop-act-section">
+            <h2 className="coop-act-title">{act.name}</h2>
+            <div className="coop-levels-grid">
+              {act.levels.map(level => (
+                <LevelCard
+                  key={level.id}
+                  campaignId={campaign.id}
+                  actId={act.id}
+                  level={level}
+                  playHoverSound={playHoverSound}
+                  playClickSound={playClickSound}
+                />
+              ))}
             </div>
-          ))}
-        </div>
-
+          </div>
+        ))}
       </div>
     </div>
   );
