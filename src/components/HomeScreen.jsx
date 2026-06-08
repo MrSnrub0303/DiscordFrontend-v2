@@ -21,7 +21,7 @@ import buttonBackNormal from '../assets/button_back_normal.png';
 const EVENT_ACTIVE = false;
 
 // Set to true when Co-Op mode is available
-const CO_OP_ACTIVE = true;
+const CO_OP_ACTIVE = false;
 
 // RANKED_ACTIVE controls whether the button exists — access is controlled per-user via isRankedAuthorized prop
 const RANKED_ACTIVE = true;
@@ -50,7 +50,7 @@ export function HomeScreen({
 }) {
   const [monitorPressed,   setMonitorPressed]   = useState(false);
   const [rankedPressed,    setRankedPressed]    = useState(false);
-  const [showScrollArrow,  setShowScrollArrow]  = useState(true);
+  const [showScrollArrow,  setShowScrollArrow]  = useState(CO_OP_ACTIVE);
   const scrollRef = useRef(null);
 
   const onButtonsScroll = (e) => {
@@ -197,7 +197,7 @@ export function HomeScreen({
             </button>
 
           </div>
-          {!isMobile && (
+          {!isMobile && CO_OP_ACTIVE && (
             <div className="home-scroll-arrow-wrap" style={{ opacity: showScrollArrow ? 1 : 0 }}>
               <img src={buttonBackNormal} className="home-scroll-arrow" alt="" draggable={false} />
             </div>
