@@ -10,6 +10,7 @@ import marbleBg         from '../assets/marblebg2.png';
 // Formatting overlays — place in client/src/assets/coop/
 // All overlay images are 1120×260px (same dimensions as level images)
 import lvlcardGlow      from '../assets/coop/lvlcard_glow.png';
+import lvlcardHighlight from '../assets/coop/lvlcard_highlight.png';
 import lvlcardMask      from '../assets/coop/lvlcard_mask.png'; // 1120×260 — masks the whole card
 import lvlcardShadow    from '../assets/coop/lvlcard_shadow.png';
 import titlebg          from '../assets/coop/titlebg.png';       // 1120×90px
@@ -27,31 +28,30 @@ const CAMPAIGN_DATA = [
         id: 1,
         name: 'Act I: Blood',
         levels: [
-          { id: 1, name: 'Breakout' }, { id: 2, name: 'Into the Caves' },
-          { id: 3, name: 'PIRATES!' }, { id: 4, name: 'The Ottoman Fort' },
-          { id: 5, name: 'Temples of the Aztec' }, { id: 6, name: 'A Pirates Help' },
-          { id: 7, name: 'Spanish Treasure Fleet' }, { id: 8, name: 'The Fountain of Youth?' },
+          { id: 2, name: 'Breakout' }, { id: 4, name: 'Into the Caves' },
+          { id: 7, name: 'PIRATES!' }, { id: 9, name: 'The Ottoman Fort' },
+          { id: 11, name: 'Temples of the Aztec' }, { id: 14, name: 'A Pirate\'s Help' },
+          { id: 16, name: 'Spanish Treasure Fleet' }, { id: 19, name: 'The Fountain of Youth?' },
         ],
       },
       {
         id: 2,
         name: 'Act II: Ice',
         levels: [
-          { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
-          { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
-          { id: 5, name: 'Mission 5' }, { id: 6, name: 'Mission 6' },
-          { id: 7, name: 'Mission 7' }, { id: 8, name: 'Mission 8' },
-          { id: 9, name: 'Mission 9' },
+          { id: 2, name: 'Defend the Colony' }, { id: 4, name: 'Strange Alliances' },
+          { id: 7, name: 'The Rescue' }, { id: 10, name: 'The Seven Year\'s War' },
+          { id: 13, name: 'The Great Lakes' }, { id: 16, name: 'Respect' },
+          { id: 18, name: 'Warwick\'s Stronghold' }, { id: 20, name: 'Bring Down the Mountain' },
         ],
       },
       {
         id: 3,
         name: 'Act III: Steel',
         levels: [
-          { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
-          { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
-          { id: 5, name: 'Mission 5' }, { id: 6, name: 'Mission 6' },
-          { id: 7, name: 'Mission 7' }, { id: 8, name: 'Mission 8' },
+          { id: 2, name: 'Race for the Rails' }, { id: 4, name: 'Hold the Fort' },
+          { id: 7, name: 'The Boneguard\'s Lair' }, { id: 10, name: 'The Lost Spanish Gold' },
+          { id: 13, name: 'Bolivar\'s Revolt' }, { id: 15, name: 'Journey Through the Andes' },
+          { id: 17, name: 'Last City of the Inca' }, { id: 20, name: 'Last Stand of the Boneguard' },
         ],
       },
     ],
@@ -64,20 +64,20 @@ const CAMPAIGN_DATA = [
         id: 1,
         name: 'Act I: Fire',
         levels: [
-          { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
-          { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
-          { id: 5, name: 'Mission 5' }, { id: 6, name: 'Mission 6' },
-          { id: 7, name: 'Mission 7' }, { id: 8, name: 'Mission 8' },
+          { id: 2, name: 'War Ceremony' }, { id: 5, name: 'The Rescue' },
+          { id: 7, name: 'Breed\'s Hill' }, { id: 9, name: 'Crossing the Delaware' },
+          { id: 11, name: 'Saratoga' }, { id: 13, name: 'Valley Forge' },
+          { id: 15, name: 'The Battle of Morristown' }, { id: 17, name: 'The Battle of Yorktown' },
         ],
       },
       {
         id: 2,
         name: 'Act II: Shadow',
         levels: [
-          { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
-          { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
-          { id: 5, name: 'Mission 5' }, { id: 6, name: 'Mission 6' },
-          { id: 7, name: 'Mission 7' },
+          { id: 2, name: 'The Bozeman Trail' }, { id: 4, name: 'A Reckoning' },
+          { id: 7, name: 'Claims' }, { id: 9, name: 'Urgent News' },
+          { id: 12, name: 'To Stop a War' }, { id: 14, name: 'Trust' },
+          { id: 17, name: 'Battle of the Greasy Grass' },
         ],
       },
     ],
@@ -90,31 +90,27 @@ const CAMPAIGN_DATA = [
         id: 1,
         name: 'Act I: Japan',
         levels: [
-          { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
-          { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
-          { id: 5, name: 'Mission 5' }, { id: 6, name: 'Mission 6' },
-          { id: 7, name: 'Mission 7' }, { id: 8, name: 'Mission 8' },
+          { id: 3, name: 'The Siege of Osaka' }, { id: 5, name: 'Uprising!' },
+          { id: 7, name: 'Clearing the Road' }, { id: 10, name: 'Last Stand at Fushimi' },
+          { id: 13, name: 'The Battle of Sekigahara' },
         ],
       },
       {
         id: 2,
-        name: 'Act II: India',
+        name: 'Act II: China',
         levels: [
-          { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
-          { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
-          { id: 5, name: 'Mission 5' }, { id: 6, name: 'Mission 6' },
-          { id: 7, name: 'Mission 7' }, { id: 8, name: 'Mission 8' },
+          { id: 3, name: 'To Finish a Fleet' }, { id: 5, name: 'Storming the Beaches' },
+          { id: 7, name: 'Lost Ships' }, { id: 9, name: 'A Rescue in the Wilderness' },
+          { id: 11, name: 'No Empire Lasts Forever' },
         ],
       },
       {
         id: 3,
-        name: 'Act III: China',
+        name: 'Act III: India',
         levels: [
-          { id: 1, name: 'Mission 1' }, { id: 2, name: 'Mission 2' },
-          { id: 3, name: 'Mission 3' }, { id: 4, name: 'Mission 4' },
-          { id: 5, name: 'Mission 5' }, { id: 6, name: 'Mission 6' },
-          { id: 7, name: 'Mission 7' }, { id: 8, name: 'Mission 8' },
-          { id: 9, name: 'Mission 9' },
+          { id: 3, name: 'Into the Punjab' }, { id: 5, name: 'Fires of Calcutta' },
+          { id: 8, name: 'Resist!' }, { id: 10, name: 'Raid in Delhi' },
+          { id: 13, name: 'Company Confrontation' },
         ],
       },
     ],
@@ -181,6 +177,8 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound })
         >
           <span className="coop-level-title-text">{level.name}</span>
         </div>
+        {/* Highlight — inside the masked div so it's clipped to the torn card shape */}
+        <img src={lvlcardHighlight} className="coop-level-overlay" alt="" draggable={false} />
       </div>
     </button>
   );
