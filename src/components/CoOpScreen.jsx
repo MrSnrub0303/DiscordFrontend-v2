@@ -141,19 +141,33 @@ function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound, a
   const [imgMissing, setImgMissing] = useState(false);
   const imgUrl = `/coop/${campaignId}act${actId}lvl${level.id}.png`;
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     playClickSound?.();
     const url = `/api/coop/download/${campaignId}/${actId}/${level.id}`;
-
     addDebugLog(`Clicked: ${level.name} → ${url}`);
 
-    fetch(url).then(resp => {
-      addDebugLog(`Status: ${resp.status} ${resp.statusText} | Content-Disposition: ${resp.headers.get('Content-Disposition') ?? '(none)'}`);
-    }).catch(err => {
-      addDebugLog(`Fetch error: ${err.message}`);
-    });
+    if (!window.showSaveFilePicker) {
+      addDebugLog('showSaveFilePicker not available in this browser');
+      return;
+    }
 
-    window.open(url, '_blank');
+    try {
+      // Show native OS "Save As" dialog — must happen before any await
+      const handle = await window.showSaveFilePicker({
+        suggestedName: `${level.name}.age3Yscn`,
+        types: [{ description: 'AoE3 Scenario', accept: { 'application/octet-stream': ['.age3Yscn'] } }],
+      });
+      addDebugLog('Save location chosen, fetching file...');
+      const resp = await fetch(url);
+      addDebugLog(`Status: ${resp.status} | CD: ${resp.headers.get('Content-Disposition') ?? '(none)'}`);
+      if (!resp.ok) { addDebugLog('File not on server'); return; }
+      const writable = await handle.createWritable();
+      await writable.write(await resp.blob());
+      await writable.close();
+      addDebugLog('Saved successfully!');
+    } catch (err) {
+      addDebugLog(`${err.name}: ${err.message}`);
+    }
   };
 
   return (
