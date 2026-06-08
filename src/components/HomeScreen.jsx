@@ -122,7 +122,6 @@ export function HomeScreen({
           <img src={goldDivider} alt="" className="home-gold-divider" />
 
           {/* Scrollable button area — shows 3 on desktop, all 4 on mobile */}
-          <div className="home-buttons-wrap">
           <div className="home-panel-buttons" ref={scrollRef}>
 
             {/* Play Game */}
@@ -196,7 +195,6 @@ export function HomeScreen({
               <img src={buttonBackNormal} className="home-scroll-arrow" alt="" draggable={false} />
             </div>
           )}
-          </div>
 
           {/* Bottom gold divider */}
           <img src={goldDivider} alt="" className="home-gold-divider" />
