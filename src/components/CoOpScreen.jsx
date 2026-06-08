@@ -136,37 +136,22 @@ const maskAlpha = (url, h = '100%') => ({
   WebkitMaskPosition: 'center',
 });
 
-function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound, addDebugLog }) {
+function LevelCard({ campaignId, actId, level, playHoverSound, playClickSound, addDebugLog, onDownloadScenario }) {
   const [hovered,    setHovered]    = useState(false);
   const [imgMissing, setImgMissing] = useState(false);
   const imgUrl = `/coop/${campaignId}act${actId}lvl${level.id}.png`;
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     playClickSound?.();
-    const url = `/api/coop/download/${campaignId}/${actId}/${level.id}`;
-    addDebugLog(`Clicked: ${level.name} → ${url}`);
-
-    if (!window.showSaveFilePicker) {
-      addDebugLog('showSaveFilePicker not available in this browser');
-      return;
-    }
-
-    try {
-      // Show native OS "Save As" dialog — must happen before any await
-      const handle = await window.showSaveFilePicker({
-        suggestedName: `${level.name}.age3Yscn`,
-        types: [{ description: 'AoE3 Scenario', accept: { 'application/octet-stream': ['.age3Yscn'] } }],
-      });
-      addDebugLog('Save location chosen, fetching file...');
-      const resp = await fetch(url);
-      addDebugLog(`Status: ${resp.status} | CD: ${resp.headers.get('Content-Disposition') ?? '(none)'}`);
-      if (!resp.ok) { addDebugLog('File not on server'); return; }
-      const writable = await handle.createWritable();
-      await writable.write(await resp.blob());
-      await writable.close();
-      addDebugLog('Saved successfully!');
-    } catch (err) {
-      addDebugLog(`${err.name}: ${err.message}`);
+    const serverUrl = import.meta.env.VITE_SERVER_URL || '';
+    const path = `/api/coop/download/${campaignId}/${actId}/${level.id}`;
+    const fullUrl = `${serverUrl}${path}`;
+    addDebugLog(`Clicked: ${level.name} → ${fullUrl}`);
+    if (onDownloadScenario) {
+      onDownloadScenario(fullUrl);
+      addDebugLog('openExternalLink called');
+    } else {
+      addDebugLog('onDownloadScenario not available');
     }
   };
 
@@ -226,6 +211,7 @@ export function CoOpScreen({
   isMobile,
   playClickSound,
   playHoverSound,
+  onDownloadScenario,
 }) {
   const [activeCampaign, setActiveCampaign] = useState(0);
   const [debugLog, setDebugLog] = useState([]);  // DEBUG
@@ -304,6 +290,7 @@ export function CoOpScreen({
                   playHoverSound={playHoverSound}
                   playClickSound={playClickSound}
                   addDebugLog={addDebugLog}
+                  onDownloadScenario={onDownloadScenario}
                 />
               ))}
             </div>

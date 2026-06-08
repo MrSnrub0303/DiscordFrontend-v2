@@ -315,6 +315,7 @@ export default function App() {
     isInVoiceChannel,
     ready,
     isMobile,
+    sdk,
   } = useDiscordActivity();
 
   // Authorized Discord usernames for the Monitor screen (checked client-side via SDK user data)
@@ -3481,6 +3482,7 @@ export default function App() {
           isMobile={isMobile}
           playClickSound={playClickSound}
           playHoverSound={playHoverSound}
+          onDownloadScenario={sdk ? (url) => sdk.commands.openExternalLink({ url }) : undefined}
         />
         {renderScreenTransitionOverlay()}
       </>
