@@ -3416,6 +3416,7 @@ export default function App() {
         discordAccessToken={currentUser?.accessToken}
         discordUsername={currentUser?.username}
         isMobile={isMobile}
+        onDownloadScenario={sdk ? (url) => sdk.commands.openExternalLink({ url }) : undefined}
       />
     );
   }

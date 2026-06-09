@@ -37,7 +37,7 @@ function ServiceCard({ name, connected }) {
   );
 }
 
-export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discordUsername, isMobile }) {
+export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discordUsername, isMobile, onDownloadScenario }) {
   const [logs, setLogs]         = useState([]);
   const [status, setStatus]     = useState(null);
   const [thumb, setThumb]       = useState(null);
@@ -45,12 +45,14 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
   const [uploadMsg, setUploadMsg] = useState('');
   const [fetchError, setFetchError] = useState('');
   const [obsCopied, setObsCopied] = useState(false);
+  const [setupBatDownloaded, setSetupBatDownloaded] = useState(false);
   const logEndRef = useRef(null);
   const logContainerRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const apiBase = API_BASE_URL;
-  const DASHBOARD_URL = `${import.meta.env.VITE_SERVER_URL || ''}/obs-dashboard`;
+  const DASHBOARD_URL  = `${import.meta.env.VITE_SERVER_URL || ''}/obs-dashboard`;
+  const SETUP_BAT_URL  = `${import.meta.env.VITE_SERVER_URL || ''}/api/obs/setup-bat?url=${encodeURIComponent(DASHBOARD_URL)}`;
 
   const copyDashboardUrl = () => {
     const fallback = () => {
@@ -287,6 +289,22 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
             <li>Name the dock as <strong>ESOC Docker</strong>, and then paste the URL below into the dock URL field, click <strong>Apply</strong></li>
             <li>Open <strong>ESOC Admin</strong> from the Docks menu</li>
           </ol>
+          <button
+            className="monitor-obs-copy-btn"
+            onClick={() => {
+              onDownloadScenario?.(SETUP_BAT_URL);
+              setSetupBatDownloaded(true);
+              setTimeout(() => setSetupBatDownloaded(false), 3000);
+            }}
+          >
+            {setupBatDownloaded ? '✓ Downloaded!' : 'Download Setup Script'}
+          </button>
+          {setupBatDownloaded && (
+            <p className="monitor-obs-intro" style={{ marginTop: 6, color: '#7dbd5a' }}>
+              Close OBS, run the .bat file, then reopen OBS — ESOC Admin will appear in the Docks menu.
+              If Windows shows a security warning, click <strong>More info → Run anyway</strong>.
+            </p>
+          )}
           <div className="monitor-obs-url-row">
             <span className="monitor-obs-url">{DASHBOARD_URL}</span>
             <button className="monitor-obs-copy-btn" onClick={copyDashboardUrl}>
