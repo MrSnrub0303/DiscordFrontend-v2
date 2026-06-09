@@ -4,13 +4,13 @@ import soundOffIcon from '../assets/notification_sound_off.png';
 import volumeSliderImg from '../assets/VolumeSlider.png';
 import volumeNobImg from '../assets/VolumeNob.png';
 
-export function VolumeControl({ musicEnabled, onToggleMusic, volume = 1.0, onVolumeChange, isMobile }) {
+export function VolumeControl({ musicEnabled, onToggleMusic, volume = 0.1, onVolumeChange, isMobile }) {
   const [hovered, setHovered] = useState(false);
   const sliderRef = useRef(null);
   const draggingRef = useRef(false);
   const hoveredRef = useRef(false);
   // Remember volume before muting so unmute can restore it
-  const preMuteVolumeRef = useRef(volume > 0 ? volume : 1.0);
+  const preMuteVolumeRef = useRef(volume > 0 ? volume : 0.1);
 
   const computeVolume = useCallback((clientX) => {
     if (!sliderRef.current) return;

@@ -561,8 +561,8 @@ export default function App() {
   }, [displayScores]);
 
   const [musicEnabled, setMusicEnabled] = useState(true);
-  const [musicVolume, setMusicVolume] = useState(1.0);
-  const musicVolumeRef = useRef(1.0);
+  const [musicVolume, setMusicVolume] = useState(0.1);
+  const musicVolumeRef = useRef(0.1);
   const [joinCountdown, setJoinCountdown] = useState(createJoinCountdownState);
   const joinCountdownTimerRef = useRef(null);
   const autoEndGuardRef = useRef(true);
