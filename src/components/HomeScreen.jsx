@@ -21,7 +21,7 @@ import buttonBackNormal from '../assets/button_back_normal.png';
 const EVENT_ACTIVE = false;
 
 // Set to true when Co-Op mode is available
-const CO_OP_ACTIVE = false;
+const CO_OP_ACTIVE = true;
 
 // RANKED_ACTIVE controls whether the button exists — access is controlled per-user via isRankedAuthorized prop
 const RANKED_ACTIVE = true;
