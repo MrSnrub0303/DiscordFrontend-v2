@@ -45,7 +45,6 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
   const [uploadMsg, setUploadMsg] = useState('');
   const [fetchError, setFetchError] = useState('');
   const [setupBatDownloaded, setSetupBatDownloaded] = useState(false);
-  const logEndRef = useRef(null);
   const logContainerRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -107,13 +106,6 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
     const statusInterval = setInterval(fetchStatus, 15000);
     return () => { clearInterval(logsInterval); clearInterval(statusInterval); };
   }, [fetchLogs, fetchStatus]);
-
-  // Auto-scroll log feed to bottom (scroll within the container, not the whole page)
-  useEffect(() => {
-    const container = logContainerRef.current;
-    if (!container) return;
-    container.scrollTop = container.scrollHeight;
-  }, [logs]);
 
   async function handleUpload(e) {
     const file = e.target.files?.[0];
@@ -260,9 +252,9 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
           <h2 className="monitor-section-title">OBS Dashboard Setup</h2>
           <p className="monitor-obs-intro">The ESOC Admin Dock is hosted on this server.</p>
           <ol className="monitor-obs-steps">
-            <li>Download the Setup Script</li>
+            <li>Download the Setup Script.</li>
             <li>Double click on the downloaded .bat file to run the setup.</li>
-            <li>Open OBS and you shall see the dock ready to go!</li>
+            <li>Open OBS, the dock and all assets will be configured and ready to go!</li>
           </ol>
           <button
             className="monitor-obs-copy-btn"
