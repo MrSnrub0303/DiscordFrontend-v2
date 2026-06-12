@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import backgroundSpinner from '../assets/background-spinner.png';
 import '../styles/MonitorScreen.css';
 import { BackButton } from './BackButton';
+import { ActionButton } from './ActionButton';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -131,8 +132,7 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
             <li>Double click on the downloaded .bat file to run the setup.</li>
             <li>Open OBS, the dock and all assets will be configured and ready to go!</li>
           </ol>
-          <button
-            className="monitor-obs-copy-btn"
+          <ActionButton
             onClick={() => {
               onDownloadScenario?.(SETUP_BAT_URL);
               setSetupBatDownloaded(true);
@@ -140,7 +140,7 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
             }}
           >
             {setupBatDownloaded ? '✓ Downloaded!' : 'Download Setup Script'}
-          </button>
+          </ActionButton>
           {setupBatDownloaded && (
             <p className="monitor-obs-intro" style={{ marginTop: 6, color: '#7dbd5a' }}>
               If Windows shows a security warning, click <strong>More info → Run anyway</strong>.
@@ -164,13 +164,12 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
                 Upload a PNG or JPG to replace the current thumbnail.
                 It will be applied to the latest YouTube livestream on the next update cycle (~15 min).
               </p>
-              <button
-                className="monitor-upload-btn"
+              <ActionButton
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
               >
                 {uploading ? 'Uploading…' : 'Choose File'}
-              </button>
+              </ActionButton>
               <input
                 ref={fileInputRef}
                 type="file"

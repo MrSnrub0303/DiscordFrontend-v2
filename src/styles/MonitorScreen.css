@@ -177,26 +177,6 @@
   line-height: 1.5;
 }
 
-.monitor-upload-btn {
-  align-self: flex-start;
-  background: rgba(100, 160, 255, 0.2);
-  border: 1px solid rgba(100, 160, 255, 0.45);
-  border-radius: 7px;
-  color: #93c5fd;
-  font-size: 0.85rem;
-  padding: 6px 18px;
-  cursor: pointer;
-  transition: background 200ms;
-}
-
-.monitor-upload-btn:hover {
-  background: rgba(100, 160, 255, 0.35);
-}
-
-.monitor-upload-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 .monitor-upload-msg {
   font-size: 0.8rem;
@@ -308,20 +288,6 @@
   white-space: nowrap;
 }
 
-.monitor-obs-copy-btn {
-  flex-shrink: 0;
-  background: rgba(200, 168, 50, 0.15);
-  border: 1px solid rgba(200, 168, 50, 0.4);
-  color: #c8a832;
-  border-radius: 5px;
-  padding: 0.25rem 0.7rem;
-  font-size: 0.78rem;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 150ms;
-}
-
-.monitor-obs-copy-btn:hover { background: rgba(200, 168, 50, 0.3); }
 
 /* ── Responsive ── */
 
