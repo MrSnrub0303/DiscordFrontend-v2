@@ -23,27 +23,11 @@ const CATEGORY_COLORS = {
   Monitor:      '#fbbf24',
 };
 
-function ServiceCard({ name, connected }) {
-  const statusColor = connected === true ? '#4ade80' : connected === false ? '#ff6b6b' : '#94a3b8';
-  const statusText  = connected === true ? 'Connected' : connected === false ? 'Token expired' : 'Connecting…';
-
-  return (
-    <div className="monitor-service-card">
-      <div className="monitor-service-name">{name}</div>
-      <div className="monitor-service-status" style={{ color: statusColor }}>
-        <span style={{ marginRight: 6, fontSize: '0.7em' }}>●</span>{statusText}
-      </div>
-    </div>
-  );
-}
-
 export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discordUsername, isMobile, onDownloadScenario }) {
   const [logs, setLogs]         = useState([]);
-  const [status, setStatus]     = useState(null);
   const [thumb, setThumb]       = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
-  const [fetchError, setFetchError] = useState('');
   const [setupBatDownloaded, setSetupBatDownloaded] = useState(false);
   const logContainerRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -51,20 +35,6 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
   const apiBase = API_BASE_URL;
   const DASHBOARD_URL = `${import.meta.env.VITE_SERVER_URL || ''}/obs-dashboard`;
   const SETUP_BAT_URL = `${import.meta.env.VITE_SERVER_URL || ''}/api/obs/setup-bat?url=${encodeURIComponent(DASHBOARD_URL)}`;
-
-  const fetchStatus = useCallback(async () => {
-    try {
-      const resp = await fetch(`${apiBase}/monitor/status`);
-      if (resp.ok) {
-        setStatus(await resp.json());
-        setFetchError('');
-      } else {
-        setFetchError(`Status fetch failed: HTTP ${resp.status}`);
-      }
-    } catch (err) {
-      setFetchError(`Status fetch error: ${err.message} (url: ${apiBase}/monitor/status)`);
-    }
-  }, [apiBase]);
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -95,17 +65,15 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
 
   // Initial load
   useEffect(() => {
-    fetchStatus();
     fetchLogs();
     fetchThumbnail();
-  }, [fetchStatus, fetchLogs, fetchThumbnail]);
+  }, [fetchLogs, fetchThumbnail]);
 
-  // Poll logs every 3 s, status every 15 s
+  // Poll logs every 3 s
   useEffect(() => {
-    const logsInterval   = setInterval(fetchLogs,   3000);
-    const statusInterval = setInterval(fetchStatus, 15000);
-    return () => { clearInterval(logsInterval); clearInterval(statusInterval); };
-  }, [fetchLogs, fetchStatus]);
+    const logsInterval = setInterval(fetchLogs, 3000);
+    return () => clearInterval(logsInterval);
+  }, [fetchLogs]);
 
   async function handleUpload(e) {
     const file = e.target.files?.[0];
@@ -138,8 +106,6 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
     }
   }
 
-  const fmtTime = (iso) => iso ? new Date(iso).toLocaleTimeString() : '—';
-
   return (
     <div className="monitor-container">
       {/* Background */}
@@ -156,27 +122,30 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
       <div className="monitor-content" style={isMobile ? { marginTop: 108 } : {}}>
         <h1 className="monitor-title">ESOC Monitor</h1>
 
-        {fetchError && (
-          <div style={{ background: '#3b1a1a', border: '1px solid #ff6b6b', borderRadius: 6, padding: '8px 12px', marginBottom: 12, color: '#ff6b6b', fontSize: '0.8em', fontFamily: 'monospace' }}>
-            {fetchError}
-          </div>
-        )}
-
-        {/* ── Service status cards ── */}
+        {/* ── OBS Dashboard Setup ── */}
         <div className="monitor-section">
-          <h2 className="monitor-section-title">Service Status</h2>
-          <div className="monitor-services-row">
-            <ServiceCard name="Twitch"   connected={status?.twitchTokenValid} />
-            <ServiceCard name="Restream" connected={status?.restreamTokenValid} />
-            <ServiceCard name="YouTube"  connected={status?.youtubeTokenValid} />
-          </div>
-
-          <div className="monitor-status-bar">
-            <span>🔴 Twitch Live: <b>{status?.twitchLive ? 'YES' : 'No'}</b></span>
-            <span>🔄 Last sync: <b>{fmtTime(status?.lastEventSync)}</b></span>
-            <span>📺 Last thumbnail: <b>{fmtTime(status?.lastThumbnailUpdate)}</b></span>
-            <span>📣 Last notification: <b>{fmtTime(status?.lastStreamNotify)}</b></span>
-          </div>
+          <h2 className="monitor-section-title">OBS Dashboard Setup</h2>
+          <p className="monitor-obs-intro">The ESOC Admin Dock is hosted on this server.</p>
+          <ol className="monitor-obs-steps">
+            <li>Download the Setup Script.</li>
+            <li>Double click on the downloaded .bat file to run the setup.</li>
+            <li>Open OBS, the dock and all assets will be configured and ready to go!</li>
+          </ol>
+          <button
+            className="monitor-obs-copy-btn"
+            onClick={() => {
+              onDownloadScenario?.(SETUP_BAT_URL);
+              setSetupBatDownloaded(true);
+              setTimeout(() => setSetupBatDownloaded(false), 3000);
+            }}
+          >
+            {setupBatDownloaded ? '✓ Downloaded!' : 'Download Setup Script'}
+          </button>
+          {setupBatDownloaded && (
+            <p className="monitor-obs-intro" style={{ marginTop: 6, color: '#7dbd5a' }}>
+              If Windows shows a security warning, click <strong>More info → Run anyway</strong>.
+            </p>
+          )}
         </div>
 
         {/* ── Thumbnail upload ── */}
@@ -247,31 +216,6 @@ export function MonitorScreen({ onBack, onBackHover, discordAccessToken, discord
           </div>
         </div>
 
-        {/* ── OBS Dashboard Setup ── */}
-        <div className="monitor-section">
-          <h2 className="monitor-section-title">OBS Dashboard Setup</h2>
-          <p className="monitor-obs-intro">The ESOC Admin Dock is hosted on this server.</p>
-          <ol className="monitor-obs-steps">
-            <li>Download the Setup Script.</li>
-            <li>Double click on the downloaded .bat file to run the setup.</li>
-            <li>Open OBS, the dock and all assets will be configured and ready to go!</li>
-          </ol>
-          <button
-            className="monitor-obs-copy-btn"
-            onClick={() => {
-              onDownloadScenario?.(SETUP_BAT_URL);
-              setSetupBatDownloaded(true);
-              setTimeout(() => setSetupBatDownloaded(false), 3000);
-            }}
-          >
-            {setupBatDownloaded ? '✓ Downloaded!' : 'Download Setup Script'}
-          </button>
-          {setupBatDownloaded && (
-            <p className="monitor-obs-intro" style={{ marginTop: 6, color: '#7dbd5a' }}>
-              If Windows shows a security warning, click <strong>More info → Run anyway</strong>.
-            </p>
-          )}
-        </div>
       </div>
     </div>
   );
