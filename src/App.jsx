@@ -55,6 +55,15 @@ import eventsDuration  from "./assets/EventsDuration.png";
 import eventsPrizepool from "./assets/EventsPrizepool.png";
 import registerPanel   from "./assets/RegisterHerePanel.png";
 
+import goldDivider      from "./assets/GoldDivider.png";
+import buttonRedAvail   from "./assets/ButtonRedAvailable.png";
+import buttonRedClick   from "./assets/ButtonRedClicked.png";
+import lvlcardGlow      from "./assets/coop/lvlcard_glow.png";
+import lvlcardHighlight from "./assets/coop/lvlcard_highlight.png";
+import lvlcardMask      from "./assets/coop/lvlcard_mask.png";
+import lvlcardShadow    from "./assets/coop/lvlcard_shadow.png";
+import coopTitlebg      from "./assets/coop/titlebg.png";
+
 const gameScreenAssets = [
   woodPanelBg, btnNormal, btnHover, btnDisabled, btnMainMenuDisabled,
   restartButtonBg, restartScreenBg, quizScreenBg,
@@ -65,6 +74,11 @@ const gameScreenAssets = [
 const eventsScreenAssets = [
   eventsDuration, eventsPrizepool, registerPanel,
   nicknameBg, btnNormal,
+];
+
+const coopScreenAssets = [
+  marbleBg, goldDivider, buttonRedAvail, buttonRedClick,
+  lvlcardGlow, lvlcardHighlight, lvlcardMask, lvlcardShadow, coopTitlebg,
 ];
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
@@ -3371,7 +3385,17 @@ export default function App() {
               }
             });
           }}
-          onCoOpClick={() => { playClickSound(); triggerScreenTransition("COOP", async () => {}); }}
+          onCoOpClick={() => {
+            playClickSound();
+            setLoadingTarget("COOP");
+            triggerScreenTransition("COOP", async () => {
+              try {
+                await preloadImages(coopScreenAssets);
+              } finally {
+                setLoadingTarget(null);
+              }
+            });
+          }}
           onRankedClick={() => { playClickSound(); setAppMode("RANKED"); }}
           onMonitorClick={() => setAppMode("MONITOR")}
           isMonitorAuthorized={isMonitorAuthorized}
