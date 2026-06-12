@@ -26,6 +26,7 @@ export function ActionButton({ onClick, disabled, children, style = {} }) {
         letterSpacing: '0.5px',
         filter: 'drop-shadow(0 2px 7px rgba(0,0,0,0.6))',
         transition: 'filter 150ms ease',
+        alignSelf: 'flex-start',
         height: 44,
         padding: '0 18px 5px 18px',
         lineHeight: '1',
