@@ -316,13 +316,16 @@ export default function App() {
     ready,
     isMobile,
     sdk,
+    currentUserRoles,
   } = useDiscordActivity();
 
   // Authorized Discord usernames for the Monitor screen (checked client-side via SDK user data)
   const MONITOR_AUTHORIZED_USERNAMES = ["barronh", "mclovin111.", "joshua667746", "grimescene"];
-  const isMonitorAuthorized = MONITOR_AUTHORIZED_USERNAMES.includes(
-    (currentUser?.username || "").toLowerCase()
-  );
+  // ESO-COMMUNITY.NET Producer (1106560581835706428) or Caster (940967920459198495) roles also grant access
+  const MONITOR_AUTHORIZED_ROLE_IDS = ["1106560581835706428", "940967920459198495"];
+  const isMonitorAuthorized =
+    MONITOR_AUTHORIZED_USERNAMES.includes((currentUser?.username || "").toLowerCase()) ||
+    MONITOR_AUTHORIZED_ROLE_IDS.some(r => currentUserRoles.includes(r));
 
   // Authorized Discord usernames for the Ranked screen
   const RANKED_AUTHORIZED_USERNAMES = ["joshua667746", "doppelsolna", "jaeger_007.", "andreaslubitz.", "grimescene", "barronh", "mclovin111.", "chieftishomingo", "_m0s_", "deityofdeath", "the7apples", "theonlybaus", "igorgrego"];

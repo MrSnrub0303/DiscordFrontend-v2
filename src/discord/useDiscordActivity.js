@@ -7,6 +7,7 @@ export function useDiscordActivity() {
   const [participants, setParticipants] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [instanceId, setInstanceId] = useState(null);
+  const [currentUserRoles, setCurrentUserRoles] = useState([]);
 
   useEffect(() => {
     if (!context?.sdk || !context?.ready) return;
@@ -114,8 +115,13 @@ export function useDiscordActivity() {
               channel_id: context.sdk.channelId
             });
             setVoiceChannel(channel);
+            const myUserId = context.sdk.authenticated?.user?.id;
+            if (myUserId && Array.isArray(channel.voice_states)) {
+              const myState = channel.voice_states.find(vs => vs.user?.id === myUserId);
+              if (Array.isArray(myState?.roles)) setCurrentUserRoles(myState.roles);
+            }
           } catch (err) {
-            
+
             setVoiceChannel({
               id: context.sdk.channelId,
               name: 'Voice Channel'
@@ -185,6 +191,7 @@ export function useDiscordActivity() {
     voiceChannel,
     participants,
     currentUser: effectiveCurrentUser,
+    currentUserRoles,
     instanceId,
     channelId: context?.sdk?.channelId,
     isHost: true,
