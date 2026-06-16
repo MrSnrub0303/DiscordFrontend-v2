@@ -37,9 +37,23 @@ export function useDiscordActivity() {
             accessToken: context.token
           };
           setCurrentUser(user);
-          
+
+          if (context.token) {
+            try {
+              const memberResp = await fetch(
+                'https://discord.com/api/v10/users/@me/guilds/134848902292701184/member',
+                { headers: { Authorization: `Bearer ${context.token}` } }
+              );
+              if (memberResp.ok) {
+                const member = await memberResp.json();
+                if (Array.isArray(member.roles)) setCurrentUserRoles(member.roles);
+              }
+            } catch (err) {
+              console.warn('[Discord] Could not fetch guild member roles:', err.message);
+            }
+          }
         } else {
-          
+
         }
 
         
@@ -115,13 +129,6 @@ export function useDiscordActivity() {
               channel_id: context.sdk.channelId
             });
             setVoiceChannel(channel);
-            const myUserId = context.sdk.authenticated?.user?.id;
-            console.log('[Monitor debug] myUserId:', myUserId, '| voice_states:', JSON.stringify(channel.voice_states));
-            if (myUserId && Array.isArray(channel.voice_states)) {
-              const myState = channel.voice_states.find(vs => vs.user?.id === myUserId);
-              console.log('[Monitor debug] myState:', JSON.stringify(myState));
-              if (Array.isArray(myState?.roles)) setCurrentUserRoles(myState.roles);
-            }
           } catch (err) {
 
             setVoiceChannel({
