@@ -334,7 +334,7 @@ export default function App() {
   } = useDiscordActivity();
 
   // Authorized Discord usernames for the Monitor screen (checked client-side via SDK user data)
-  const MONITOR_AUTHORIZED_USERNAMES = ["barronh", "mclovin111.", "joshua667746", "grimescene"];
+  const MONITOR_AUTHORIZED_USERNAMES = ["barronh", "mclovin111.", "grimescene"];
   // ESO-COMMUNITY.NET Producer (1106560581835706428) or Caster (940967920459198495) roles also grant access
   const MONITOR_AUTHORIZED_ROLE_IDS = ["1106560581835706428", "940967920459198495"];
   const isMonitorAuthorized =
