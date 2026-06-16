@@ -96,7 +96,7 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
           response_type: 'code',
           state: '',
           prompt: 'none',
-          scope: ['identify', 'guilds', 'applications.commands'],
+          scope: ['identify', 'guilds', 'guilds.members.read', 'applications.commands'],
         });
         
         addDebugLog(`Authorization successful, got code: ${authResult.code?.substring(0, 10)}...`);
