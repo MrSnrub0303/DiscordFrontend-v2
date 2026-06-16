@@ -334,7 +334,7 @@ export default function App() {
   } = useDiscordActivity();
 
   // Authorized Discord usernames for the Monitor screen (checked client-side via SDK user data)
-  const MONITOR_AUTHORIZED_USERNAMES = ["barronh", "mclovin111.", "grimescene"];
+  const MONITOR_AUTHORIZED_USERNAMES = ["barronh", "mclovin111.", "joshua667746", "grimescene"];
   // ESO-COMMUNITY.NET Producer (1106560581835706428) or Caster (940967920459198495) roles also grant access
   const MONITOR_AUTHORIZED_ROLE_IDS = ["1106560581835706428", "940967920459198495"];
   const isMonitorAuthorized =
@@ -3413,11 +3413,7 @@ export default function App() {
           loadingTarget={loadingTarget}
           isMobile={isMobile}
         />
-        {/* TEMP DEBUG — remove after role testing */}
-        <div style={{ position: 'fixed', bottom: 8, left: 8, zIndex: 9999, background: 'rgba(0,0,0,0.75)', color: '#fff', fontSize: 11, padding: '4px 8px', borderRadius: 4, maxWidth: 320, wordBreak: 'break-all', pointerEvents: 'none' }}>
-          user: {currentUser?.username || '?'} | roles: [{currentUserRoles.join(', ')}]
-        </div>
-        {/* Pre-render SpinnerScreen hidden so its iframe loads while user waits on HOME */}
+{/* Pre-render SpinnerScreen hidden so its iframe loads while user waits on HOME */}
         {loadingTarget === "SPINNER" && (
           <div style={{ position: "fixed", inset: 0, visibility: "hidden", pointerEvents: "none", zIndex: -1 }}>
             <SpinnerScreen
