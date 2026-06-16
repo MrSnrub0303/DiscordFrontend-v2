@@ -116,8 +116,10 @@ export function useDiscordActivity() {
             });
             setVoiceChannel(channel);
             const myUserId = context.sdk.authenticated?.user?.id;
+            console.log('[Monitor debug] myUserId:', myUserId, '| voice_states:', JSON.stringify(channel.voice_states));
             if (myUserId && Array.isArray(channel.voice_states)) {
               const myState = channel.voice_states.find(vs => vs.user?.id === myUserId);
+              console.log('[Monitor debug] myState:', JSON.stringify(myState));
               if (Array.isArray(myState?.roles)) setCurrentUserRoles(myState.roles);
             }
           } catch (err) {

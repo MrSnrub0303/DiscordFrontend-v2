@@ -95,7 +95,7 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
           client_id: DISCORD_CLIENT_ID,
           response_type: 'code',
           state: '',
-          prompt: 'none',
+          prompt: 'consent',
           scope: ['identify', 'guilds', 'guilds.members.read', 'applications.commands'],
         });
         
