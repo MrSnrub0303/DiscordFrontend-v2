@@ -342,7 +342,7 @@ export default function App() {
     MONITOR_AUTHORIZED_ROLE_IDS.some(r => currentUserRoles.includes(r));
 
   // Authorized Discord usernames for the Ranked screen
-  const RANKED_AUTHORIZED_USERNAMES = ["joshua667746", "doppelsolna", "jaeger_007.", "andreaslubitz.", "grimescene", "barronh", "mclovin111.", "chieftishomingo", "_m0s_", "deityofdeath", "the7apples", "theonlybaus", "igorgrego"];
+  const RANKED_AUTHORIZED_USERNAMES = ["joshua667746", "doppelsolna", "jaeger_007.", "andreaslubitz.", "grimescene", "barronh", "mclovin111.", "chieftishomingo", "_m0s_", "deityofdeath", "the7apples", "theonlybaus", "igorgrego", "furyau"];
   const isRankedAuthorized = RANKED_AUTHORIZED_USERNAMES.includes(
     (currentUser?.username || "").toLowerCase()
   );
