@@ -24,6 +24,7 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(!globalAuthResult);
   const [loadingFadingOut, setLoadingFadingOut] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [retryCountdown, setRetryCountdown] = useState(null);
 
   
   const addDebugLog = (message) => {
@@ -123,7 +124,14 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
         if (!response.ok) {
           const errorText = await response.text();
           addDebugLog(`Token exchange failed: ${response.status} - ${errorText}`);
-          throw new Error(`Token exchange failed: ${response.status} - ${errorText}`);
+          const err = new Error(`Token exchange failed: ${response.status} - ${errorText}`);
+          if (response.status === 503 || response.status === 502) {
+            try {
+              const parsed = JSON.parse(errorText);
+              if (parsed.retryAfterSeconds) err.retryAfterSeconds = parsed.retryAfterSeconds;
+            } catch {}
+          }
+          throw err;
         }
 
         const tokenData = await response.json();
@@ -210,7 +218,13 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
             errorDetails.suggestion = 'The backend server encountered an error. This might be due to network issues or server configuration. Please try again.';
           } else if (error.message.includes('503') || error.message.includes('502')) {
             errorDetails.message = 'Unstable Network - Service Unavailable';
-            errorDetails.suggestion = 'The server is temporarily unavailable. Please wait a moment and try again.';
+            if (error.retryAfterSeconds) {
+              const minutes = Math.ceil(error.retryAfterSeconds / 60);
+              errorDetails.suggestion = `Discord's infrastructure has temporarily rate-limited this server's IP. Auto-retrying in ~${minutes} minute(s)...`;
+              errorDetails.autoRetryAfterSeconds = error.retryAfterSeconds;
+            } else {
+              errorDetails.suggestion = 'The server is temporarily unavailable. Please wait a moment and try again.';
+            }
           } else {
             errorDetails.message = 'Unstable Network';
             errorDetails.suggestion = 'Check that your backend server is running and accessible at https://discordbackend-v2.onrender.com';
@@ -295,6 +309,22 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
     }
   }, [ready, showLoadingOverlay, loadingFadingOut]);
 
+  useEffect(() => {
+    if (!error?.autoRetryAfterSeconds) return;
+    setRetryCountdown(error.autoRetryAfterSeconds);
+    const interval = setInterval(() => {
+      setRetryCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          window.location.reload();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [error]);
+
   // Map initialization steps to user-friendly messages and progress
   const getLoadingInfo = () => {
     const steps = {
@@ -327,7 +357,11 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
         <p><strong>Step:</strong> {error.step}</p>
         <p><strong>Error:</strong> {error.message}</p>
         {error.suggestion && (
-          <p><strong>Suggestion:</strong> {error.suggestion}</p>
+          <p><strong>Suggestion:</strong> {
+            retryCountdown !== null
+              ? `Discord's infrastructure has temporarily rate-limited this server's IP. Auto-retrying in ${retryCountdown}s...`
+              : error.suggestion
+          }</p>
         )}
         <details>
           <summary>Debug Information</summary>
@@ -335,8 +369,8 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
             {JSON.stringify(error, null, 2)}
           </pre>
         </details>
-        <button 
-          onClick={() => window.location.reload()} 
+        <button
+          onClick={() => window.location.reload()}
           style={{
             marginTop: '10px',
             padding: '8px 16px',
@@ -347,7 +381,7 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
             cursor: 'pointer'
           }}
         >
-          Retry
+          {retryCountdown !== null ? `Retry Now (auto in ${retryCountdown}s)` : 'Retry'}
         </button>
       </div>
     );
