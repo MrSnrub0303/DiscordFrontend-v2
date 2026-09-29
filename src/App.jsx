@@ -1841,6 +1841,18 @@ export default function App() {
     }
   };
 
+  // Ranked-authorized users (casters/admins) start with music muted. Runs once when
+  // the Discord user resolves, so they can still unmute manually afterwards.
+  const rankedMuteAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!isRankedAuthorized || rankedMuteAppliedRef.current) return;
+    rankedMuteAppliedRef.current = true;
+    setMusicEnabled(false);
+    try {
+      pauseAllTracks();
+    } catch { /* tracks may not be loaded yet */ }
+  }, [isRankedAuthorized]);
+
   const handleVolumeChange = (newVol) => {
     musicVolumeRef.current = newVol;
     setMusicVolume(newVol);
