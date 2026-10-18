@@ -8,9 +8,27 @@ import { preloadImages } from '../utils/preloadImages';
 
 export { ActivityContext };
 
-// Module-level flag to prevent duplicate SDK initialization across component remounts
+const SDK_READY_TIMEOUT_MS = 30000;
+
+// Discord only accepts one SDK handshake per mounted iframe, and after a page reload
+// document.referrer becomes our own URL, so the SDK posts its handshake to itself and
+// ready() never resolves. Never reload — retry in place, or ask the user to relaunch.
+// https://github.com/discord/embedded-app-sdk/issues/41
+const RELAUNCH_SUGGESTION = 'Close the activity (X in the top corner) and launch it again from the Activities menu. Refreshing will not fix this.';
+
+const pageWasReloaded = () => {
+  try {
+    return !!document.referrer && new URL(document.referrer).origin === window.location.origin;
+  } catch {
+    return false;
+  }
+};
+
+// Module-level state so the SDK is only ever created (and handshaken) once per page,
+// even if the provider remounts.
 let globalInitializationStarted = false;
 let globalSdkInstance = null;
+let globalSdkReadyPromise = null;
 let globalAuthResult = null;
 
 export function ActivityProvider({ children, assetsToPreload = [] }) {
@@ -18,80 +36,161 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(!!globalAuthResult);
   const [token, setToken] = useState(globalAuthResult?.access_token || null);
-  const [initializationStep, setInitializationStep] = useState(globalInitializationStarted ? 'already_started' : 'starting');
+  const [initializationStep, setInitializationStepState] = useState(globalInitializationStarted ? 'already_started' : 'starting');
   const [debugLogs, setDebugLogs] = useState([]);
-  const initializationRef = useRef(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(!globalAuthResult);
   const [loadingFadingOut, setLoadingFadingOut] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [retryCountdown, setRetryCountdown] = useState(null);
+  // Refs so the async flow always sees current values (state in its closure would be stale)
+  const stepRef = useRef(initializationStep);
+  const startTimeRef = useRef(Date.now());
+  const runningRef = useRef(false);
+  const tokenDataRef = useRef(null);
 
-  
+  const setInitializationStep = (step) => {
+    stepRef.current = step;
+    setInitializationStepState(step);
+  };
+
   const addDebugLog = (message) => {
     const timestamp = new Date().toLocaleTimeString();
     setDebugLogs(prev => [...prev.slice(-4), `[${timestamp}] ${message}`]);
-    
   };
 
-  
-  
-    
-    
-    
-    
-    
-  
+  const buildErrorDetails = (error) => {
+    const errorDetails = {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+      stack: error.stack,
+      location: 'SDK Initialization',
+      step: stepRef.current,
+      elapsedMs: Date.now() - startTimeRef.current,
+      platform: globalSdkInstance?.platform,
+      mobileAppVersion: globalSdkInstance?.mobileAppVersion,
+      sdkVersion: globalSdkInstance?.sdkVersion,
+      referrer: document.referrer,
+      reloaded: pageWasReloaded(),
+      time: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+    };
 
-  useEffect(() => {
-    const initializeSDK = async () => {
-      try {
+    if (error.name === 'ActivityRejectedError') {
+      errorDetails.suggestion = 'Make sure your activity is approved and running in Discord';
+    } else if (error.name === 'AuthorizationError') {
+      errorDetails.suggestion = 'Verify your Discord Client ID and application settings';
+    } else if (error.code === 4002 || error.message?.includes('Already authing')) {
+      errorDetails.suggestion = 'Another authentication is in progress. Please wait a moment and press Retry.';
+    } else if (error.isReloaded) {
+      errorDetails.message = 'The activity was reloaded, which Discord does not support';
+      errorDetails.suggestion = RELAUNCH_SUGGESTION;
+      errorDetails.relaunchRequired = true;
+    } else if (error.message?.includes('frame_id') || error.message?.includes('instance_id') || error.message?.includes('platform')) {
+      errorDetails.suggestion = 'This page must be opened as an Activity inside Discord.';
+      errorDetails.relaunchRequired = true;
+    } else if (error.message?.includes('timeout')) {
+      errorDetails.message = 'Could not connect to Discord';
+      errorDetails.suggestion = `Discord did not respond in time. Press Retry to keep waiting, or: ${RELAUNCH_SUGGESTION}`;
+    } else if (error.message?.includes('DISCORD_CLIENT_ID')) {
+      errorDetails.suggestion = 'Check your config file and ensure DISCORD_CLIENT_ID is properly set';
+    } else if (error.message?.includes('Token exchange failed')) {
+      if (error.message.includes('500')) {
+        errorDetails.message = 'Unstable Network - Server Error';
+        errorDetails.suggestion = 'The backend server encountered an error. This might be due to network issues or server configuration. Please try again.';
+      } else if (error.message.includes('503') || error.message.includes('502')) {
+        errorDetails.message = 'Unstable Network - Service Unavailable';
+        if (error.retryAfterSeconds) {
+          const minutes = Math.ceil(error.retryAfterSeconds / 60);
+          errorDetails.suggestion = `Discord's infrastructure has temporarily rate-limited this server's IP. Auto-retrying in ~${minutes} minute(s)...`;
+          errorDetails.autoRetryAfterSeconds = error.retryAfterSeconds;
+        } else {
+          errorDetails.suggestion = 'The server is temporarily unavailable. Please wait a moment and try again.';
+        }
+      } else {
+        errorDetails.message = 'Unstable Network';
+        errorDetails.suggestion = 'Check that your backend server is running and accessible at https://discordbackend-v2.onrender.com';
+      }
+    } else if (error.message?.includes('NetworkError') || error.message?.includes('Failed to fetch')) {
+      errorDetails.message = 'Unstable Network';
+      errorDetails.suggestion = 'Cannot reach backend server. Please check your internet connection.';
+    } else if (error.message?.includes('fetch')) {
+      errorDetails.message = 'Unstable Network';
+      errorDetails.suggestion = 'Network connection issue - please check your internet connection and try again.';
+    } else if (error.message?.includes('authenticate')) {
+      errorDetails.suggestion = 'Authentication failed - the access token may be invalid';
+    } else if (error.message?.includes('already running')) {
+      errorDetails.suggestion = 'Another instance is already running. Try closing and reopening the activity.';
+    }
+
+    return errorDetails;
+  };
+
+  // Creates the SDK once, then runs whichever auth steps haven't completed yet.
+  // Safe to call again to retry — it reuses the same SDK instance and handshake.
+  const runInitialization = async () => {
+    if (runningRef.current) return;
+    runningRef.current = true;
+    setError(null);
+    setRetryCountdown(null);
+
+    try {
+      if (!globalSdkInstance) {
         setInitializationStep('creating_sdk');
         addDebugLog('Initializing Discord SDK...');
-        
-        
-        if (typeof window === 'undefined') {
-          throw new Error('Running in non-browser environment');
-        }
 
-        
         if (!DISCORD_CLIENT_ID) {
           throw new Error('DISCORD_CLIENT_ID is not defined in config');
         }
-
         addDebugLog(`Using Discord Client ID: ${DISCORD_CLIENT_ID}`);
-        
-        
+
         setInitializationStep('sdk_instance');
         const discordSdk = new DiscordSDK(DISCORD_CLIENT_ID);
+        globalSdkInstance = discordSdk;
+        globalSdkReadyPromise = discordSdk.ready();
         addDebugLog('SDK instance created');
         setIsMobile(discordSdk.platform === 'mobile');
-        
-        
         setSdk(discordSdk);
-        
-        
+
+        // Resume automatically if Discord's READY arrives after we gave up waiting
+        globalSdkReadyPromise.then(() => {
+          if (stepRef.current === 'waiting_ready' && !runningRef.current) {
+            addDebugLog('SDK became ready after timeout, resuming...');
+            runInitialization();
+          }
+        });
+      }
+      const discordSdk = globalSdkInstance;
+
+      if (!discordSdk.isReady) {
         setInitializationStep('waiting_ready');
-        const ticketPresent = new URLSearchParams(window.location.search).has('discord_proxy_ticket');
-        addDebugLog(`Waiting for SDK to be ready (ticket present: ${ticketPresent})...`);
+        if (pageWasReloaded()) {
+          throw Object.assign(new Error('Page reloaded inside Discord; SDK handshake cannot complete'), { isReloaded: true });
+        }
+        addDebugLog(`Waiting for SDK to be ready (platform: ${discordSdk.platform})...`);
 
-        const readyPromise = discordSdk.ready();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(
-            () => reject(new Error('SDK ready timeout after 30 seconds')),
-            30000,
-          )
-        );
-
-        await Promise.race([readyPromise, timeoutPromise]);
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(
+            () => reject(new Error(`SDK ready timeout after ${SDK_READY_TIMEOUT_MS / 1000} seconds`)),
+            SDK_READY_TIMEOUT_MS,
+          );
+        });
+        try {
+          await Promise.race([globalSdkReadyPromise, timeoutPromise]);
+        } finally {
+          clearTimeout(timeoutId);
+        }
         addDebugLog('SDK is ready');
-        
-        
+
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+      }
+
+      if (!tokenDataRef.current) {
         setInitializationStep('authorizing');
         addDebugLog('Starting authorization...');
-        
-        
+
         const authResult = await discordSdk.commands.authorize({
           client_id: DISCORD_CLIENT_ID,
           response_type: 'code',
@@ -99,18 +198,15 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
           prompt: 'none',
           scope: ['identify', 'guilds', 'guilds.members.read', 'applications.commands'],
         });
-        
-        addDebugLog(`Authorization successful, got code: ${authResult.code?.substring(0, 10)}...`);
 
         if (!authResult.code) {
           throw new Error('No authorization code received');
         }
+        addDebugLog(`Authorization successful, got code: ${authResult.code.substring(0, 10)}...`);
 
         setInitializationStep('exchanging_token');
-        addDebugLog('Exchanging code for token...');
-        addDebugLog(`Making request to /api/token (via Discord proxy)`);
-        
-        
+        addDebugLog('Exchanging code for token via /api/token...');
+
         const response = await fetch('/api/token', {
           method: 'POST',
           headers: {
@@ -135,120 +231,60 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
         }
 
         const tokenData = await response.json();
-        addDebugLog(`Token exchange successful, got access_token: ${tokenData.access_token ? 'YES' : 'NO'}`);
-        
         if (!tokenData.access_token) {
           addDebugLog(`No access token in response: ${JSON.stringify(tokenData)}`);
           throw new Error('No access token received from server');
         }
-
         addDebugLog('Token exchange successful');
-        
+        tokenDataRef.current = tokenData;
+      }
+      const tokenData = tokenDataRef.current;
+
+      if (!globalAuthResult) {
         setInitializationStep('authenticating');
         addDebugLog('Authenticating with Discord...');
-        
-        
-        const authResponse = await discordSdk.commands.authenticate({
-          access_token: tokenData.access_token,
-        });
-        
+
+        let authResponse;
+        try {
+          authResponse = await discordSdk.commands.authenticate({
+            access_token: tokenData.access_token,
+          });
+        } catch (err) {
+          // Token may be bad; get a fresh one on the next retry
+          tokenDataRef.current = null;
+          throw err;
+        }
         addDebugLog(`Authentication successful: ${authResponse ? 'YES' : 'NO'}`);
 
-
         discordSdk.authenticated = authResponse;
-
-        // Store in global variables for reuse on remount
-        globalSdkInstance = discordSdk;
         globalAuthResult = { access_token: tokenData.access_token, authResponse };
-
-        setToken(tokenData.access_token);
-
-        // Preload home screen assets before revealing the app
-        if (assetsToPreload.length > 0) {
-          setInitializationStep('preloading');
-          addDebugLog(`Preloading ${assetsToPreload.length} assets...`);
-          await preloadImages(assetsToPreload);
-          addDebugLog('Assets preloaded.');
-        }
-
-        setInitializationStep('complete');
-        setReady(true);
-        
-        addDebugLog('Discord Activity fully initialized and ready!');
-        
-      } catch (error) {
-        addDebugLog(`ERROR: ${error.message}`);
-        
-        
-        
-        let errorDetails = {
-          message: error.message,
-          name: error.name,
-          stack: error.stack,
-          location: 'SDK Initialization',
-          step: initializationStep,
-          time: new Date().toISOString(),
-          userAgent: navigator.userAgent,
-          url: window.location.href
-        };
-        
-        
-        
-        
-        if (error.name === 'ActivityRejectedError') {
-          
-          errorDetails.suggestion = 'Make sure your activity is approved and running in Discord';
-        } else if (error.name === 'AuthorizationError') {
-          
-          errorDetails.suggestion = 'Verify your Discord Client ID and application settings';
-        } else if (error.code === 4002 || error.message.includes('Already authing')) {
-          
-          errorDetails.suggestion = 'Another authentication is in progress. Please wait or refresh the activity.';
-          
-          setTimeout(() => {
-            initializationRef.current = false;
-          }, 3000);
-        } else if (error.message.includes('timeout')) {
-          errorDetails.suggestion = 'Discord SDK took too long to initialize. Try refreshing the activity.';
-        } else if (error.message.includes('DISCORD_CLIENT_ID')) {
-          errorDetails.suggestion = 'Check your config file and ensure DISCORD_CLIENT_ID is properly set';
-        } else if (error.message.includes('Token exchange failed')) {
-          if (error.message.includes('500')) {
-            errorDetails.message = 'Unstable Network - Server Error';
-            errorDetails.suggestion = 'The backend server encountered an error. This might be due to network issues or server configuration. Please try again.';
-          } else if (error.message.includes('503') || error.message.includes('502')) {
-            errorDetails.message = 'Unstable Network - Service Unavailable';
-            if (error.retryAfterSeconds) {
-              const minutes = Math.ceil(error.retryAfterSeconds / 60);
-              errorDetails.suggestion = `Discord's infrastructure has temporarily rate-limited this server's IP. Auto-retrying in ~${minutes} minute(s)...`;
-              errorDetails.autoRetryAfterSeconds = error.retryAfterSeconds;
-            } else {
-              errorDetails.suggestion = 'The server is temporarily unavailable. Please wait a moment and try again.';
-            }
-          } else {
-            errorDetails.message = 'Unstable Network';
-            errorDetails.suggestion = 'Check that your backend server is running and accessible at https://discordbackend-v2.onrender.com';
-          }
-        } else if (error.message.includes('fetch')) {
-          errorDetails.message = 'Unstable Network';
-          errorDetails.suggestion = 'Network connection issue - please check your internet connection and try again.';
-        } else if (error.message.includes('authenticate')) {
-          errorDetails.suggestion = 'Authentication failed - the access token may be invalid';
-        } else if (error.message.includes('already running')) {
-          errorDetails.suggestion = 'Another instance is already running. Try closing and reopening the activity.';
-        } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-          errorDetails.message = 'Unstable Network';
-          errorDetails.suggestion = 'Cannot reach backend server. Please check your internet connection.';
-        }
-        
-        setError(errorDetails);
       }
-    };
 
-    // Check global flag first (prevents duplicate initialization across remounts)
+      setToken(globalAuthResult.access_token);
+
+      // Preload home screen assets before revealing the app
+      if (assetsToPreload.length > 0) {
+        setInitializationStep('preloading');
+        addDebugLog(`Preloading ${assetsToPreload.length} assets...`);
+        await preloadImages(assetsToPreload);
+        addDebugLog('Assets preloaded.');
+      }
+
+      setInitializationStep('complete');
+      setReady(true);
+      addDebugLog('Discord Activity fully initialized and ready!');
+    } catch (error) {
+      addDebugLog(`ERROR: ${error.message}`);
+      setError(buildErrorDetails(error));
+    } finally {
+      runningRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    // Only one provider per page may drive initialization; remounts reuse the result.
     if (globalInitializationStarted) {
       addDebugLog('Global initialization already started, skipping...');
-      // If we already have a result, use it
       if (globalSdkInstance && globalAuthResult) {
         setSdk(globalSdkInstance);
         setToken(globalAuthResult.access_token);
@@ -257,47 +293,11 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
       }
       return;
     }
-    
-    // Also check component ref (for within same mount)
-    if (initializationRef.current) {
-      addDebugLog('Already initialized in this mount, skipping...');
-      return;
-    }
-    
-    // Set both flags
+
     globalInitializationStarted = true;
-    initializationRef.current = true;
     addDebugLog('Starting initialization...');
-    
-    initializeSDK().catch((err) => {
-      // Only reset component ref, not global (to prevent infinite retry loops)
-      initializationRef.current = false; 
-    });
-
-    
-    return () => {
-      if (sdk) {
-        
-        
-      }
-    };
-  }, []); 
-
-  
-  useEffect(() => {
-    if (!sdk || !ready) return;
-
-    const handleStart = async () => {
-      try {
-        addDebugLog('Activity lifecycle: starting...');
-
-      } catch (err) {
-
-      }
-    };
-
-    handleStart();
-  }, [sdk, ready]);
+    runInitialization();
+  }, []);
 
   useEffect(() => {
     if (ready && showLoadingOverlay && !loadingFadingOut) {
@@ -316,7 +316,6 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
       setRetryCountdown(prev => {
         if (prev <= 1) {
           clearInterval(interval);
-          window.location.reload();
           return 0;
         }
         return prev - 1;
@@ -324,6 +323,10 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
     }, 1000);
     return () => clearInterval(interval);
   }, [error]);
+
+  useEffect(() => {
+    if (retryCountdown === 0) runInitialization();
+  }, [retryCountdown]);
 
   // Map initialization steps to user-friendly messages and progress
   const getLoadingInfo = () => {
@@ -344,10 +347,10 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
 
   if (error) {
     return (
-      <div style={{ 
-        padding: '20px', 
-        color: '#dc3545', 
-        background: '#f8f9fa', 
+      <div style={{
+        padding: '20px',
+        color: '#dc3545',
+        background: '#f8f9fa',
         border: '1px solid #dc3545',
         borderRadius: '4px',
         margin: '20px',
@@ -358,7 +361,7 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
         <p><strong>Error:</strong> {error.message}</p>
         {error.suggestion && (
           <p><strong>Suggestion:</strong> {
-            retryCountdown !== null
+            retryCountdown
               ? `Discord's infrastructure has temporarily rate-limited this server's IP. Auto-retrying in ${retryCountdown}s...`
               : error.suggestion
           }</p>
@@ -369,20 +372,22 @@ export function ActivityProvider({ children, assetsToPreload = [] }) {
             {JSON.stringify(error, null, 2)}
           </pre>
         </details>
-        <button
-          onClick={() => window.location.reload()}
-          style={{
-            marginTop: '10px',
-            padding: '8px 16px',
-            background: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {retryCountdown !== null ? `Retry Now (auto in ${retryCountdown}s)` : 'Retry'}
-        </button>
+        {!error.relaunchRequired && (
+          <button
+            onClick={() => runInitialization()}
+            style={{
+              marginTop: '10px',
+              padding: '8px 16px',
+              background: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            {retryCountdown ? `Retry Now (auto in ${retryCountdown}s)` : 'Retry'}
+          </button>
+        )}
       </div>
     );
   }

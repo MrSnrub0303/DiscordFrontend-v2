@@ -41,7 +41,8 @@ export class ErrorBoundary extends React.Component {
             </div>
           </details>
           <button 
-            onClick={() => window.location.reload()} 
+            // Don't reload: Discord won't re-handshake a reloaded iframe. Remounting reuses the existing SDK session.
+            onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
             style={{
               marginTop: '10px',
               padding: '8px 16px',
@@ -52,7 +53,7 @@ export class ErrorBoundary extends React.Component {
               cursor: 'pointer'
             }}
           >
-            Reload Activity
+            Try Again
           </button>
         </div>
       );
