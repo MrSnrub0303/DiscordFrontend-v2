@@ -18,7 +18,6 @@ import { VolumeControl } from "./components/VolumeControl";
 import { BackButton } from "./components/BackButton";
 import questions from "./questions.json";
 import { useDiscordActivity } from "./discord/useDiscordActivity";
-import { io } from "socket.io-client";
 
 import woodPanelBg from "./assets/sendresource_bg.png";
 import btnNormal from "./assets/combobox_button_normal.png";
@@ -82,11 +81,6 @@ const coopScreenAssets = [
 ];
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
-const SOCKET_URL =
-  import.meta.env.VITE_SOCKET_URL ||
-  (API_BASE_URL.startsWith("http")
-    ? API_BASE_URL
-    : window.location.origin);
 
 const MAX_TIME = 20;
 const JOIN_COUNTDOWN_SECONDS = 3;
@@ -313,15 +307,11 @@ export default function App() {
 
   const [appMode, setAppMode] = useState("HOME"); // "HOME", "GAME", "SPINNER", "EVENTS", "COOP", "RANKED", or "MONITOR"
 
-  const [socket, setSocket] = useState(null);
-
   const {
     participants,
     currentUser,
     instanceId,
     channelId,
-    isHost,
-    isInVoiceChannel,
     ready,
     isMobile,
     sdk,
@@ -420,77 +410,11 @@ export default function App() {
     timeLeftRef.current = timeLeft;
   }, [timeLeft]);
 
-  const syncLocalQuestionToServer = useCallback(
-    async (targetRoomIdOverride) => {
-      const targetRoomId = targetRoomIdOverride || channelId || roomId;
-      const activeQuestion = currentQuestionDataRef.current;
-      if (
-        !targetRoomId ||
-        !activeQuestion ||
-        showResultRef.current ||
-        !canControlQuestions ||
-        !currentPlayerId
-      ) {
-        return false;
-      }
-
-      const remainingSeconds = Math.max(
-        0,
-        Math.round(timeLeftRef.current ?? MAX_TIME),
-      );
-
-      try {
-        const response = await fetch(`${API_BASE_URL}/sync_local_question`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            roomId: targetRoomId,
-            question: activeQuestion,
-            timeLeft: remainingSeconds,
-            playerId: currentPlayerId,
-          }),
-        });
-
-        let data = null;
-        try {
-          data = await response.json();
-        } catch (jsonError) { }
-
-        if (data?.hostPlayerId !== undefined) {
-          setHostPlayerId(data.hostPlayerId || null);
-        }
-
-        if (!response.ok || !data?.success) {
-          return false;
-        }
-
-        return true;
-      } catch (error) {
-        return false;
-      }
-    },
-    [channelId, roomId, currentPlayerId, canControlQuestions],
-  );
-
   useEffect(() => {
     let cancelled = false;
 
     const promoteToChannelIfNeeded = async () => {
       if (channelId && roomId !== channelId) {
-        const activeQuestion = currentQuestionDataRef.current;
-        const isInRevealPhase = showResultRef.current;
-        const remainingSeconds = Math.max(
-          0,
-          Math.round(timeLeftRef.current ?? MAX_TIME),
-        );
-
-        const shouldSyncQuestionToServer =
-          Boolean(activeQuestion) && !isInRevealPhase && canControlQuestions;
-
-        if (shouldSyncQuestionToServer) {
-          await syncLocalQuestionToServer(channelId);
-        }
-
         if (!cancelled) {
           setRoomId(channelId);
         }
@@ -526,7 +450,6 @@ export default function App() {
     currentUser?.id,
     roomId,
     canControlQuestions,
-    syncLocalQuestionToServer,
   ]);
 
   const [scores, setScores] = useState({});
@@ -580,7 +503,6 @@ export default function App() {
   const autoEndGuardRef = useRef(true);
   const locallyStartedQuestionIdRef = useRef(null);
 
-  const [socketStateVersion, setSocketStateVersion] = useState(0);
 
   useEffect(() => {
     if (!isTransitioning) {
@@ -697,48 +619,6 @@ export default function App() {
     autoEndGuardRef.current = true;
   }, []);
 
-  const startJoinCountdown = useCallback(
-    (questionId) => {
-      if (!questionId) return;
-
-      if (joinCountdownTimerRef.current) {
-        clearInterval(joinCountdownTimerRef.current);
-        joinCountdownTimerRef.current = null;
-      }
-
-      setJoinCountdown({
-        active: true,
-        remaining: JOIN_COUNTDOWN_SECONDS,
-        questionId,
-      });
-      autoEndGuardRef.current = false;
-      setIsTimerRunning(false);
-
-      joinCountdownTimerRef.current = setInterval(() => {
-        setJoinCountdown((prev) => {
-          if (!prev.active || prev.questionId !== questionId) {
-            return prev;
-          }
-
-          if (prev.remaining <= 1) {
-            if (joinCountdownTimerRef.current) {
-              clearInterval(joinCountdownTimerRef.current);
-              joinCountdownTimerRef.current = null;
-            }
-            autoEndGuardRef.current = true;
-            return createJoinCountdownState();
-          }
-
-          return {
-            ...prev,
-            remaining: prev.remaining - 1,
-          };
-        });
-      }, 1000);
-    },
-    [setIsTimerRunning],
-  );
-
   useEffect(() => {
     if (showResult || !currentQuestion) {
       clearJoinCountdown();
@@ -755,12 +635,10 @@ export default function App() {
 
   const hcCardAnswersRef = useRef({});
 
-  const lastClearedQuestionRef = useRef(null);
 
   const activityRestartedRef = useRef(false);
   const lastReadyStateRef = useRef(null);
   const hasInitializedRef = useRef(false);
-  const socketInitializingRef = useRef(false);
 
   const clickSound = useRef(null);
   const hoverSound = useRef(null);
@@ -814,10 +692,6 @@ export default function App() {
       setIsTimerRunning(false);
       setIsTransitioning(false);
 
-      if (socket?.connected && roomId) {
-        socket.emit("activity_ended", { roomId });
-      }
-
       setTimeLeft(MAX_TIME);
       setShowResult(false);
       setCurrentQuestion(null);
@@ -846,7 +720,7 @@ export default function App() {
 
       setPlayers([]);
     }
-  }, [ready, socket, roomId]);
+  }, [ready, roomId]);
 
   // Ref to track if user explicitly clicked to join/start (allows auto-sync)
   const userClickedStartRef = useRef(false);
@@ -989,221 +863,6 @@ export default function App() {
       updateSelections,
     ],
   );
-
-  useEffect(() => {
-    if (!socket || !currentUser) return;
-
-    socket.on("gameState", applyGameState);
-    socket.on("game_state", applyGameState);
-
-    socket.on("you_joined", (data) => {
-      if (data?.hostPlayerId !== undefined) {
-        setHostPlayerId(data.hostPlayerId || null);
-      }
-    });
-
-    socket.on("question_started", (data) => {
-      if (data?.hostPlayerId !== undefined) {
-        setHostPlayerId(data.hostPlayerId || null);
-      }
-      if (data.question) {
-        const isNewQuestion =
-          !currentQuestion || currentQuestion.id !== data.question.id;
-
-        currentQuestionIdRef.current = data.question.id ?? null;
-        locallyStartedQuestionIdRef.current = data.question.id ?? null;
-        setCurrentQuestion(data.question);
-        setShowResult(false);
-        setRevealPhaseQuestionId(null);
-        clearJoinCountdown();
-        autoEndGuardRef.current = true;
-
-        if (isNewQuestion) {
-          updateSelections({}, data.question.id ?? null);
-          setMySelection(null, data.question.id ?? null);
-          currentSelectionRef.current = null;
-          window.lastSelectionTime = null;
-          window.lastSelectionQuestionId = null;
-
-          answerTimesRef.current = {};
-          awardedDoneRef.current = false;
-        }
-
-        setTimeLeft(data.timeLeft || MAX_TIME);
-      }
-    });
-
-    socket.on("round_complete", (data) => {
-      if (data.selections) {
-        updateSelections(
-          () => normalizeServerSelections(data.selections),
-          currentQuestionIdRef.current ?? null,
-        );
-        beginRevealPhase(currentQuestionIdRef.current);
-
-        if (data.scores) {
-          setScores((prev) => {
-            const merged = { ...prev };
-            Object.entries(data.scores).forEach(([id, serverScore]) => {
-              if (serverScore >= (prev[id] || 0)) {
-                merged[id] = serverScore;
-              }
-            });
-            return merged;
-          });
-          setServerScoredThisRound(true);
-        }
-
-        if (data.playerNames) {
-          setPlayerNames((prevNames) => ({
-            ...prevNames,
-            ...data.playerNames,
-          }));
-        }
-      }
-    });
-
-    // Handle show_result event from server's socket-based timer
-    socket.on("show_result", (data) => {
-      // Update selections from server
-      if (data.selections) {
-        updateSelections(
-          () => normalizeServerSelections(data.selections),
-          currentQuestionIdRef.current ?? null,
-        );
-      }
-
-      // Trigger reveal phase
-      beginRevealPhase(currentQuestionIdRef.current);
-      setShowResult(true);
-      setIsTimerRunning(false);
-
-      // Apply scores from server - only accept values >= local to prevent downgrade
-      if (data.scores) {
-        setScores((prev) => {
-          const merged = { ...prev };
-          Object.entries(data.scores).forEach(([id, serverScore]) => {
-            if (serverScore >= (prev[id] || 0)) {
-              merged[id] = serverScore;
-            }
-          });
-          return merged;
-        });
-        setServerScoredThisRound(true);
-      }
-
-      // Also update display scores immediately
-      if (data.scores) {
-        setDisplayScores((prev) => {
-          const merged = { ...prev };
-          Object.entries(data.scores).forEach(([id, serverScore]) => {
-            if (serverScore >= (prev[id] || 0)) {
-              merged[id] = serverScore;
-            }
-          });
-          return merged;
-        });
-      }
-    });
-
-    socket.on("scores_reset", (data) => {
-      setScores({});
-      setDisplayScores({});
-      scoreAnimFramesRef.current = {};
-    });
-
-    socket.on("room_state", (data) => {
-      if (data?.hostPlayerId !== undefined) {
-        setHostPlayerId(data.hostPlayerId || null);
-      }
-      if (data.scores) {
-        // Room state is authoritative - merge server scores with existing scores
-        // This handles score resets when players rejoin after timeout
-        // Always merge instead of replacing to preserve players not in this update
-        setScores((prev) => {
-          const merged = { ...prev };
-          Object.entries(data.scores).forEach(([id, serverScore]) => {
-            merged[id] = serverScore;
-          });
-          return merged;
-        });
-        // Merge with existing display scores to prevent flickering
-        // Only remove players if server explicitly sets them to 0 or undefined
-        setDisplayScores((prev) => {
-          const merged = { ...prev };
-          // First, add/update all players from server
-          Object.entries(data.scores).forEach(([id, serverScore]) => {
-            merged[id] = serverScore;
-          });
-          return merged;
-        });
-      }
-      if (data.players) {
-        setPlayers(data.players);
-      }
-    });
-
-    socket.on("player_selected", (data) => {
-      // Update selections when another player answers
-      if (data.playerId && data.playerId !== currentUser?.id) {
-        const questionId = currentQuestionIdRef.current ?? currentQuestion?.id ?? null;
-
-        // Determine what value to store in selections
-        let selectionValue;
-        if (data.optionIndex !== undefined) {
-          selectionValue = data.optionIndex;
-        } else if (data.isCorrect !== undefined) {
-          // For card mode, store whether they answered correctly
-          selectionValue = data.isCorrect ? "correct" : "incorrect";
-        } else {
-          selectionValue = true; // Just mark that they answered
-        }
-
-        updateSelections(
-          (prev) => ({
-            ...prev,
-            [data.playerId]: selectionValue,
-          }),
-          questionId,
-        );
-
-        // Store player name if provided
-        if (data.playerName) {
-          setPlayerNames((prev) => ({
-            ...prev,
-            [data.playerId]: data.playerName,
-          }));
-        }
-      }
-    });
-
-    socket.on("playerJoined", (player) => {
-      setPlayers((prev) => {
-        if (prev.find((p) => p.id === player.id)) {
-          return prev;
-        }
-        return [...prev, player];
-      });
-    });
-
-    socket.on("playerLeft", (playerId) => {
-      setPlayers((prev) => prev.filter((p) => p.id !== playerId));
-    });
-
-    if (socket.connected) {
-      socket.emit("join", {
-        id: currentUser.id,
-        name: currentUser.username,
-        isHost,
-      });
-    }
-
-    return () => {
-      if (socket) {
-        socket.disconnect();
-      }
-    };
-  }, [socket, currentUser, isHost]);
 
   // Ref to track if initial sync has been done for current room
   const initialSyncDoneRef = useRef(null);
@@ -1481,56 +1140,6 @@ export default function App() {
       p.catch((err) => { });
     }
   };
-
-  useEffect(() => {
-    // Skip socket.io entirely when using proxy - CSP blocks WebSocket anyway
-    const isProxyMode = API_BASE_URL.startsWith('/');
-    if (isProxyMode) {
-      socketInitializingRef.current = false;
-      return;
-    }
-
-    // Only initialize socket once when user is ready and authenticated
-    if (
-      !currentUser?.username ||
-      !currentUser?.accessToken ||
-      !channelId ||
-      socket ||
-      socketInitializingRef.current
-    ) {
-      return;
-    }
-
-    socketInitializingRef.current = true;
-
-    const initSocket = () => {
-      const newSocket = io(SOCKET_URL, {
-        withCredentials: true,
-        transports: ["websocket"],
-        auth: {
-          token: currentUser.accessToken,
-          channelId,
-          reconnecting: false,
-        },
-      });
-
-      // maintain compatibility with previous localMode checks
-      newSocket.localMode = false;
-
-      newSocket.on("connect", () => {
-        setSocketStateVersion((prev) => prev + 1);
-      });
-
-      newSocket.on("disconnect", () => {
-        setSocketStateVersion((prev) => prev + 1);
-      });
-
-      setSocket(newSocket);
-      socketInitializingRef.current = false;
-    };
-
-    initSocket();
-  }, [currentUser?.username, currentUser?.accessToken, channelId, socket]);
 
 
   useEffect(() => {
@@ -1891,7 +1500,7 @@ export default function App() {
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      const getQuestionFromServer = async (allowSyncAttempt = true) => {
+      const getQuestionFromServer = async () => {
         if (questionFetchInProgressRef.current) {
           return;
         }
@@ -1945,22 +1554,6 @@ export default function App() {
               return;
             }
 
-            const shouldSyncLocalQuestion =
-              allowSyncAttempt &&
-              canControlQuestions &&
-              currentQuestionDataRef.current &&
-              !showResultRef.current;
-
-            if (shouldSyncLocalQuestion) {
-              const synced = await syncLocalQuestionToServer(roomId);
-              if (synced) {
-                questionFetchInProgressRef.current = false;
-                setIsLoading(false);
-                await getQuestionFromServer(false);
-                return;
-              }
-            }
-
             setCurrentQuestion(null);
             setShowResult(false);
             updateSelections({}, null);
@@ -1986,7 +1579,7 @@ export default function App() {
     };
 
     initializeQuestion();
-  }, [roomId, canControlQuestions, syncLocalQuestionToServer]);
+  }, [roomId, canControlQuestions, channelId, currentPlayerId]);
 
   const normalizeServerSelections = (serverSelections) => {
     if (!serverSelections || typeof serverSelections !== "object") return {};
@@ -2018,590 +1611,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!socket || !socket.connected || !currentUser || !roomId) {
-      return;
-    }
-
-    const syncGameState = async () => {
-      if (questionFetchInProgressRef.current) {
-        return;
-      }
-
-      // Don't sync game state if user hasn't clicked Start yet and has no current question
-      // This prevents auto-navigation to question screen
-      if (!userClickedStartRef.current && !currentQuestion) {
-        return;
-      }
-
-      try {
-        // Include playerId in the request to track player activity
-        const url = new URL(`${API_BASE_URL}/game-state/${roomId}`, window.location.origin);
-        if (currentUser?.id) {
-          url.searchParams.set('playerId', currentUser.id);
-        }
-        const response = await fetch(url.toString());
-        const data = await response.json();
-
-        setHostPlayerId(data.hostPlayerId || null);
-
-        if (
-          (!data.currentQuestion || !data.currentQuestion.id) &&
-          canControlQuestions &&
-          currentQuestionDataRef.current &&
-          !showResultRef.current
-        ) {
-          const synced = await syncLocalQuestionToServer(roomId);
-          if (synced) {
-            return;
-          }
-        }
-
-        if (data.success && data.currentQuestion) {
-          const currentQuestionId = currentQuestion?.id;
-          const serverQuestionId = data.currentQuestion?.id;
-          const isDifferentQuestion =
-            !currentQuestion || currentQuestionId !== serverQuestionId;
-          let questionChangedThisSync = false;
-
-          if (isDifferentQuestion) {
-            const hasCurrentQuestion =
-              currentQuestion &&
-              (currentQuestion.question ||
-                currentQuestion.questionText ||
-                currentQuestion.cardName);
-            const hasServerQuestion =
-              data.currentQuestion &&
-              (data.currentQuestion.question || data.currentQuestion.cardName);
-
-            const currentQuestionId = currentQuestion?.id;
-            const serverQuestionId = data.currentQuestion?.id;
-
-            const timeSinceLastSelection =
-              Date.now() - (window.lastSelectionTime || 0);
-            const hasRecentSelection = timeSinceLastSelection < 5000;
-            const lastSelectionQuestionId = window.lastSelectionQuestionId;
-            const recentSelectionMatchesServer =
-              hasRecentSelection &&
-              lastSelectionQuestionId &&
-              serverQuestionId &&
-              lastSelectionQuestionId === serverQuestionId;
-            const shouldProtectRecentSelection = recentSelectionMatchesServer;
-
-            const isActualQuestionChange =
-              serverQuestionId &&
-              currentQuestionId &&
-              currentQuestionId !== serverQuestionId &&
-              lastClearedQuestionRef.current !== serverQuestionId &&
-              !shouldProtectRecentSelection;
-
-            if (isActualQuestionChange) {
-              lastClearedQuestionRef.current = serverQuestionId;
-              setMySelection(null, serverQuestionId ?? null);
-              setIsLocked(false);
-              currentSelectionRef.current = null;
-              hcCardAnswersRef.current = {};
-              window.lastSelectionTime = null;
-              window.lastSelectionQuestionId = null;
-              setRevealPhaseQuestionId(null);
-              setShowResult(false);
-              updateSelections({}, serverQuestionId ?? null);
-              answerTimesRef.current = {};
-              awardedDoneRef.current = false;
-              setServerScoredThisRound(false);
-              questionChangedThisSync = true;
-            }
-
-            const isActualNewQuestion =
-              currentQuestion &&
-              data.currentQuestion &&
-              currentQuestion.id !== data.currentQuestion.id &&
-              currentQuestionId !== data.currentQuestion.id;
-
-            if (isActualNewQuestion) {
-              hcCardAnswersRef.current = {};
-            }
-
-            currentQuestionIdRef.current = data.currentQuestion?.id ?? null;
-            setCurrentQuestion(data.currentQuestion);
-            setTimeLeft(data.timeLeft);
-
-            setShowResult(data.showResult);
-
-            if (questionChangedThisSync && serverQuestionId) {
-              if (locallyStartedQuestionIdRef.current === serverQuestionId) {
-                clearJoinCountdown();
-              } else {
-                startJoinCountdown(serverQuestionId);
-              }
-            } else if (data.showResult) {
-              clearJoinCountdown();
-            }
-
-            if (questionChangedThisSync) {
-              const normalizedServerData = normalizeServerSelections(
-                data.selections || {},
-              );
-              updateSelections(
-                normalizedServerData,
-                data.currentQuestion?.id ?? null,
-              );
-            } else if (!currentQuestion || currentQuestionId === serverQuestionId) {
-              if (data.selections) {
-                const currentLocalSelection =
-                  mySelection !== null
-                    ? mySelection
-                    : currentSelectionRef.current;
-
-                const serverWantsReveal = data.showResult;
-                const alreadyInRevealForThisQuestion =
-                  showResult &&
-                  revealPhaseQuestionId === data.currentQuestion?.id;
-                const isInRevealPhase =
-                  serverWantsReveal || alreadyInRevealForThisQuestion;
-
-                if (serverWantsReveal && !alreadyInRevealForThisQuestion) {
-                  beginRevealPhase(data.currentQuestion?.id);
-                }
-
-                const myPlayerId = currentUser?.id;
-
-                const hasAnsweredInSelections =
-                  myPlayerId && selections[myPlayerId] !== undefined;
-                const effectiveLocalSelection = hasAnsweredInSelections
-                  ? selections[myPlayerId]
-                  : currentLocalSelection;
-
-                if (
-                  isInRevealPhase &&
-                  effectiveLocalSelection !== null &&
-                  myPlayerId
-                ) {
-                  const normalizedServerData = normalizeServerSelections(
-                    data.selections,
-                  );
-
-                  updateSelections((prev) => {
-                    const merged = {
-                      ...prev,
-                      ...normalizedServerData,
-                    };
-
-                    if (
-                      effectiveLocalSelection !== null &&
-                      effectiveLocalSelection !== undefined
-                    ) {
-                      merged[myPlayerId] = effectiveLocalSelection;
-                    } else {
-                      delete merged[myPlayerId];
-                    }
-
-                    return merged;
-                  }, data.currentQuestion?.id ?? null);
-                } else {
-                  const selectionQuestionId = window.lastSelectionQuestionId;
-                  const currentQuestionId = data.currentQuestion?.id;
-                  const localSelectionBelongsToThisQuestion =
-                    currentLocalSelection !== null &&
-                    myPlayerId &&
-                    window.lastSelectionTime &&
-                    selectionQuestionId === currentQuestionId &&
-                    Date.now() - window.lastSelectionTime < MAX_TIME * 1000;
-
-                  const hasValidSelection =
-                    localSelectionBelongsToThisQuestion ||
-                    effectiveLocalSelection !== null;
-
-                  if (hasValidSelection) {
-                    updateSelections((prev) => {
-                      const merged = {
-                        ...prev,
-                        ...normalizeServerSelections(data.selections),
-                      };
-
-                      if (
-                        effectiveLocalSelection !== null &&
-                        effectiveLocalSelection !== undefined
-                      ) {
-                        merged[myPlayerId] = effectiveLocalSelection;
-                      } else {
-                        delete merged[myPlayerId];
-                      }
-
-                      return merged;
-                    }, data.currentQuestion?.id ?? null);
-                  } else {
-                    const normalizedServerData = normalizeServerSelections(
-                      data.selections,
-                    );
-                    const serverHasNoSelections =
-                      Object.keys(normalizedServerData).length === 0;
-
-                    if (serverHasNoSelections) {
-                      const hasMySelection =
-                        mySelection !== null ||
-                        currentSelectionRef.current !== null;
-                      const mySelectionForThisQuestion =
-                        hasMySelection &&
-                        window.lastSelectionQuestionId === currentQuestionId;
-
-                      const hasAnsweredInRef =
-                        hcCardAnswersRef.current[myPlayerId] !== undefined;
-                      const hasAnsweredInSelections =
-                        selections[myPlayerId] !== undefined;
-                      const hasAnswered =
-                        hasAnsweredInRef || hasAnsweredInSelections;
-
-                      if (mySelectionForThisQuestion || hasAnswered) {
-                        updateSelections(
-                          (prev) => ({
-                            ...prev,
-                            [myPlayerId]: hasAnswered
-                              ? prev[myPlayerId] || true
-                              : mySelection !== null
-                                ? mySelection
-                                : currentSelectionRef.current,
-                          }),
-                          data.currentQuestion?.id ?? null,
-                        );
-                      } else if (!isLocked) {
-                        updateSelections({}, data.currentQuestion?.id ?? null);
-                      } else {
-                      }
-                    } else {
-                      updateSelections(
-                        (prev) => ({
-                          ...prev,
-                          ...normalizedServerData,
-                        }),
-                        data.currentQuestion?.id ?? null,
-                      );
-                    }
-                  }
-                }
-              }
-            }
-
-            if (data.scores) {
-              setScores((prev) => {
-                const merged = { ...prev };
-                Object.entries(data.scores).forEach(([id, serverScore]) => {
-                  if (serverScore >= (prev[id] || 0)) {
-                    merged[id] = serverScore;
-                  }
-                });
-                return merged;
-              });
-            }
-            if (data.playerNames) {
-              setPlayerNames((prevNames) => ({
-                ...prevNames,
-                ...data.playerNames,
-              }));
-            }
-            answerTimesRef.current = {};
-            awardedDoneRef.current = false;
-
-            const shouldShowTimer =
-              data.gameState === "playing" && data.timeLeft > 0;
-            setIsTimerRunning(shouldShowTimer);
-
-            if (data.timeLeft <= 0 && data.showResult) {
-              setTimeout(() => {
-                beginRevealPhase(data.currentQuestion?.id);
-                setIsTimerRunning(false);
-              }, 200);
-            }
-          } else {
-            const isActiveGameplay = !showResult;
-
-            const serverWantsReveal = data.showResult;
-            const alreadyInRevealForThisQuestion =
-              showResult && revealPhaseQuestionId === data.currentQuestion?.id;
-            const isInRevealPhase =
-              serverWantsReveal || alreadyInRevealForThisQuestion;
-
-            if (serverWantsReveal && !alreadyInRevealForThisQuestion) {
-              beginRevealPhase(data.currentQuestion?.id);
-              setIsTimerRunning(false);
-            }
-
-            if (!isActiveGameplay) {
-              const timeDiff = Math.abs(timeLeft - data.timeLeft);
-              if (timeDiff > 3) {
-                setTimeLeft(data.timeLeft);
-                setIsTimerRunning(
-                  data.gameState === "playing" &&
-                  !data.showResult &&
-                  data.timeLeft > 0,
-                );
-              }
-            } else {
-            }
-
-            if (data.selections) {
-              const hasLocalSelection =
-                mySelection !== null || currentSelectionRef.current !== null;
-
-              if (isInRevealPhase) {
-                if (Object.keys(data.selections).length > 0) {
-                  const localSelection =
-                    hasLocalSelection && currentUser?.id
-                      ? mySelection !== null
-                        ? mySelection
-                        : currentSelectionRef.current
-                      : null;
-
-                  const normalizedServerData = normalizeServerSelections(
-                    data.selections,
-                  );
-
-                  updateSelections((prev) => {
-                    const merged = {
-                      ...prev,
-                      ...normalizedServerData,
-                    };
-
-                    if (localSelection !== null && currentUser?.id) {
-                      merged[currentUser.id] = localSelection;
-                    }
-
-                    return merged;
-                  }, data.currentQuestion?.id ?? null);
-                } else {
-                  if (hasLocalSelection && currentUser?.id) {
-                    const localSelection =
-                      mySelection !== null
-                        ? mySelection
-                        : currentSelectionRef.current;
-                    if (localSelection !== null && localSelection !== undefined) {
-                      updateSelections(
-                        (prev) => ({
-                          ...prev,
-                          [currentUser.id]: localSelection,
-                        }),
-                        data.currentQuestion?.id ?? null,
-                      );
-                    } else {
-                      updateSelections(
-                        (prev) => {
-                          if (!prev || !(currentUser.id in prev)) {
-                            return prev || {};
-                          }
-                          const next = { ...prev };
-                          delete next[currentUser.id];
-                          return next;
-                        },
-                        data.currentQuestion?.id ?? null,
-                      );
-                    }
-                  } else {
-                  }
-                }
-              } else if (
-                isActiveGameplay &&
-                hasLocalSelection &&
-                currentUser?.id
-              ) {
-                const selectionQuestionId = window.lastSelectionQuestionId;
-                const currentQuestionId = data.currentQuestion?.id;
-                const localSelectionBelongsToThisQuestion =
-                  window.lastSelectionTime &&
-                  selectionQuestionId === currentQuestionId &&
-                  Date.now() - window.lastSelectionTime < MAX_TIME * 1000;
-
-                if (localSelectionBelongsToThisQuestion) {
-                  const localSelection =
-                    mySelection !== null
-                      ? mySelection
-                      : currentSelectionRef.current;
-                  updateSelections((prev) => {
-                    const merged = {
-                      ...prev,
-                      ...normalizeServerSelections(data.selections),
-                    };
-                    if (localSelection !== null && localSelection !== undefined) {
-                      merged[currentUser.id] = localSelection;
-                    } else {
-                      delete merged[currentUser.id];
-                    }
-
-                    return merged;
-                  }, data.currentQuestion?.id ?? null);
-                } else {
-                  const normalizedServerData = normalizeServerSelections(
-                    data.selections,
-                  );
-                  const serverHasNoSelections =
-                    Object.keys(normalizedServerData).length === 0;
-
-                  if (serverHasNoSelections) {
-                    const hasMySelection =
-                      mySelection !== null ||
-                      currentSelectionRef.current !== null;
-                    const mySelectionForThisQuestion =
-                      hasMySelection &&
-                      window.lastSelectionQuestionId ===
-                      data.currentQuestion?.id;
-
-                    const myPlayerId = currentUser?.id;
-                    const hasAnsweredInRef =
-                      myPlayerId &&
-                      hcCardAnswersRef.current[myPlayerId] !== undefined;
-                    const hasAnsweredInSelections =
-                      myPlayerId && selections[myPlayerId] !== undefined;
-                    const hasAnswered =
-                      hasAnsweredInRef || hasAnsweredInSelections;
-
-                    if (mySelectionForThisQuestion || hasAnswered) {
-                      if (myPlayerId) {
-                        updateSelections(
-                          (prev) => ({
-                            ...prev,
-                            [myPlayerId]: hasAnswered
-                              ? prev[myPlayerId] || true
-                              : mySelection !== null
-                                ? mySelection
-                                : currentSelectionRef.current,
-                          }),
-                          data.currentQuestion?.id ?? null,
-                        );
-                      }
-                    } else if (!isLocked) {
-                      updateSelections({}, data.currentQuestion?.id ?? null);
-                    } else {
-                    }
-                  } else {
-                    updateSelections(
-                      (prev) => ({
-                        ...prev,
-                        ...normalizedServerData,
-                      }),
-                      data.currentQuestion?.id ?? null,
-                    );
-                  }
-                }
-              } else {
-                const normalizedServerData = normalizeServerSelections(
-                  data.selections,
-                );
-                const serverHasNoSelections =
-                  Object.keys(normalizedServerData).length === 0;
-
-                if (serverHasNoSelections) {
-                  const hasMySelection =
-                    mySelection !== null ||
-                    currentSelectionRef.current !== null;
-                  const mySelectionForThisQuestion =
-                    hasMySelection &&
-                    window.lastSelectionQuestionId === data.currentQuestion?.id;
-
-                  const myPlayerId = currentUser?.id;
-                  const hasAnsweredInRef =
-                    myPlayerId &&
-                    hcCardAnswersRef.current[myPlayerId] !== undefined;
-                  const hasAnsweredInSelections =
-                    myPlayerId && selections[myPlayerId] !== undefined;
-                  const hasAnswered =
-                    hasAnsweredInRef || hasAnsweredInSelections;
-
-                  if (mySelectionForThisQuestion || hasAnswered) {
-                    if (myPlayerId) {
-                      updateSelections(
-                        (prev) => ({
-                          ...prev,
-                          [myPlayerId]: hasAnswered
-                            ? prev[myPlayerId] || true
-                            : mySelection !== null
-                              ? mySelection
-                              : currentSelectionRef.current,
-                        }),
-                        data.currentQuestion?.id ?? null,
-                      );
-                    }
-                  } else if (!isLocked) {
-                    updateSelections({}, data.currentQuestion?.id ?? null);
-                  } else {
-                  }
-                } else {
-                  updateSelections(
-                    (prev) => ({
-                      ...prev,
-                      ...normalizedServerData,
-                    }),
-                    data.currentQuestion?.id ?? null,
-                  );
-                }
-              }
-            }
-            if (data.playerNames) {
-              setPlayerNames((prevNames) => ({
-                ...prevNames,
-                ...data.playerNames,
-              }));
-            }
-            if (data.scores) {
-              setScores((prev) => {
-                const merged = { ...prev };
-                Object.entries(data.scores).forEach(([id, serverScore]) => {
-                  if (serverScore >= (prev[id] || 0)) {
-                    merged[id] = serverScore;
-                  }
-                });
-                return merged;
-              });
-            }
-          }
-        } else {
-          if (data.scores) {
-            setScores((prev) => {
-              const merged = { ...prev };
-              Object.entries(data.scores).forEach(([id, serverScore]) => {
-                if (serverScore >= (prev[id] || 0)) {
-                  merged[id] = serverScore;
-                }
-              });
-              return merged;
-            });
-          }
-          if (data.playerNames) {
-            setPlayerNames((prevNames) => ({
-              ...prevNames,
-              ...data.playerNames,
-            }));
-          }
-          if (data.selections) {
-            updateSelections(
-              normalizeServerSelections(data.selections),
-              currentQuestionIdRef.current ?? null,
-            );
-          }
-        }
-      } catch (error) { }
-    };
-
-    window.syncGameStateFunc = syncGameState;
-
-    setTimeout(syncGameState, 12000);
-
-    const syncInterval = setInterval(syncGameState, 12000);
-
-    return () => {
-      clearInterval(syncInterval);
-
-      window.syncGameStateFunc = null;
-    };
-  }, [
-    socket,
-    socket?.connected,
-    currentUser,
-    roomId,
-    startJoinCountdown,
-    clearJoinCountdown,
-    canControlQuestions,
-    syncLocalQuestionToServer,
-  ]);
-
-  useEffect(() => {
     if (!currentQuestion) return;
     if (showResult) return;
     if (joinCountdown.active) return;
@@ -2622,99 +1631,7 @@ export default function App() {
             return 0;
           }
 
-          if (socket && socket.connected) {
-            const endRoundRequest = async () => {
-              try {
-                const response = await fetch(`${API_BASE_URL}/game-event`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    event: "end_round",
-                    data: {
-                      roomId: roomId,
-                      playerId: currentPlayerId,
-                    },
-                  }),
-                });
-
-                if (response.ok) {
-                  const result = await response.json();
-                  if (result && result.data && result.data.selections) {
-                    const resolvedQuestionId =
-                      result.data.questionId ??
-                      currentQuestionIdRef.current ??
-                      currentQuestion?.id ??
-                      null;
-                    updateSelections(
-                      normalizeServerSelections(
-                        result.data.selections || {},
-                      ),
-                      resolvedQuestionId,
-                    );
-                    if (result.data.playerNames) {
-                      setPlayerNames(result.data.playerNames);
-                    } else {
-                    }
-                    if (result.data.scores) {
-                      // Merge server scores, only accepting values >= local values
-                      setScores((prev) => {
-                        const merged = { ...prev };
-                        Object.entries(result.data.scores).forEach(([id, serverScore]) => {
-                          if (serverScore >= (prev[id] || 0)) {
-                            merged[id] = serverScore;
-                          }
-                        });
-                        return merged;
-                      });
-                      setServerScoredThisRound(true);
-                    }
-                    beginRevealPhase(currentQuestionIdRef.current);
-                  } else {
-                    const localSelections = {};
-                    const selectionToUse =
-                      mySelection !== null
-                        ? mySelection
-                        : currentSelectionRef.current;
-                    if (selectionToUse !== null && currentUser?.id) {
-                      localSelections[currentUser.id] = selectionToUse;
-                    } else {
-                    }
-                    updateSelections(
-                      localSelections,
-                      currentQuestionIdRef.current ??
-                      currentQuestion?.id ??
-                      null,
-                    );
-                    beginRevealPhase(currentQuestionIdRef.current);
-                  }
-                } else {
-                  throw new Error(
-                    `Server responded with status: ${response.status}`,
-                  );
-                }
-              } catch {
-                const localSelections = {};
-                const selectionToUse =
-                  mySelection !== null
-                    ? mySelection
-                    : currentSelectionRef.current;
-                if (selectionToUse !== null && currentUser?.id) {
-                  localSelections[currentUser.id] = selectionToUse;
-                }
-                updateSelections(
-                  localSelections,
-                  currentQuestionIdRef.current ??
-                  currentQuestion?.id ??
-                  null,
-                );
-                beginRevealPhase(currentQuestionIdRef.current);
-              }
-            };
-
-            endRoundRequest();
-          } else {
-            beginRevealPhase(currentQuestionIdRef.current);
-          }
+          beginRevealPhase(currentQuestionIdRef.current);
 
           return 0;
         }
@@ -2727,7 +1644,6 @@ export default function App() {
     currentQuestion?.id,
     showResult,
     joinCountdown.active,
-    socket,
     roomId,
     canControlQuestions,
   ]);
@@ -4325,179 +3241,6 @@ export default function App() {
                 // Show loading state during initial sync to prevent flashing Start button
                 <div>
                   <p>Syncing game state...</p>
-                </div>
-              ) : socket && socket.connected && isInVoiceChannel ? (
-                <div>
-                  <p>{sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId
-                    ? "Join the current game?"
-                    : "Ready to start the quiz?"}</p>
-                  <button
-                    className="next-question-button"
-                    disabled={sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId ? false : !canControlQuestions}
-                    style={{
-                      marginTop: 16,
-                      width: 360,
-                      height: 65,
-                      backgroundImage: `url(${btnMainMenuDisabled})`,
-                      backgroundSize: "contain",
-                      backgroundRepeat: "no-repeat",
-                      backgroundPosition: "center",
-                      backgroundColor: "transparent",
-                      border: "none",
-                      borderRadius: 12,
-                      color: "white",
-                      fontFamily: '"Trajan Pro Bold", serif',
-                      fontWeight: 600,
-                      fontSize: "1.7rem",
-                      cursor: (sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) || canControlQuestions
-                        ? "pointer"
-                        : "not-allowed",
-                      outline: "none",
-                      filter: (sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) || canControlQuestions
-                        ? "drop-shadow(0 0 8px gold)"
-                        : "grayscale(0.6)",
-                      userSelect: "none",
-                    }}
-                    onMouseEnter={() => playHoverSound()}
-                    onClick={async () => {
-                      // Timed-out player joining existing game OR host starting new game
-                      const isJoiningExistingGame = sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId;
-
-                      if (!isJoiningExistingGame && !canControlQuestions) {
-                        return;
-                      }
-
-                      playClickSound();
-                      userClickedStartRef.current = true; // Mark that user explicitly clicked
-
-                      try {
-                        // If joining existing game, DON'T call start_question - just fetch current state
-                        if (isJoiningExistingGame) {
-                          // Fetch current game state and apply it
-                          const stateResp = await fetch(`${API_BASE_URL}/game-state/${roomId}`, {
-                            headers: { 'Cache-Control': 'no-cache' }
-                          });
-                          const stateData = await stateResp.json();
-
-                          if (stateData?.success && stateData.currentQuestion) {
-                            // Apply the current game state
-                            const question = stateData.currentQuestion;
-                            currentQuestionIdRef.current = question?.id ?? null;
-                            setCurrentQuestion(question);
-                            setShowResult(stateData.showResult || false);
-                            setTimeLeft(stateData.timeLeft ?? MAX_TIME);
-
-                            // Apply scores from server
-                            if (stateData.scores) {
-                              setScores(stateData.scores);
-                              setDisplayScores(stateData.scores);
-                            }
-
-                            // Apply player names
-                            if (stateData.playerNames) {
-                              setPlayerNames(prev => ({ ...prev, ...stateData.playerNames }));
-                            }
-
-                            // Apply selections
-                            const serverSelections = normalizeServerSelections(stateData.selections || {});
-                            updateSelections(serverSelections, question?.id ?? null);
-
-                            // If joining results screen, mark as already awarded
-                            if (stateData.showResult) {
-                              awardedDoneRef.current = true;
-                              setServerScoredThisRound(true);
-                            }
-
-                            // Clear session timed out flag
-                            setSessionTimedOut(false);
-                          }
-                          return;
-                        }
-
-                        // Host starting a new game - call start_question
-                        const response = await fetch(
-                          `${API_BASE_URL}/start_question`,
-                          {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              roomId: roomId,
-                              forceNew: false,
-                              resetScores: true,
-                              playerId: currentPlayerId,
-                            }),
-                          },
-                        );
-
-                        const result = await response.json();
-
-                        const resolvedHostId =
-                          result?.hostPlayerId ?? result?.data?.hostPlayerId;
-                        if (resolvedHostId !== undefined) {
-                          setHostPlayerId(resolvedHostId || null);
-                        }
-
-                        const startQuestion =
-                          result?.question ?? result?.data?.question;
-
-                        if (result && result.success && startQuestion) {
-                          const question = startQuestion;
-                          currentQuestionIdRef.current = question?.id ?? null;
-                          if (resolvedHostId === undefined) {
-                            setHostPlayerId(
-                              hostPlayerId ?? currentPlayerId ?? null,
-                            );
-                          }
-                          // Only reset scores if this is a NEW game, not a sync to existing game
-                          // The server returns synced: true when joining an in-progress game
-                          if (!result.synced) {
-                            setScores({});
-                            setDisplayScores({});
-                          } else {
-                            // Syncing to existing game - use server scores
-                            if (result.scores) {
-                              setScores(result.scores);
-                              setDisplayScores(result.scores);
-                            }
-                            // If syncing to results screen, mark as already awarded
-                            if (result.showResult) {
-                              awardedDoneRef.current = true;
-                              setServerScoredThisRound(true);
-                            }
-                          }
-                          setCurrentQuestion(question);
-                          setShowResult(result.showResult || false);
-                          const serverSelections = normalizeServerSelections(
-                            result?.data?.selections || result?.selections || {},
-                          );
-                          updateSelections(serverSelections, question?.id ?? null);
-                          // Only reset selection if not synced (new game)
-                          if (!result.synced) {
-                            setMySelection(null, question?.id ?? null);
-                            currentSelectionRef.current = null;
-                            answerTimesRef.current = {};
-                            awardedDoneRef.current = false;
-                            setServerScoredThisRound(false);
-                          }
-                          setTimeLeft(
-                            result?.timeLeft ?? result?.data?.timeLeft ?? MAX_TIME,
-                          );
-                          // Clear session timed out flag after successful join
-                          setSessionTimedOut(false);
-                        } else {
-                        }
-                      } catch (error) { }
-                    }}
-                  >
-                    {sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId
-                      ? "Join Game"
-                      : "Start Quiz"}
-                  </button>
-                  {!canControlQuestions && !(sessionTimedOut && hostPlayerId && hostPlayerId !== currentPlayerId) && (
-                    <p style={{ marginTop: 8, color: "#ffb347" }}>
-                      Waiting for the host to start…
-                    </p>
-                  )}
                 </div>
               ) : (
                 <p>No question loaded. Wait for the host to start the quiz.</p>
