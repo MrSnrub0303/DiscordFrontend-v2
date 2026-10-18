@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { ActivityProvider } from './discord/ActivityProvider'
-import { ActivityProvider as MockActivityProvider } from './discord/MockActivityProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
 // Home screen assets — preloaded before the loading screen dismisses

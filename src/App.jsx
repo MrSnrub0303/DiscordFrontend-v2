@@ -300,11 +300,6 @@ const cardNames = [
   "Dane Guns",
 ];
 
-const getCardImagePath = (cardName) => {
-  const fileName = cardName.replace(/\s+/g, "_").replace(/[:/]/g, "");
-  return new URL(`./assets/cards/${fileName}.png`, import.meta.url).href;
-};
-
 const createJoinCountdownState = () => ({
   active: false,
   remaining: JOIN_COUNTDOWN_SECONDS,
