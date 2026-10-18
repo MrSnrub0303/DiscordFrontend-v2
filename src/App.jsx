@@ -16,7 +16,6 @@ import { CoOpScreen } from "./components/CoOpScreen";
 import { EmberCanvas } from "./components/EmberCanvas";
 import { VolumeControl } from "./components/VolumeControl";
 import { BackButton } from "./components/BackButton";
-import questions from "./questions.json";
 import { useDiscordActivity } from "./discord/useDiscordActivity";
 
 import woodPanelBg from "./assets/sendresource_bg.png";
@@ -49,6 +48,12 @@ import revealSoundFile from "./assets/chatreceived.wav";
 
 import { getCardImageUrl } from "./utils/cardImages";
 import { preloadImages } from "./utils/preloadImages";
+import { ensureSoloRoomId, deriveInstanceRoomId } from "./utils/rooms";
+import { formatNumber } from "./utils/format";
+import {
+  API_BASE_URL, MAX_TIME, JOIN_COUNTDOWN_SECONDS, NORMAL_VOLUME, MAX_POINTS, SCORING_EXPONENT,
+  MONITOR_AUTHORIZED_USERNAMES, MONITOR_AUTHORIZED_ROLE_IDS, RANKED_AUTHORIZED_USERNAMES,
+} from "./config";
 
 import eventsDuration  from "./assets/EventsDuration.png";
 import eventsPrizepool from "./assets/EventsPrizepool.png";
@@ -80,227 +85,11 @@ const coopScreenAssets = [
   lvlcardGlow, lvlcardHighlight, lvlcardMask, lvlcardShadow, coopTitlebg,
 ];
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
-
-const MAX_TIME = 20;
-const JOIN_COUNTDOWN_SECONDS = 3;
-
-const NORMAL_VOLUME = 0.15;
-
-const MAX_POINTS = 150;
-
-const SCORING_EXPONENT = 2;
-
-const SOLO_ROOM_KEY_PREFIX = "aoe3-quiz-solo-room";
-
-const ensureSoloRoomId = (userId) => {
-  if (typeof window === "undefined") {
-    return `solo-${userId || "guest"}`;
-  }
-
-  const storageKey = userId
-    ? `${SOLO_ROOM_KEY_PREFIX}:${userId}`
-    : SOLO_ROOM_KEY_PREFIX;
-
-  try {
-    const existing = window.localStorage.getItem(storageKey);
-    if (existing) {
-      return existing;
-    }
-
-    const randomPart =
-      window.crypto?.randomUUID?.() ??
-      Math.random().toString(36).slice(2, 10);
-    const generated = `solo-${userId || "guest"}-${randomPart}`;
-    window.localStorage.setItem(storageKey, generated);
-    return generated;
-  } catch (error) {
-    const fallbackRandom = Math.random().toString(36).slice(2, 10);
-    return `solo-${userId || "guest"}-${fallbackRandom}`;
-  }
-};
-
-const deriveInstanceRoomId = (instanceId) => {
-  if (!instanceId) {
-    return null;
-  }
-
-  const parts = instanceId.split("-");
-  if (parts.length >= 4) {
-    const tail = parts[parts.length - 1];
-    return tail || instanceId;
-  }
-
-  return instanceId;
-};
-
-const formatNumber = (n) => {
-  if (n === null || n === undefined) return "0";
-  const num = Number(n);
-  if (Number.isNaN(num)) return String(n);
-  return num.toLocaleString();
-};
-
-const cardNames = [
-  "Conquistador",
-  "Team Fencing Instructor",
-  "Unction",
-  "Team Spanish Road",
-  "Team Hidalgos",
-  "Native Lore",
-  "Advanced Trading Post",
-  "Town Militia",
-  "Pioneers",
-  "Advanced Mill",
-  "Advanced Market",
-  "Advanced Estate",
-  "Advanced Dock",
-  "Llama Ranching",
-  "Ranching",
-  "Fish Market",
-  "Schooners",
-  "Sawmills",
-  "Exotic Hardwoods",
-  "Team Ironmonger",
-  "Stockyards",
-  "Furrier",
-  "Rum Distillery",
-  "Capitalism",
-  "Stonemasons",
-  "Land Grab",
-  "Team Coastal Defenses",
-  "Tercio Tactics",
-  "Reconquista",
-  "Advanced Arsenal",
-  "Extensive Fortifications",
-  "Rendering Plant",
-  "Silversmith",
-  "Sustainable Agriculture",
-  "Spice Trade",
-  "Medicine",
-  "Cigar Roller",
-  "Spanish Galleons",
-  "Theaters",
-  "Caballeros",
-  "Liberation March",
-  "Spanish Gold",
-  "Armada",
-  "Mercenary Loyalty",
-  "Grenade Launchers",
-  "Improved Buildings",
-  "Blood Brothers",
-  "Peninsular Guerrillas",
-  "Advanced Balloon",
-  "Florence Nightingale",
-  "Virginia Company",
-  "South Sea Bubble",
-  "Fulling Mills",
-  "Yeomen",
-  "Siege Archery",
-  "Master Surgeons",
-  "Northwest Passage",
-  "Distributivism",
-  "Wilderness Warfare",
-  "French Royal Army",
-  "Naval Gunners",
-  "Thoroughbreds",
-  "Gribeauval System",
-  "Navigator",
-  "Agents",
-  "Portuguese White Fleet",
-  "Carracks",
-  "Stadhouder",
-  "Admiral Tromp",
-  "Tulip Speculation",
-  "Willem",
-  "Polar Explorer",
-  "Engineering School",
-  "Suvorov Reforms",
-  "Ransack",
-  "Polk",
-  "Offshore Support",
-  "Germantown Farmers",
-  "Guild Artisans",
-  "Spanish Riding School",
-  "Mosque Construction",
-  "Flight Archery",
-  "New Ways",
-  "Beaver Wars",
-  "Medicine Wheels",
-  "Black Arrow",
-  "Silent Strike",
-  "Smoking Mirror",
-  "Boxer Rebellion",
-  "Western Reforms",
-  "Advanced Wonders",
-  "Seven Lucky Gods",
-  "Desert Terror",
-  "Foreign Logging",
-  "Salt Ponds",
-  "Imperial Unity",
-  "Duelist",
-  "Trample Tactics",
-  "Virginia Oak",
-  "Coffee Mill Guns",
-  "Bushburning",
-  "Beekeepers",
-  "Koose",
-  "Kingslayer",
-  "Barbacoa",
-  "Man of Destiny",
-  "Freemasons",
-  "Admirality",
-  "Advanced Commanderies",
-  "Bailiff",
-  "Fire Towers",
-  "Native Treaties",
-  "Advanced Scouts",
-  "Grain Market",
-  "Chinampa",
-  "Knight Hitpoints",
-  "Knight Attack",
-  "Aztec Mining",
-  "Ritual Gladiators",
-  "Artificial Islands",
-  "Knight Combat",
-  "Scorched Earth",
-  "Aztec Fortification",
-  "Chichimeca Rebellion",
-  "Wall of Skulls",
-  "Old Ways",
-  "Improved Warships",
-  "Terraced Houses",
-  "Rangers",
-  "Textile Mill",
-  "Refrigeration",
-  "Royal Mint",
-  "Greenwich Time",
-  "Dowager Empress",
-  "Year of the Goat",
-  "Year of the Tiger",
-  "Year of the Ox",
-  "Year of the Dragon",
-  "Acupuncture",
-  "Repelling Volley",
-  "Native Crafts",
-  "Colbertism",
-  "Cartridge Currency",
-  "European Cannons",
-  "Voyageur",
-  "Solingen Steel",
-  "Town Destroyer",
-  "Battlefield Construction",
-  "Conservative Tactics",
-  "Dane Guns",
-];
-
 const createJoinCountdownState = () => ({
   active: false,
   remaining: JOIN_COUNTDOWN_SECONDS,
   questionId: null,
 });
-
-const SCREEN_TRANSITION_MS = 1000;
 
 export default function App() {
   const [players, setPlayers] = useState([]);
@@ -318,16 +107,10 @@ export default function App() {
     currentUserRoles,
   } = useDiscordActivity();
 
-  // Authorized Discord usernames for the Monitor screen (checked client-side via SDK user data)
-  const MONITOR_AUTHORIZED_USERNAMES = ["barronh", "mclovin111.", "joshua667746", "grimescene"];
-  // ESO-COMMUNITY.NET Producer (1106560581835706428) or Caster (940967920459198495) roles also grant access
-  const MONITOR_AUTHORIZED_ROLE_IDS = ["1106560581835706428", "940967920459198495"];
   const isMonitorAuthorized =
     MONITOR_AUTHORIZED_USERNAMES.includes((currentUser?.username || "").toLowerCase()) ||
     MONITOR_AUTHORIZED_ROLE_IDS.some(r => currentUserRoles.includes(r));
 
-  // Authorized Discord usernames for the Ranked screen
-  const RANKED_AUTHORIZED_USERNAMES = ["joshua667746", "doppelsolna", "jaeger_007.", "andreaslubitz.", "grimescene", "barronh", "mclovin111.", "chieftishomingo", "_m0s_", "deityofdeath", "the7apples", "theonlybaus", "igorgrego", "furyau"];
   const isRankedAuthorized = RANKED_AUTHORIZED_USERNAMES.includes(
     (currentUser?.username || "").toLowerCase()
   );
@@ -347,7 +130,6 @@ export default function App() {
 
   const [roomId, setRoomId] = useState(initialRoomId);
 
-  const [availableQuestions, setAvailableQuestions] = useState([...questions]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [selectionState, setSelectionState] = useState({
     questionId: null,
@@ -1100,9 +882,6 @@ export default function App() {
 
   const scoreAnimFramesRef = useRef({});
 
-  const gameCheckExecutedRef = useRef(false);
-  const gameCheckRetriesRef = useRef(0);
-  const MAX_SOCKET_WAIT_RETRIES = 6;
   const questionFetchInProgressRef = useRef(false);
 
   const [scoreHighlight, setScoreHighlight] = useState({});
