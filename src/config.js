@@ -3,6 +3,11 @@
 // Discord's URL mapping forwards /api/* to the backend (with the /api prefix stripped)
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
+// Age of Empires III: Battlefield Edition: the latest installer, always (GitHub Releases' "latest" link,
+// so this never changes when the game updates)
+export const BATTLEFIELD_EDITION_DOWNLOAD_URL =
+  "https://github.com/MrSnrub0303/BattlefieldEdition/releases/latest/download/BattlefieldEdition-Setup.exe";
+
 export const MAX_TIME = 20;
 export const JOIN_COUNTDOWN_SECONDS = 3;
 

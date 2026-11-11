@@ -279,8 +279,9 @@
 .home-discord-text-area {
   flex: 1;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   /* 70% downward shift: original 24px top + ~25vh from image height */
   padding: 26vh 32px 0;
   z-index: 2;
@@ -297,6 +298,18 @@
   object-fit: contain;
   filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.6));
   user-select: none;
+}
+
+/* The game download under the title: the red button at its own proportions (166 × 37), wide enough for its
+   label on one line; the only thing in this area that takes clicks. */
+.home-download-btn {
+  width: 340px;
+  max-width: 90%;
+  margin-top: 2vh;
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  pointer-events: auto;
 }
 
 /* ── Responsive ── */

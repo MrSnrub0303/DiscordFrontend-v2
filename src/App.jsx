@@ -53,6 +53,7 @@ import { formatNumber } from "./utils/format";
 import {
   API_BASE_URL, MAX_TIME, JOIN_COUNTDOWN_SECONDS, NORMAL_VOLUME, MAX_POINTS, SCORING_EXPONENT,
   MONITOR_AUTHORIZED_USERNAMES, MONITOR_AUTHORIZED_ROLE_IDS, RANKED_AUTHORIZED_USERNAMES,
+  BATTLEFIELD_EDITION_DOWNLOAD_URL,
 } from "./config";
 
 import eventsDuration  from "./assets/EventsDuration.png";
@@ -2067,6 +2068,11 @@ export default function App() {
                 setLoadingTarget(null);
               }
             });
+          }}
+          onDownloadGame={() => {
+            // Inside Discord a link must go through the SDK (Discord asks before leaving); in a browser, a new tab.
+            if (sdk) sdk.commands.openExternalLink({ url: BATTLEFIELD_EDITION_DOWNLOAD_URL });
+            else window.open(BATTLEFIELD_EDITION_DOWNLOAD_URL, "_blank", "noopener");
           }}
           onSpinnerClick={() => {
             setLoadingTarget("SPINNER");

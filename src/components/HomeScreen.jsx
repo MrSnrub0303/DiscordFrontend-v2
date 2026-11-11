@@ -36,6 +36,7 @@ export function HomeScreen({
   onEventsClick,
   onRankedClick,
   onMonitorClick,
+  onDownloadGame,
   isMonitorAuthorized,
   isRankedAuthorized,
   onButtonHover,
@@ -50,6 +51,7 @@ export function HomeScreen({
 }) {
   const [monitorPressed,   setMonitorPressed]   = useState(false);
   const [rankedPressed,    setRankedPressed]    = useState(false);
+  const [downloadPressed,  setDownloadPressed]  = useState(false);
   const [showScrollArrow,  setShowScrollArrow]  = useState(CO_OP_ACTIVE);
   const scrollRef = useRef(null);
 
@@ -260,6 +262,24 @@ export function HomeScreen({
           className="home-discord-text"
           draggable={false}
         />
+        {/* Age of Empires III: Battlefield Edition: downloads the game's installer (free) */}
+        {onDownloadGame && (
+          <button
+            className="home-monitor-btn home-download-btn"
+            onClick={onButtonClick ? () => onButtonClick(onDownloadGame) : onDownloadGame}
+            onMouseEnter={onButtonHover}
+            onMouseDown={() => setDownloadPressed(true)}
+            onMouseUp={() => setDownloadPressed(false)}
+            onMouseLeave={() => setDownloadPressed(false)}
+            style={{
+              backgroundImage: `url(${downloadPressed ? buttonRedClicked : buttonRedAvailable})`,
+            }}
+            aria-label="Download Age of Empires III: Battlefield Edition"
+            title="Download Age of Empires III: Battlefield Edition (free)"
+          >
+            Download Battlefield Edition
+          </button>
+        )}
       </div>
     </div>
   );
