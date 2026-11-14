@@ -17,6 +17,7 @@ import buttonRedAvailable from '../assets/ButtonRedAvailable.png';
 import buttonRedClicked from '../assets/ButtonRedClicked.png';
 import buttonBackNormal from '../assets/button_back_normal.png';
 import battlefieldBanner from '../assets/BattlefieldEditionBanner.jpg';
+import buttonShineMask from '../assets/ButtonRedShineMask.png';
 
 // Set to true when an event is running, false to lock the button between events
 const EVENT_ACTIVE = false;
@@ -288,7 +289,10 @@ export function HomeScreen({
               </span>
               <span
                 className="bfe-card__cta"
-                style={{ backgroundImage: `url(${downloadPressed ? buttonRedClicked : buttonRedAvailable})` }}
+                style={{
+                  backgroundImage: `url(${downloadPressed ? buttonRedClicked : buttonRedAvailable})`,
+                  '--bfe-cta-art': `url(${buttonShineMask})`,
+                }}
               >
                 <svg className="bfe-card__icon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12 3v11m0 0l-4.5-4.5M12 14l4.5-4.5M4 17v3h16v-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
