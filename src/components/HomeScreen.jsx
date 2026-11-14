@@ -16,6 +16,7 @@ import goldDivider from '../assets/GoldDivider.png';
 import buttonRedAvailable from '../assets/ButtonRedAvailable.png';
 import buttonRedClicked from '../assets/ButtonRedClicked.png';
 import buttonBackNormal from '../assets/button_back_normal.png';
+import battlefieldBanner from '../assets/BattlefieldEditionBanner.jpg';
 
 // Set to true when an event is running, false to lock the button between events
 const EVENT_ACTIVE = false;
@@ -262,22 +263,37 @@ export function HomeScreen({
           className="home-discord-text"
           draggable={false}
         />
-        {/* Age of Empires III: Battlefield Edition: downloads the game's installer (free) */}
+        {/* Age of Empires III: Battlefield Edition: a card showing the game (a real moment from it), what it is, and
+            one action, the download (the whole card takes the click; free, for Windows, it keeps itself updated) */}
         {onDownloadGame && (
           <button
-            className="home-monitor-btn home-download-btn"
+            type="button"
+            className={`bfe-card${downloadPressed ? ' bfe-card--pressed' : ''}`}
             onClick={onButtonClick ? () => onButtonClick(onDownloadGame) : onDownloadGame}
             onMouseEnter={onButtonHover}
             onMouseDown={() => setDownloadPressed(true)}
             onMouseUp={() => setDownloadPressed(false)}
             onMouseLeave={() => setDownloadPressed(false)}
-            style={{
-              backgroundImage: `url(${downloadPressed ? buttonRedClicked : buttonRedAvailable})`,
-            }}
-            aria-label="Download Age of Empires III: Battlefield Edition"
-            title="Download Age of Empires III: Battlefield Edition (free)"
+            aria-label="Download Age of Empires III: Battlefield Edition, free for Windows"
+            title="Download Age of Empires III: Battlefield Edition (free, Windows)"
           >
-            Download Battlefield Edition
+            <span className="bfe-card__image" style={{ backgroundImage: `url(${battlefieldBanner})` }} aria-hidden="true" />
+            <span className="bfe-card__shade" aria-hidden="true" />
+            <span className="bfe-card__body">
+              <span className="bfe-card__eyebrow">New &middot; Free on PC</span>
+              <span className="bfe-card__title">Battlefield Edition</span>
+              <span className="bfe-card__pitch">Fight Age of Empires III&rsquo;s battles yourself: in the line, at the guns, online with friends.</span>
+              <span
+                className="bfe-card__cta"
+                style={{ backgroundImage: `url(${downloadPressed ? buttonRedClicked : buttonRedAvailable})` }}
+              >
+                <svg className="bfe-card__icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3v11m0 0l-4.5-4.5M12 14l4.5-4.5M4 17v3h16v-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Download free
+              </span>
+              <span className="bfe-card__meta">Windows &middot; Updates itself</span>
+            </span>
           </button>
         )}
       </div>
