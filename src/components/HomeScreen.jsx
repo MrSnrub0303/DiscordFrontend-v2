@@ -264,7 +264,7 @@ export function HomeScreen({
           draggable={false}
         />
         {/* Age of Empires III: Battlefield Edition: a card showing the game (a real moment from it), what it is, and
-            one action, the download (the whole card takes the click; free, for Windows, it keeps itself updated) */}
+            one action, the download (the whole card takes the click) */}
         {onDownloadGame && (
           <button
             type="button"
@@ -282,7 +282,10 @@ export function HomeScreen({
             <span className="bfe-card__body">
               <span className="bfe-card__eyebrow">New &middot; Free on PC</span>
               <span className="bfe-card__title">Battlefield Edition</span>
-              <span className="bfe-card__pitch">Fight Age of Empires III&rsquo;s battles yourself: in the line, at the guns, online with friends.</span>
+              <span className="bfe-card__pitch">
+                <span className="bfe-card__line">You&rsquo;ve commanded these armies for years.</span>
+                <span className="bfe-card__line">Now pick up a musket and hold the line.</span>
+              </span>
               <span
                 className="bfe-card__cta"
                 style={{ backgroundImage: `url(${downloadPressed ? buttonRedClicked : buttonRedAvailable})` }}
@@ -290,9 +293,8 @@ export function HomeScreen({
                 <svg className="bfe-card__icon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12 3v11m0 0l-4.5-4.5M12 14l4.5-4.5M4 17v3h16v-3" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                Download free
+                <span className="bfe-card__label">Download free</span>
               </span>
-              <span className="bfe-card__meta">Windows &middot; Updates itself</span>
             </span>
           </button>
         )}
